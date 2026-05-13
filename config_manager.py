@@ -78,6 +78,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "pollution_warning_threshold": 2,
         "log_detail": True,
     },
+    "extractor_probe": {
+        "enabled": True,
+        "backends": ["pdfplumber", "marker"],
+        "output_report": True,
+    },
 }
 
 
@@ -170,4 +175,5 @@ class ConfigManager:
             "table_extraction": self.config.get("table_extraction", {}),
             "table_segmentation": self.config.get("table_segmentation", {}),
             "segment_validation": self.config.get("segment_validation", {}),
+            "extractor_probe": self.config.get("extractor_probe", {}),
         }

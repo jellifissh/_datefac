@@ -65,3 +65,10 @@ segment_validation:
   output_report: true
   pollution_warning_threshold: 2
   log_detail: true
+
+extractor_probe:
+  enabled: true
+  backends:
+    - pdfplumber
+    - marker
+  output_report: true
