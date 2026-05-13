@@ -80,7 +80,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "extractor_probe": {
         "enabled": True,
-        "backends": ["pdfplumber", "marker"],
+        "backends": ["pdfplumber", "marker", "docling"],
         "output_report": True,
     },
 }

@@ -1,6 +1,6 @@
 # H3_AP202605091822098939_1_资产包 - 10_extractor_compare_report 摘要
 
-- 源文件: `10_extractor_compare_report.xlsx`
+- 源文件: `10_extractor_compare_report_H3_AP202605091822098939_1.xlsx`
 - backend 数量: `2`
 - 总 table_count: `5`
 - 总 warning_count: `1`
@@ -11,5 +11,5 @@
 
 | backend | table_count | avg_quality_score | good_table_count | warning_count |
 | --- | --- | --- | --- | --- |
-| marker | 3 | 1.0 | 3 | 1 |
 | pdfplumber | 2 | 0.8 | 1 | 0 |
+| marker | 3 | 1.0 | 3 | 1 |

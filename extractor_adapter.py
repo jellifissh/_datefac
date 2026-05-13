@@ -1,4 +1,5 @@
 import re
+import importlib.util
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -133,7 +134,92 @@ def extract_marker_table_blocks(markdown_text: str, config: Optional[dict], logg
 
 
 def extract_docling_table_blocks(pdf_path: str, config: Optional[dict], logger=None) -> List[TableBlock]:
-    # TODO: integrate docling extractor in future iteration.
+    spec = importlib.util.find_spec("docling")
+    if spec is None:
+        if logger:
+            logger.info("extract_docling_table_blocks: docling not installed")
+        return []
+
+    try:
+        from docling.document_converter import DocumentConverter  # type: ignore
+    except Exception:
+        if logger:
+            logger.exception("extract_docling_table_blocks: failed to import DocumentConverter")
+        return []
+
+    blocks: List[TableBlock] = []
+    try:
+        converter = DocumentConverter()
+        result = converter.convert(pdf_path)
+        doc = getattr(result, "document", None)
+        if doc is None:
+            if logger:
+                logger.info("extract_docling_table_blocks: no document returned")
+            return []
+
+        tables = list(getattr(doc, "tables", []) or [])
+        for idx, table in enumerate(tables, start=1):
+            df: Optional[pd.DataFrame] = None
+            raw_markdown = ""
+            raw_html = ""
+            page = None
+            source_meta: Dict[str, Any] = {}
+
+            for attr_name in ("page_no", "page", "page_number"):
+                if hasattr(table, attr_name):
+                    page = getattr(table, attr_name)
+                    break
+
+            if hasattr(table, "export_to_dataframe"):
+                try:
+                    candidate = table.export_to_dataframe()
+                    if isinstance(candidate, pd.DataFrame):
+                        df = candidate
+                except Exception:
+                    pass
+
+            if df is None and hasattr(table, "to_dataframe"):
+                try:
+                    candidate = table.to_dataframe()
+                    if isinstance(candidate, pd.DataFrame):
+                        df = candidate
+                except Exception:
+                    pass
+
+            if hasattr(table, "export_to_markdown"):
+                try:
+                    raw_markdown = str(table.export_to_markdown() or "")
+                except Exception:
+                    raw_markdown = ""
+
+            if hasattr(table, "export_to_html"):
+                try:
+                    raw_html = str(table.export_to_html() or "")
+                except Exception:
+                    raw_html = ""
+
+            if df is None and raw_markdown:
+                df = _parse_markdown_table_to_df(raw_markdown)
+
+            if df is None or df.empty:
+                continue
+
+            df = df.fillna("").astype(str)
+            block = dataframe_to_table_block(
+                df=df,
+                backend="docling",
+                page=page,
+                table_index=idx,
+                source_meta=source_meta,
+            )
+            block.raw_markdown = raw_markdown
+            block.raw_html = raw_html
+            blocks.append(block)
+    except Exception:
+        if logger:
+            logger.exception("extract_docling_table_blocks failed")
+        return []
+
     if logger:
-        logger.info("extract_docling_table_blocks not implemented yet, return []")
-    return []
+        logger.info("extract_docling_table_blocks: extracted %s tables", len(blocks))
+    return blocks

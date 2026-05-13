@@ -71,4 +71,5 @@ extractor_probe:
   backends:
     - pdfplumber
     - marker
+    - docling
   output_report: true

@@ -1,4 +1,5 @@
 import argparse
+import importlib.util
 import re
 import sys
 from pathlib import Path
@@ -149,6 +150,10 @@ def run_backend(
     return []
 
 
+def is_docling_available() -> bool:
+    return importlib.util.find_spec("docling") is not None
+
+
 def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="Probe extractor adapters and compare table block quality.")
     ap.add_argument("--pdf", required=True, help="Target PDF path")
@@ -193,6 +198,10 @@ def main() -> int:
         if backend == "marker" and marker_cache_path is None:
             backend_status_map[backend] = "unavailable_no_markdown_cache"
             backend_error_map[backend] = "marker markdown cache not found"
+            continue
+        if backend == "docling" and not is_docling_available():
+            backend_status_map[backend] = "unavailable_docling_not_installed"
+            backend_error_map[backend] = "docling is not installed in current environment"
             continue
         try:
             blocks = run_backend(backend, pdf_path, markdown_text, config.get("table_extraction", {}))
@@ -241,4 +250,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

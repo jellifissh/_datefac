@@ -1,6 +1,6 @@
-﻿backend,page,table_index,row_count,col_count,empty_cell_ratio,quality_score,quality_level,quality_flags,preview
-pdfplumber,1,2,1,5,0.0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",[指Ta标bl/e年_度Ma inProfit] | 2024A | 2025E | 2026E | 2027E
-pdfplumber,6,1,18,16,0.6806,0.95,GOOD,,| 业务 | | 项目 | || 工业级混合油 | | 自产量（t） | | 56633.88 || | | 外采量（t） | | 32853.53
-pdfplumber,8,1,16,11,0.5227,1.0,GOOD,,| 业务情况（百万元） | | | 2025A || 油脂产品加工和销售 | | 收入 | 742.6 | || | | 增速 | -9.5% |
-pdfplumber,9,1,6,21,0.6825,0.8,GOOD,,| | | | || | 证券代码 | 可比公司 | | 收盘价（元） || | | | |
-pdfplumber,10,1,49,11,0.1354,1.0,GOOD,possible_glued_table,[利T润ab表le（_百P万ro元fi）tD eta | i | l] 2025A | 2026E | 2027E || 营业收入 | 1446.57 | | 1474.18 | 1521.51 || 营业成本 | 1093.04 | | 1116.34 | 1153.34
+﻿source_pdf,backend,backend_status,page,table_index,row_count,col_count,empty_cell_ratio,quality_score,quality_level,quality_flags,preview
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,pdfplumber,success,1,2,1,5,0.0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",[指Ta标bl/e年_度Ma inProfit] | 2024A | 2025E | 2026E | 2027E
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,pdfplumber,success,6,1,18,16,0.6806,0.95,GOOD,,| 业务 | | 项目 | || 工业级混合油 | | 自产量（t） | | 56633.88 || | | 外采量（t） | | 32853.53
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,pdfplumber,success,8,1,16,11,0.5227,1.0,GOOD,,| 业务情况（百万元） | | | 2025A || 油脂产品加工和销售 | | 收入 | 742.6 | || | | 增速 | -9.5% |
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,pdfplumber,success,9,1,6,21,0.6825,0.8,GOOD,,| | | | || | 证券代码 | 可比公司 | | 收盘价（元） || | | | |
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,pdfplumber,success,10,1,49,11,0.1354,1.0,GOOD,possible_glued_table,[利T润ab表le（_百P万ro元fi）tD eta | i | l] 2025A | 2026E | 2027E || 营业收入 | 1446.57 | | 1474.18 | 1521.51 || 营业成本 | 1093.04 | | 1116.34 | 1153.34

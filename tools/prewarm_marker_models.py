@@ -8,12 +8,8 @@ from pathlib import Path
 
 import requests
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from config_manager import ConfigManager, DEFAULT_CONFIG
-from vision_runtime import build_vision_env
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def print_section(title: str) -> None:
@@ -33,6 +29,78 @@ def print_tmp_phase(phase: str) -> None:
     print_kv("tempfile.gettempdir()", tempfile.gettempdir())
 
 
+def print_runtime_env_snapshot(prefix: str = "") -> None:
+    if prefix:
+        print(prefix)
+    print_kv("sys.executable", sys.executable)
+    print_kv("os.getcwd()", os.getcwd())
+    print_kv("TEMP", os.environ.get("TEMP", ""))
+    print_kv("TMP", os.environ.get("TMP", ""))
+    print_kv("Path.home()", Path.home())
+    print_kv("tempfile.gettempdir()", tempfile.gettempdir())
+
+
+def network_probe(url: str, phase: str, headers: dict | None = None, use_stream: bool = False) -> dict:
+    print(f"[NETWORK] phase={phase}")
+    print_kv("url", url)
+    with requests.Session() as session:
+        print_kv("requests.Session().trust_env", session.trust_env)
+    for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+        print_kv(key, os.environ.get(key, ""))
+    print_runtime_env_snapshot()
+
+    result = {
+        "ok": False,
+        "status_code": "",
+        "content_length": "",
+        "content_range": "",
+        "final_url": "",
+        "exception_type": "",
+        "exception_message": "",
+    }
+    try:
+        with requests.get(
+            url,
+            timeout=20,
+            allow_redirects=True,
+            headers=headers or {},
+            stream=use_stream,
+        ) as resp:
+            result["ok"] = True
+            result["status_code"] = str(resp.status_code)
+            result["content_length"] = str(resp.headers.get("content-length", ""))
+            result["content_range"] = str(resp.headers.get("content-range", ""))
+            result["final_url"] = str(resp.url)
+    except Exception as exc:
+        result["exception_type"] = type(exc).__name__
+        result["exception_message"] = str(exc)
+
+    print_kv("status_code", result["status_code"])
+    print_kv("content-length", result["content_length"])
+    print_kv("content-range", result["content_range"])
+    print_kv("final_url", result["final_url"])
+    print_kv("exception_type", result["exception_type"])
+    print_kv("exception_message", result["exception_message"])
+    return result
+
+
+def run_network_suite(phase_prefix: str) -> dict:
+    manifest = network_probe(
+        "https://models.datalab.to/layout/2025_09_23/manifest.json",
+        phase=f"{phase_prefix}:manifest",
+    )
+    model_range = network_probe(
+        "https://models.datalab.to/layout/2025_09_23/model.safetensors",
+        phase=f"{phase_prefix}:model_range",
+        headers={"Range": "bytes=0-1023"},
+        use_stream=True,
+    )
+    return {
+        "manifest": manifest,
+        "range": model_range,
+    }
+
+
 def list_entries(base: Path, max_items: int) -> None:
     print(f"[SCAN] {base}")
     if not base.exists():
@@ -49,28 +117,17 @@ def list_entries(base: Path, max_items: int) -> None:
             break
 
 
-def precheck_url(url: str, headers: dict | None = None, use_stream: bool = False) -> tuple[bool, str]:
-    print(f"- GET {url}")
-    try:
-        with requests.get(
-            url,
-            timeout=20,
-            allow_redirects=True,
-            headers=headers or {},
-            stream=use_stream,
-        ) as resp:
-            print(f"  status_code={resp.status_code}")
-            print(f"  content-length={resp.headers.get('content-length', '')}")
-            print(f"  content-range={resp.headers.get('content-range', '')}")
-            print(f"  final_url={resp.url}")
-            return True, str(resp.status_code)
-    except Exception as exc:
-        print(f"  exception_type={type(exc).__name__}")
-        print(f"  exception_message={exc}")
-        return False, f"{type(exc).__name__}: {exc}"
+def load_runtime_modules():
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from config_manager import ConfigManager, DEFAULT_CONFIG
+    from vision_runtime import build_vision_env
+
+    return ConfigManager, DEFAULT_CONFIG, build_vision_env
 
 
 def load_config():
+    ConfigManager, DEFAULT_CONFIG, _ = load_runtime_modules()
     cfg = ConfigManager(config_path=str(PROJECT_ROOT / "config.yaml"))
     config = cfg.load()
     paths = config.get("paths", {})
@@ -88,25 +145,35 @@ def main() -> int:
         default="default",
         help="TEMP/TMP switch strategy for diagnostics.",
     )
+    parser.add_argument(
+        "--network-only",
+        action="store_true",
+        help="Only run env + network diagnostics; skip tmp creation, imports, and model loading.",
+    )
+    parser.add_argument(
+        "--network-first-before-env",
+        action="store_true",
+        help="Run an initial network check before importing config_manager/vision_runtime or applying vision env.",
+    )
     args = parser.parse_args()
 
+    print_section("Startup")
+    print_kv("tmp_mode", args.tmp_mode)
+    print_kv("network_only", args.network_only)
+    print_kv("network_first_before_env", args.network_first_before_env)
+
+    if args.network_first_before_env:
+        print_section("Network First Before Env")
+        run_network_suite("before_env")
+
     _, base_ai_path, temp_cache_dir = load_config()
+    _, _, build_vision_env = load_runtime_modules()
     env = build_vision_env(base_ai_path, temp_cache_dir)
     os.environ.update(env)
     print_tmp_phase("after_build_vision_env")
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    prewarm_tmp = Path(base_ai_path) / "tmp" / f"prewarm_{ts}"
-    prewarm_tmp.mkdir(parents=True, exist_ok=True)
-    if args.tmp_mode == "isolated-before-network":
-        os.environ["TEMP"] = str(prewarm_tmp)
-        os.environ["TMP"] = str(prewarm_tmp)
-
     print_section("Runtime")
-    print_kv("tmp_mode", args.tmp_mode)
-    print_kv("sys.executable", sys.executable)
-    print_kv("Path.home()", Path.home())
-    print_kv("tempfile.gettempdir()", tempfile.gettempdir())
+    print_runtime_env_snapshot()
     for key in [
         "DATALAB_CACHE_DIR",
         "SURYA_CACHE_DIR",
@@ -120,28 +187,42 @@ def main() -> int:
     ]:
         print_kv(key, os.environ.get(key, ""))
 
+    if args.network_only:
+        print_section("Network Only")
+        print_tmp_phase("before_network_precheck")
+        net = run_network_suite("network_only_after_env")
+        print_tmp_phase("after_network_precheck")
+        print_kv("manifest_precheck_status", net["manifest"]["status_code"] or net["manifest"]["exception_type"])
+        print_kv("range_precheck_status", net["range"]["status_code"] or net["range"]["exception_type"])
+        print_kv("marker_import_ok", False)
+        print_kv("surya_import_ok", False)
+        print_kv("torch_import_ok", False)
+        print_kv("create_model_dict_ok", False)
+        return 0
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    prewarm_tmp = Path(base_ai_path) / "tmp" / f"prewarm_{ts}"
+    prewarm_tmp.mkdir(parents=True, exist_ok=True)
+    if args.tmp_mode == "isolated-before-network":
+        os.environ["TEMP"] = str(prewarm_tmp)
+        os.environ["TMP"] = str(prewarm_tmp)
+
     print_section("Network Precheck")
     print_tmp_phase("before_network_precheck")
-    ok_manifest, manifest_status = precheck_url("https://models.datalab.to/layout/2025_09_23/manifest.json")
-    ok_range, range_status = precheck_url(
-        "https://models.datalab.to/layout/2025_09_23/model.safetensors",
-        headers={"Range": "bytes=0-1023"},
-        use_stream=True,
-    )
+    net = run_network_suite("prewarm")
     print_tmp_phase("after_network_precheck")
-    print_kv("manifest_precheck_ok", ok_manifest)
-    print_kv("manifest_precheck_status", manifest_status)
-    print_kv("range_precheck_ok", ok_range)
-    print_kv("range_precheck_status", range_status)
+    print_kv("manifest_precheck_status", net["manifest"]["status_code"] or net["manifest"]["exception_type"])
+    print_kv("range_precheck_status", net["range"]["status_code"] or net["range"]["exception_type"])
 
     winerror_10013 = False
     winerror_5 = False
-
-    print_section("Import Packages")
-    print_tmp_phase("before_import_packages")
     marker_import_ok = False
     surya_import_ok = False
     torch_import_ok = False
+    create_model_dict_ok = False
+
+    print_section("Import Packages")
+    print_tmp_phase("before_import_packages")
     try:
         import marker  # type: ignore
 
@@ -175,7 +256,6 @@ def main() -> int:
         os.environ["TEMP"] = str(prewarm_tmp)
         os.environ["TMP"] = str(prewarm_tmp)
     print_tmp_phase("before_create_model_dict")
-    create_model_dict_ok = False
     try:
         from marker.converters.pdf import PdfConverter
         from marker.models import create_model_dict

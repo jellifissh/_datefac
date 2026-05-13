@@ -1,0 +1,6 @@
+﻿sheet_index,sheet_name,expected_type,detected_type,confidence,row_count,col_count,pollution_score,pollution_flags,suspicious_keywords,suggested_action
+0,p1_t2,主要财务指标,未识别,0.0,1,5,0,,,正常
+1,p6_t1,主要财务指标,未识别,0.0,18,16,0,,,正常
+2,p8_t1,主要财务指标,主要财务指标,1.0,16,11,0,,,正常
+3,p9_t1,主要财务指标,未识别,0.0,6,21,0,,,正常
+4,p10_t1,财务比率表,利润表,0.2609,49,11,5,"keyword_pollution,type_conflict","投资活动现金流,经营活动现金流,负债合计,资产总计",建议复核：疑似混入其他财务表内容

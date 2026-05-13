@@ -1,0 +1,48 @@
+﻿doc_name,status,markdown_available,vision_attempted,vision_success,vision_error,pdfplumber_attempted,pdfplumber_success,table_count,ai_summary_success,error_message,asset_package_path
+H3_AP202605091822098939_1.pdf,SUCCESS,True,False,False,,True,True,1,False,,D:\_datefac\output\H3_AP202605091822098939_1_资产包
+H3_AP202605121822218343_1.pdf,SUCCESS,False,True,False,"[2026-05-13T17:50:08.623200] PDF: UNKNOWN
+Traceback (most recent call last):
+  File ""D:\_datefac\factory_core.py"", line 850, in vision_worker_process
+    model_dict = create_model_dict()
+                ^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\marker\models.py"", line 20, in create_model_dict
+    ""layout_model"": LayoutPredictor(FoundationPredictor(checkpoint=surya_settings.LAYOUT_MODEL_CHECKPOINT, attention_implementation=attention_implementation, device=device, dtype=dtype)),
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\foundation\__init__.py"", line 113, in __init__
+    super().__init__(checkpoint, device, dtype, attention_implementation)
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\common\predictor.py"", line 37, in __init__
+    self.model = loader.model(device, dtype, attention_implementation)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\foundation\loader.py"", line 46, in model
+    config = SuryaModelConfig.from_pretrained(self.checkpoint)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\common\s3.py"", line 154, in from_pretrained
+    local_path = cls.get_local_path(pretrained_model_name_or_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\common\s3.py"", line 141, in get_local_path
+    os.makedirs(local_path, exist_ok=True)
+  File ""<frozen os>"", line 225, in makedirs
+PermissionError: [WinError 5] 拒绝访问。: 'C:\\Users\\哥哥\\AppData\\Local\\datalab\\datalab\\Cache\\models\\layout/2025_09_23'",True,True,5,False,,D:\_datefac\output\H3_AP202605121822218343_1_资产包
+H3_AP202605121822223662_1.pdf,FAILED,False,True,False,"[2026-05-13T17:50:24.862495] PDF: UNKNOWN
+Traceback (most recent call last):
+  File ""D:\_datefac\factory_core.py"", line 850, in vision_worker_process
+    model_dict = create_model_dict()
+                ^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\marker\models.py"", line 20, in create_model_dict
+    ""layout_model"": LayoutPredictor(FoundationPredictor(checkpoint=surya_settings.LAYOUT_MODEL_CHECKPOINT, attention_implementation=attention_implementation, device=device, dtype=dtype)),
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\foundation\__init__.py"", line 113, in __init__
+    super().__init__(checkpoint, device, dtype, attention_implementation)
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\common\predictor.py"", line 37, in __init__
+    self.model = loader.model(device, dtype, attention_implementation)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\foundation\loader.py"", line 46, in model
+    config = SuryaModelConfig.from_pretrained(self.checkpoint)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\common\s3.py"", line 154, in from_pretrained
+    local_path = cls.get_local_path(pretrained_model_name_or_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""D:\anaconda\envs\factory_v4\Lib\site-packages\surya\common\s3.py"", line 141, in get_local_path
+    os.makedirs(local_path, exist_ok=True)
+  File ""<frozen os>"", line 225, in makedirs
+PermissionError: [WinError 5] 拒绝访问。: 'C:\\Users\\哥哥\\AppData\\Local\\datalab\\datalab\\Cache\\models\\layout/2025_09_23'",True,False,0,False,无有效Markdown且未抽取到结构化表格,D:\_datefac\output\H3_AP202605121822223662_1_资产包

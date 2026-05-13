@@ -1,2 +1,3 @@
-﻿backend,table_count,avg_quality_score,good_table_count,warning_count
-pdfplumber,5,0.82,4,2
+﻿source_pdf,backend,backend_status,table_count,avg_quality_score,good_table_count,warning_count,error_message
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,pdfplumber,success,5,0.82,4,2,
+D:\_datefac\input\H3_AP202605121822218343_1.pdf,marker,unavailable_no_markdown_cache,0,0.0,0,0,marker markdown cache not found

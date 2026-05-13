@@ -1,0 +1,2 @@
+﻿sheet_index,sheet_name,expected_type,detected_type,confidence,row_count,col_count,pollution_score,pollution_flags,suspicious_keywords,suggested_action
+0,p1_t1,主要财务指标,主要财务指标,0.375,10,5,0,,,正常
