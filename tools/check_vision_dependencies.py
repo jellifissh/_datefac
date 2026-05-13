@@ -44,21 +44,22 @@ def test_url(
     timeout: int = 15,
     headers: dict | None = None,
     label: str | None = None,
+    use_stream: bool = False,
 ) -> None:
     request_label = label or url
     print(f"- GET {request_label}")
     try:
-        resp = requests.get(
+        with requests.get(
             url,
             timeout=timeout,
             allow_redirects=True,
             headers=headers or {},
-            stream=True,
-        )
-        print(f"  status_code={resp.status_code}")
-        print(f"  content-length={resp.headers.get('content-length', '')}")
-        print(f"  content-range={resp.headers.get('content-range', '')}")
-        print(f"  final_url={resp.url}")
+            stream=use_stream,
+        ) as resp:
+            print(f"  status_code={resp.status_code}")
+            print(f"  content-length={resp.headers.get('content-length', '')}")
+            print(f"  content-range={resp.headers.get('content-range', '')}")
+            print(f"  final_url={resp.url}")
     except Exception as exc:
         print(f"  exception_type={type(exc).__name__}")
         print(f"  exception_message={exc}")
@@ -154,12 +155,18 @@ def main() -> int:
     print_kv("os.getcwd()", os.getcwd())
 
     print_section("Network Checks")
+    with requests.Session() as session:
+        print_kv("requests.Session().trust_env", session.trust_env)
+    for proxy_key in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"]:
+        print_kv(proxy_key, os.environ.get(proxy_key, ""))
+
     test_url("https://models.datalab.to")
     test_url("https://models.datalab.to/layout/2025_09_23/manifest.json")
     test_url(
         "https://models.datalab.to/layout/2025_09_23/model.safetensors",
         headers={"Range": "bytes=0-1023"},
         label="https://models.datalab.to/layout/2025_09_23/model.safetensors (Range: bytes=0-1023)",
+        use_stream=True,
     )
 
     print_section("Local Cache Structure")
