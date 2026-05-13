@@ -30,6 +30,7 @@ from pdfplumber_table_extractor import (
 from pdfplumber_table_postprocessor import postprocess_pdfplumber_blocks
 from pdfplumber_table_postprocessor import diagnose_cross_page_merge_candidates
 from pdfplumber_table_postprocessor import evaluate_pdfplumber_table_quality
+from segment_validator import validate_segments
 from table_segmenter import (
     segment_tables,
     build_segment_index_dataframe,
@@ -197,6 +198,7 @@ def stage3_waterfall_engine(
     table_classification_config=None,
     financial_standardization_config=None,
     table_segmentation_config=None,
+    segment_validation_config=None,
 ):
     """Marker Markdown table extraction engine (kept as fallback backend)."""
     lines = text.split("\n")
@@ -261,6 +263,7 @@ def stage3_waterfall_engine(
         table_cleaning_config=table_cleaning_config,
         table_classification_config=table_classification_config,
         financial_standardization_config=financial_standardization_config,
+        segment_validation_config=segment_validation_config,
         backend="marker",
         table_segmentation_config=table_segmentation_config,
     )
@@ -389,6 +392,7 @@ def postprocess_and_export_tables(
     table_cleaning_config=None,
     table_classification_config=None,
     financial_standardization_config=None,
+    segment_validation_config=None,
     sheet_names=None,
     add_index_sheet=False,
     index_df=None,
@@ -515,6 +519,8 @@ def postprocess_and_export_tables(
             logger.info("final_excel_path=%s", final_excel_path)
             logger.info("结构化 Excel 输出: %s", final_excel_path)
 
+        segment_map_df = None
+        source_preview_df = None
         if segmenter_applied and segment_metadata:
             try:
                 segment_map_df = build_segment_map_dataframe(segment_metadata)
@@ -524,19 +530,11 @@ def postprocess_and_export_tables(
                     context_rows=3,
                     max_cols=8,
                 )
-                segment_diag_path = os.path.join(pkg_path, ARTIFACT_SEGMENT_MAP)
-                final_segment_diag_path = save_workbook_robustly(
-                    {
-                        "segment_map": segment_map_df,
-                        "source_table_preview": source_preview_df,
-                    },
-                    segment_diag_path,
-                )
-                if logger:
-                    logger.info("TableSegmenter diagnostics output: %s", final_segment_diag_path)
             except Exception:
+                segment_map_df = None
+                source_preview_df = None
                 if logger:
-                    logger.exception("TableSegmenter diagnostics export failed")
+                    logger.exception("TableSegmenter diagnostics dataframe build failed")
 
         classification_config = table_classification_config or {}
         classification_results = None
@@ -559,6 +557,48 @@ def postprocess_and_export_tables(
         else:
             if logger:
                 logger.info("TableClassifier disabled")
+
+        # Segment validation diagnostics (no behavior change; best-effort only)
+        validation_cfg = segment_validation_config or {}
+        if bool(validation_cfg.get("enabled", True)) and bool(validation_cfg.get("output_report", True)):
+            try:
+                validation_df = validate_segments(
+                    cleaned_dfs,
+                    sheet_names=cleaned_sheet_names if cleaned_sheet_names else None,
+                    classification_results=classification_results,
+                    segment_metadata=segment_metadata if segmenter_applied else None,
+                    logger=logger,
+                    config=validation_cfg,
+                )
+                segment_diag_path = os.path.join(pkg_path, ARTIFACT_SEGMENT_MAP)
+                sheet_map = {"segment_validation": validation_df}
+                if segment_map_df is not None:
+                    sheet_map["segment_map"] = segment_map_df
+                if source_preview_df is not None:
+                    sheet_map["source_table_preview"] = source_preview_df
+                final_validation_path = save_workbook_robustly(sheet_map, segment_diag_path)
+                if logger:
+                    logger.info("Segment validation diagnostics output: %s", final_validation_path)
+            except Exception:
+                if logger:
+                    logger.exception("Segment validation diagnostics failed (ignored)")
+        else:
+            # Keep existing segment_map diagnostics behavior when validation is disabled.
+            if segment_map_df is not None and source_preview_df is not None:
+                try:
+                    segment_diag_path = os.path.join(pkg_path, ARTIFACT_SEGMENT_MAP)
+                    final_segment_diag_path = save_workbook_robustly(
+                        {
+                            "segment_map": segment_map_df,
+                            "source_table_preview": source_preview_df,
+                        },
+                        segment_diag_path,
+                    )
+                    if logger:
+                        logger.info("TableSegmenter diagnostics output: %s", final_segment_diag_path)
+                except Exception:
+                    if logger:
+                        logger.exception("TableSegmenter diagnostics export failed")
 
         standardization_config = financial_standardization_config or {}
         if standardization_config.get("enabled", True):
@@ -629,6 +669,7 @@ def generate_structured_tables(
         "table_classification_config": config.get("table_classification", {}),
         "financial_standardization_config": config.get("financial_standardization", {}),
         "table_segmentation_config": config.get("table_segmentation", {}),
+        "segment_validation_config": config.get("segment_validation", {}),
     }
 
     should_try_pdfplumber = (
@@ -716,6 +757,7 @@ def generate_structured_tables(
                     table_cleaning_config=pdf_cleaning_config,
                     table_classification_config=config.get("table_classification", {}),
                     financial_standardization_config=config.get("financial_standardization", {}),
+                    segment_validation_config=config.get("segment_validation", {}),
                     sheet_names=sheet_names,
                     add_index_sheet=add_index_sheet,
                     index_df=index_df,

@@ -59,3 +59,9 @@ table_segmentation:
   coalesce_same_type: true
   coalesce_ratio_sections: true
   min_rows_for_standalone_segment: 3
+
+segment_validation:
+  enabled: true
+  output_report: true
+  pollution_warning_threshold: 2
+  log_detail: true

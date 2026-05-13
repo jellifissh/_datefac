@@ -72,6 +72,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "coalesce_ratio_sections": True,
         "min_rows_for_standalone_segment": 3,
     },
+    "segment_validation": {
+        "enabled": True,
+        "output_report": True,
+        "pollution_warning_threshold": 2,
+        "log_detail": True,
+    },
 }
 
 
@@ -163,4 +169,5 @@ class ConfigManager:
             "financial_standardization": self.config.get("financial_standardization", {}),
             "table_extraction": self.config.get("table_extraction", {}),
             "table_segmentation": self.config.get("table_segmentation", {}),
+            "segment_validation": self.config.get("segment_validation", {}),
         }
