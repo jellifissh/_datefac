@@ -6,10 +6,17 @@ import traceback
 import re
 from datetime import datetime
 import logging
-import requests
 import pandas as pd
 import multiprocessing
 
+from artifact_names import (
+    ARTIFACT_MARKDOWN,
+    ARTIFACT_TABLES,
+    ARTIFACT_SUMMARY,
+    ARTIFACT_MERGE_DIAGNOSTICS,
+    ARTIFACT_SEGMENT_MAP,
+)
+from ai_summary_service import generate_investment_summary
 from config_manager import ConfigManager, DEFAULT_CONFIG
 from logger_utils import setup_logging
 from table_cleaner import clean_dataframe_list
@@ -31,7 +38,7 @@ from table_segmenter import (
 )
 
 # ========================================================
-# 1. 缁堟瀬鐜閿?# ========================================================
+# 1. 运行时环境初始化
 BASE_AI_PATH = DEFAULT_CONFIG["paths"]["base_ai_path"]
 OLLAMA_URL = DEFAULT_CONFIG["ollama"]["url"]
 MODEL_NAME = DEFAULT_CONFIG["ollama"]["model"]
@@ -74,7 +81,7 @@ def initialize_runtime(config_path="config.yaml"):
     logger, log_path = setup_logging(config["paths"]["logs_dir"])
     if config_manager.load_warning:
         logger.warning(config_manager.load_warning)
-    logger.info("褰撳墠閰嶇疆鎽樿: %s", json.dumps(config_manager.build_summary(), ensure_ascii=False))
+    logger.info("当前配置摘要: %s", json.dumps(config_manager.build_summary(), ensure_ascii=False))
     return config_manager, logger, log_path
 
 
@@ -87,7 +94,7 @@ def build_asset_package_path(output_dir, doc_name):
     return os.path.join(output_dir, f"{base_name}_资产包")
 
 # ========================================================
-# 2. 鏍稿績绠楁硶锛氳〃澶撮浄杈句笌鍙屾爮闃茬矘杩炲紩鎿?(V6.11 鏍稿績淇)
+# 2. 核心表格处理流程（含 marker fallback）
 # ========================================================
 
 def make_columns_unique(cols):
@@ -263,7 +270,7 @@ def save_excel_robustly(df_list, target_path):
             with open(target_path, 'a'): pass
         except PermissionError:
             timestamp = datetime.now().strftime("%H%M%S")
-            final_path = target_path.replace(".xlsx", f"_鍓湰_{timestamp}.xlsx")
+            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
 
     with pd.ExcelWriter(final_path, engine='openpyxl') as writer:
         for i, df in enumerate(df_list):
@@ -297,7 +304,7 @@ def save_excel_with_named_sheets(df_list, sheet_names, target_path, index_df=Non
                 pass
         except PermissionError:
             timestamp = datetime.now().strftime("%H%M%S")
-            final_path = target_path.replace(".xlsx", f"_鍓湰_{timestamp}.xlsx")
+            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
 
     used_names = set()
     with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
@@ -359,7 +366,7 @@ def postprocess_and_export_tables(
     backend="marker",
     table_segmentation_config=None,
 ):
-    excel_path = os.path.join(pkg_path, "02_研报全量结构化数据.xlsx")
+    excel_path = os.path.join(pkg_path, ARTIFACT_TABLES)
     pure_dfs = df_list or []
     cleaned_dfs = pure_dfs
     cleaning_config = table_cleaning_config or {}
@@ -488,7 +495,7 @@ def postprocess_and_export_tables(
                     context_rows=3,
                     max_cols=8,
                 )
-                segment_diag_path = os.path.join(pkg_path, "07_table_segment_map.xlsx")
+                segment_diag_path = os.path.join(pkg_path, ARTIFACT_SEGMENT_MAP)
                 final_segment_diag_path = save_workbook_robustly(
                     {
                         "segment_map": segment_map_df,
@@ -560,16 +567,6 @@ def postprocess_and_export_tables(
             logger.exception("资产包 Excel 生成失败: %s", excel_path)
         return 0
 
-def clean_and_parse_json(raw_response):
-    clean_text = raw_response
-    if "</think>" in clean_text: clean_text = clean_text.split("</think>")[-1]
-    start, end = clean_text.find("{"), clean_text.rfind("}")
-    if start != -1 and end != -1:
-        try: return json.loads(clean_text[start:end+1])
-        except: return {}
-    return {}
-
-
 def _build_pdfplumber_sheet_name(table_block, strategy="page_table"):
     hint = str(table_block.get("sheet_name_hint") or "").strip()
     if hint:
@@ -632,7 +629,7 @@ def generate_structured_tables(
                     if extraction_config.get("output_merge_diagnostics", True):
                         try:
                             diagnostics_df = pd.DataFrame(diagnostics)
-                            diag_path = os.path.join(pkg_path, "06_pdfplumber_merge_diagnostics.xlsx")
+                            diag_path = os.path.join(pkg_path, ARTIFACT_MERGE_DIAGNOSTICS)
                             final_diag_path = save_single_df_robustly(diagnostics_df, diag_path, sheet_name="merge_diagnostics")
                             logger.info("pdfplumber merge diagnostics output: %s", final_diag_path)
                         except Exception:
@@ -711,7 +708,7 @@ def generate_structured_tables(
     return stage3_waterfall_engine(full_text, pkg_path, **marker_kwargs)
 
 # ========================================================
-# 3. 瑙嗚瀛愯繘绋嬩笌 AI 鎽樿 (L3 灞?
+# 3. 视觉子进程与 AI 摘要
 # ========================================================
 def write_vision_error(error_log_path, current_pdf):
     if not error_log_path:
@@ -784,25 +781,25 @@ def vision_worker_process(input_dir, cache_dir, files, require_cuda=True, error_
 
 def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf_path=None):
     os.makedirs(pkg_path, exist_ok=True)
-    markdown_path = os.path.join(pkg_path, "01_鍏ㄩ噺鑴辨按搴曠.md")
+    markdown_path = os.path.join(pkg_path, ARTIFACT_MARKDOWN)
     with open(markdown_path, "w", encoding="utf-8") as f:
         f.write(full_text)
-    logger.info("Markdown 搴曠杈撳嚭: %s", markdown_path)
+    logger.info("Markdown 底稿输出: %s", markdown_path)
 
     if not full_text or not full_text.strip():
         logger.warning("检测到空 Markdown，已跳过表格提取与 AI 请求: doc=%s", doc_name)
         final_summary_df = pd.DataFrame([{
             "研报名称": doc_name,
             "解析表数": 0,
-            "状态": "空Markdown，已跳过表格和AI处理",
+            "状态": "空 Markdown，已跳过表格和 AI 处理",
         }])
-        summary_path = os.path.join(pkg_path, "03_鎶曠爺缁撹绮惧崕.xlsx")
+        summary_path = os.path.join(pkg_path, ARTIFACT_SUMMARY)
         try:
             final_summary_df.to_excel(summary_path, index=False)
             actual_summary_path = summary_path
         except PermissionError:
             ts = datetime.now().strftime("%H%M%S")
-            actual_summary_path = summary_path.replace(".xlsx", f"_鍓湰_{ts}.xlsx")
+            actual_summary_path = summary_path.replace(".xlsx", f"_副本_{ts}.xlsx")
             final_summary_df.to_excel(actual_summary_path, index=False)
         logger.info("空 Markdown 摘要输出: %s", actual_summary_path)
         return {
@@ -820,24 +817,7 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
     )
     logger.info("提取表格数量: doc=%s, count=%s", doc_name, t_count)
 
-    ai_context = full_text[:5000] + "\n\n[...]\n\n" + full_text[-5000:]
-    prompt = f"""浣犳槸涓€浣嶉《绾т拱鏂瑰熀閲戠粡鐞嗐€傝鍩轰簬鐮旀姤鐗囨鎻愬彇瀹氭€х粨璁哄拰鍏抽敭棰勬祴銆?瑕佹眰锛?1. 鎻愬彇銆愭姇璧勮瘎绾с€戙€併€愭牳蹇冪湅澶氶€昏緫銆戯紙涓嶅皯浜?50瀛楋級銆併€愮洰鏍囦环銆戙€?2. 鎻愬彇銆愭墍鏈夐娴嬪勾浠姐€戠殑鏍稿績璐㈠姟鎸囨爣锛堝噣鍒╂鼎銆佽惀鏀躲€丷OE銆丳E锛夈€?3. 鍔ㄦ€佺敓鎴愰敭鍚嶏紝濡?"2027E_鍑€鍒╂鼎"銆傚繀椤昏緭鍑虹函 JSON銆?鍐呭锛歕n{ai_context}"""
-
-    ai_data = {}
-    try:
-        res = requests.post(
-            config["ollama"]["url"],
-            json={"model": config["ollama"]["model"], "prompt": prompt, "stream": False, "format": "json"},
-            timeout=config["ollama"].get("timeout", OLLAMA_TIMEOUT),
-        )
-        if res.status_code == 200:
-            ai_data = clean_and_parse_json(res.json().get('response', '{}'))
-            logger.info("AI 璇锋眰鎴愬姛: doc=%s, status_code=%s, parsed_keys=%s", doc_name, res.status_code, list(ai_data.keys()))
-        else:
-            logger.warning("AI 璇锋眰澶辫触: doc=%s, status_code=%s", doc_name, res.status_code)
-    except Exception as e:
-        ai_data = {"状态": f"API异常: {str(e)}"}
-        logger.exception("AI 请求异常: doc=%s", doc_name)
+    ai_data = generate_investment_summary(full_text, doc_name, config, logger)
 
     final_summary_data = {
         "研报名称": doc_name,
@@ -850,16 +830,16 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
             final_summary_data[k] = v
 
     final_summary_df = pd.DataFrame([final_summary_data])
-    summary_path = os.path.join(pkg_path, "03_鎶曠爺缁撹绮惧崕.xlsx")
+    summary_path = os.path.join(pkg_path, ARTIFACT_SUMMARY)
 
     try:
         final_summary_df.to_excel(summary_path, index=False)
         actual_summary_path = summary_path
     except PermissionError:
         ts = datetime.now().strftime("%H%M%S")
-        actual_summary_path = summary_path.replace(".xlsx", f"_鍓湰_{ts}.xlsx")
+        actual_summary_path = summary_path.replace(".xlsx", f"_副本_{ts}.xlsx")
         final_summary_df.to_excel(actual_summary_path, index=False)
-    logger.info("鎶曠爺缁撹 Excel 杈撳嚭: %s", actual_summary_path)
+    logger.info("投研结论 Excel 输出: %s", actual_summary_path)
     return {
         "markdown_path": markdown_path,
         "summary_path": actual_summary_path,

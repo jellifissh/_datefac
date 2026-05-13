@@ -1,0 +1,7 @@
+ARTIFACT_MARKDOWN = "01_全量脱水底稿.md"
+ARTIFACT_TABLES = "02_研报全量结构化数据.xlsx"
+ARTIFACT_SUMMARY = "03_投研结论精华.xlsx"
+ARTIFACT_CLASSIFICATION = "04_表格分类结果.xlsx"
+ARTIFACT_FINANCIALS = "05_核心财务指标标准化.xlsx"
+ARTIFACT_MERGE_DIAGNOSTICS = "06_pdfplumber_merge_diagnostics.xlsx"
+ARTIFACT_SEGMENT_MAP = "07_table_segment_map.xlsx"
