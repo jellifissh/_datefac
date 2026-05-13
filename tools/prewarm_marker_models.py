@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import tempfile
@@ -23,6 +24,13 @@ def print_section(title: str) -> None:
 
 def print_kv(key: str, value) -> None:
     print(f"{key}: {value}")
+
+
+def print_tmp_phase(phase: str) -> None:
+    print(f"[TMP_PHASE] {phase}")
+    print_kv("TEMP", os.environ.get("TEMP", ""))
+    print_kv("TMP", os.environ.get("TMP", ""))
+    print_kv("tempfile.gettempdir()", tempfile.gettempdir())
 
 
 def list_entries(base: Path, max_items: int) -> None:
@@ -73,17 +81,29 @@ def load_config():
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Prewarm marker/surya models with TEMP/TMP diagnostics.")
+    parser.add_argument(
+        "--tmp-mode",
+        choices=["default", "isolated-before-network", "isolated-before-model"],
+        default="default",
+        help="TEMP/TMP switch strategy for diagnostics.",
+    )
+    args = parser.parse_args()
+
     _, base_ai_path, temp_cache_dir = load_config()
     env = build_vision_env(base_ai_path, temp_cache_dir)
     os.environ.update(env)
+    print_tmp_phase("after_build_vision_env")
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     prewarm_tmp = Path(base_ai_path) / "tmp" / f"prewarm_{ts}"
     prewarm_tmp.mkdir(parents=True, exist_ok=True)
-    os.environ["TEMP"] = str(prewarm_tmp)
-    os.environ["TMP"] = str(prewarm_tmp)
+    if args.tmp_mode == "isolated-before-network":
+        os.environ["TEMP"] = str(prewarm_tmp)
+        os.environ["TMP"] = str(prewarm_tmp)
 
     print_section("Runtime")
+    print_kv("tmp_mode", args.tmp_mode)
     print_kv("sys.executable", sys.executable)
     print_kv("Path.home()", Path.home())
     print_kv("tempfile.gettempdir()", tempfile.gettempdir())
@@ -101,12 +121,14 @@ def main() -> int:
         print_kv(key, os.environ.get(key, ""))
 
     print_section("Network Precheck")
+    print_tmp_phase("before_network_precheck")
     ok_manifest, manifest_status = precheck_url("https://models.datalab.to/layout/2025_09_23/manifest.json")
     ok_range, range_status = precheck_url(
         "https://models.datalab.to/layout/2025_09_23/model.safetensors",
         headers={"Range": "bytes=0-1023"},
         use_stream=True,
     )
+    print_tmp_phase("after_network_precheck")
     print_kv("manifest_precheck_ok", ok_manifest)
     print_kv("manifest_precheck_status", manifest_status)
     print_kv("range_precheck_ok", ok_range)
@@ -116,10 +138,15 @@ def main() -> int:
     winerror_5 = False
 
     print_section("Import Packages")
+    print_tmp_phase("before_import_packages")
+    marker_import_ok = False
+    surya_import_ok = False
+    torch_import_ok = False
     try:
         import marker  # type: ignore
 
         print_kv("marker.__file__", getattr(marker, "__file__", ""))
+        marker_import_ok = True
     except Exception as exc:
         print_kv("marker_import_error", f"{type(exc).__name__}: {exc}")
 
@@ -127,6 +154,7 @@ def main() -> int:
         import surya  # type: ignore
 
         print_kv("surya.__file__", getattr(surya, "__file__", ""))
+        surya_import_ok = True
     except Exception as exc:
         print_kv("surya_import_error", f"{type(exc).__name__}: {exc}")
 
@@ -134,16 +162,27 @@ def main() -> int:
         import torch  # type: ignore
 
         print_kv("torch.__file__", getattr(torch, "__file__", ""))
+        torch_import_ok = True
     except Exception as exc:
         print_kv("torch_import_error", f"{type(exc).__name__}: {exc}")
+    print_tmp_phase("after_import_packages")
+    print_kv("marker_import_ok", marker_import_ok)
+    print_kv("surya_import_ok", surya_import_ok)
+    print_kv("torch_import_ok", torch_import_ok)
 
     print_section("Model Prewarm")
+    if args.tmp_mode == "isolated-before-model":
+        os.environ["TEMP"] = str(prewarm_tmp)
+        os.environ["TMP"] = str(prewarm_tmp)
+    print_tmp_phase("before_create_model_dict")
+    create_model_dict_ok = False
     try:
         from marker.converters.pdf import PdfConverter
         from marker.models import create_model_dict
 
         print("trigger=create_model_dict()")
         model_dict = create_model_dict()
+        create_model_dict_ok = True
         print_kv("model_dict_type", type(model_dict).__name__)
         print("trigger=PdfConverter(artifact_dict=model_dict)")
         converter = PdfConverter(artifact_dict=model_dict)
@@ -157,7 +196,9 @@ def main() -> int:
         winerror_10013 = "winerror 10013" in lower
         winerror_5 = "winerror 5" in lower
     finally:
+        print_tmp_phase("after_create_model_dict_or_error")
         print_section("Error Flags")
+        print_kv("create_model_dict_ok", create_model_dict_ok)
         print_kv("has_winerror_10013", winerror_10013)
         print_kv("has_winerror_5", winerror_5)
         print_kv("prewarm_tmp_dir", prewarm_tmp)
