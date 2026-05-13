@@ -4,10 +4,12 @@ import json
 import sys
 import traceback
 import re
+import tempfile
 from datetime import datetime
 import logging
 import pandas as pd
 import multiprocessing
+from pathlib import Path
 
 from artifact_names import (
     ARTIFACT_MARKDOWN,
@@ -38,6 +40,7 @@ from table_segmenter import (
     build_source_table_preview_dataframe,
 )
 from run_state import DocumentRunState
+from vision_runtime import build_vision_env, write_vision_env_diagnostics
 
 # ========================================================
 # 1. 运行时环境初始化
@@ -795,56 +798,39 @@ def write_vision_error(error_log_path, current_pdf):
     if not error_log_path:
         return
     os.makedirs(os.path.dirname(error_log_path), exist_ok=True)
+    c_datalab_path = r"C:\Users\哥哥\AppData\Local\datalab"
     with open(error_log_path, "a", encoding="utf-8") as f:
         f.write(f"[{datetime.now().isoformat()}] PDF: {current_pdf or 'UNKNOWN'}\n")
         f.write(traceback.format_exc())
         f.write("\n")
+        f.write(f"DATALAB_CACHE_DIR={os.environ.get('DATALAB_CACHE_DIR', '')}\n")
+        f.write(f"LOCALAPPDATA={os.environ.get('LOCALAPPDATA', '')}\n")
+        f.write(f"APPDATA={os.environ.get('APPDATA', '')}\n")
+        f.write(f"USERPROFILE={os.environ.get('USERPROFILE', '')}\n")
+        f.write(f"HOME={os.environ.get('HOME', '')}\n")
+        f.write(f"pathlib.Path.home={Path.home()}\n")
+        f.write(f"tempfile.gettempdir={tempfile.gettempdir()}\n")
+        f.write(f"{c_datalab_path} exists={os.path.exists(c_datalab_path)}\n")
+        f.write("\n")
 
 
 def configure_vision_runtime_env(base_ai_path, cache_dir, logger=None):
-    env_map = {
-        "HF_HOME": os.path.join(base_ai_path, "hf"),
-        "HF_HUB_CACHE": os.path.join(base_ai_path, "hf", "hub"),
-        "TORCH_HOME": os.path.join(base_ai_path, "torch"),
-        "MARKER_MODEL_DIR": os.path.join(base_ai_path, "marker"),
-        "DATALAB_CACHE_DIR": os.path.join(base_ai_path, "datalab"),
-        "DATALAB_HOME": os.path.join(base_ai_path, "datalab"),
-        "SURYA_CACHE_DIR": os.path.join(base_ai_path, "surya"),
-        "XDG_CACHE_HOME": os.path.join(base_ai_path, "xd"),
-        "LOCALAPPDATA": os.path.join(base_ai_path, "localappdata"),
-    }
-    for path in env_map.values():
-        os.makedirs(path, exist_ok=True)
-    for k, v in env_map.items():
-        os.environ[k] = v
-
-    env_log_path = os.path.join(cache_dir, "vision_env.log")
-    os.makedirs(os.path.dirname(env_log_path), exist_ok=True)
-    with open(env_log_path, "a", encoding="utf-8") as f:
-        f.write(f"[{datetime.now().isoformat()}]\n")
-        for k in [
-            "HF_HOME",
-            "HF_HUB_CACHE",
-            "TORCH_HOME",
-            "MARKER_MODEL_DIR",
-            "DATALAB_CACHE_DIR",
-            "DATALAB_HOME",
-            "SURYA_CACHE_DIR",
-            "XDG_CACHE_HOME",
-            "LOCALAPPDATA",
-        ]:
-            f.write(f"{k}={os.environ.get(k, '')}\n")
-        f.write("\n")
+    env = build_vision_env(base_ai_path, cache_dir)
+    os.environ.update(env)
+    write_vision_env_diagnostics(env, cache_dir, phase="legacy_configure_vision_runtime_env")
 
 
 def vision_worker_process(input_dir, cache_dir, files, require_cuda=True, error_log_path=None, base_ai_path=None):
     current_pdf = None
     try:
-        configure_vision_runtime_env(base_ai_path or BASE_AI_PATH, cache_dir)
+        env = build_vision_env(base_ai_path or BASE_AI_PATH, cache_dir)
+        os.environ.update(env)
+        write_vision_env_diagnostics(env, cache_dir, phase="before_import_marker")
         import torch
         from marker.converters.pdf import PdfConverter
         from marker.models import create_model_dict
         from marker.output import text_from_rendered
+        write_vision_env_diagnostics(dict(os.environ), cache_dir, phase="after_import_marker")
         if require_cuda and not torch.cuda.is_available():
             raise RuntimeError("CUDA 不可用，marker 视觉解析已中止。")
         model_dict = create_model_dict() 
