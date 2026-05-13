@@ -32,6 +32,8 @@ from pdfplumber_table_extractor import (
 from pdfplumber_table_postprocessor import postprocess_pdfplumber_blocks
 from pdfplumber_table_postprocessor import diagnose_cross_page_merge_candidates
 from pdfplumber_table_postprocessor import evaluate_pdfplumber_table_quality
+from extractor_adapter import extract_marker_table_blocks
+from raw_table_exporter import export_raw_table_assets
 from segment_validator import validate_segments
 from table_segmenter import (
     segment_tables,
@@ -196,6 +198,7 @@ def parse_md_to_df(table_str):
 def stage3_waterfall_engine(
     text,
     pkg_path,
+    source_pdf="",
     logger=None,
     table_cleaning_config=None,
     table_classification_config=None,
@@ -204,6 +207,22 @@ def stage3_waterfall_engine(
     segment_validation_config=None,
 ):
     """Marker Markdown table extraction engine (kept as fallback backend)."""
+    try:
+        marker_raw_blocks = extract_marker_table_blocks(text or "", config={}, logger=logger)
+        if marker_raw_blocks:
+            export_raw_table_assets(
+                marker_raw_blocks,
+                pkg_path=pkg_path,
+                source_pdf=source_pdf or "",
+                save_workbook_func=save_workbook_robustly,
+                logger=logger,
+            )
+        elif logger:
+            logger.info("Raw table asset export skipped for marker: no raw tables parsed")
+    except Exception:
+        if logger:
+            logger.exception("Raw table asset export failed for marker markdown blocks")
+
     lines = text.split("\n")
     extracted_streams = []
     current_table_lines = []
@@ -689,6 +708,16 @@ def generate_structured_tables(
             if len(raw_blocks) >= min_pdfplumber_tables:
                 logger.info("Structured table extraction backend=pdfplumber, tables=%s", len(raw_blocks))
                 logger.info("pdfplumber raw table count=%s", len(raw_blocks))
+                try:
+                    export_raw_table_assets(
+                        raw_blocks,
+                        pkg_path=pkg_path,
+                        source_pdf=pdf_path or "",
+                        save_workbook_func=save_workbook_robustly,
+                        logger=logger,
+                    )
+                except Exception:
+                    logger.exception("Raw table asset export failed for pdfplumber raw blocks")
                 quality_gate_enabled = bool(extraction_config.get("pdfplumber_quality_gate", True))
                 quality_summary = evaluate_pdfplumber_table_quality(raw_blocks, logger=logger, config=extraction_config)
                 if quality_gate_enabled and not quality_summary.get("should_use_pdfplumber", False):
@@ -697,7 +726,12 @@ def generate_structured_tables(
                     logger.warning("fallback_reason=%s", reason)
                     if fallback_to_marker:
                         logger.info("Structured table extraction backend=marker")
-                        return stage3_waterfall_engine(full_text, pkg_path, **marker_kwargs)
+                        return stage3_waterfall_engine(
+                            full_text,
+                            pkg_path,
+                            source_pdf=pdf_path or "",
+                            **marker_kwargs,
+                        )
                     return 0
                 diagnostics = []
                 if extraction_config.get("merge_diagnostics_enabled", True):
@@ -778,7 +812,12 @@ def generate_structured_tables(
             logger.info("Structured table extraction backend=marker")
             if run_state:
                 run_state.marker_attempted = True
-            return stage3_waterfall_engine(full_text, pkg_path, **marker_kwargs)
+            return stage3_waterfall_engine(
+                full_text,
+                pkg_path,
+                source_pdf=pdf_path or "",
+                **marker_kwargs,
+            )
         return 0
 
     if preferred_backend == "pdfplumber" and (not pdf_path or not os.path.exists(pdf_path)):
@@ -789,7 +828,12 @@ def generate_structured_tables(
         logger.info("Structured table extraction backend=marker")
     if run_state:
         run_state.marker_attempted = True
-    return stage3_waterfall_engine(full_text, pkg_path, **marker_kwargs)
+    return stage3_waterfall_engine(
+        full_text,
+        pkg_path,
+        source_pdf=pdf_path or "",
+        **marker_kwargs,
+    )
 
 # ========================================================
 # 3. 视觉子进程与 AI 摘要
