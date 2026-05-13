@@ -40,7 +40,8 @@ def compute_table_quality_features(df: Optional[pd.DataFrame]) -> Dict[str, Any]
     normalized = df.fillna("").astype(str)
     row_count, col_count = normalized.shape
     total_cells = row_count * col_count
-    non_empty = int((normalized.applymap(lambda x: str(x).strip() != "")).sum().sum()) if total_cells > 0 else 0
+    stripped = normalized.replace(r"^\s*$", "", regex=True)
+    non_empty = int((stripped != "").sum().sum()) if total_cells > 0 else 0
     empty_ratio = 1.0
     if total_cells > 0:
         empty_ratio = max(0.0, min(1.0, 1 - (non_empty / total_cells)))
