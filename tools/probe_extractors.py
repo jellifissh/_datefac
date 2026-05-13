@@ -1,10 +1,8 @@
 import argparse
-import os
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -16,16 +14,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from config_manager import ConfigManager
 from extractor_adapter import (
+    extract_docling_table_blocks,
     extract_marker_table_blocks,
     extract_pdfplumber_table_blocks,
-    extract_docling_table_blocks,
 )
 from extractor_quality import score_table_block
 from table_block import TableBlock
-
-
-def now_stamp() -> str:
-    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def fallback_path_if_locked(path: Path) -> Path:
@@ -36,7 +30,7 @@ def fallback_path_if_locked(path: Path) -> Path:
             pass
         return path
     except PermissionError:
-        return path.with_name(f"{path.stem}_副本_{now_stamp()}{path.suffix}")
+        return path.with_name(f"{path.stem}_副本{path.suffix}")
 
 
 def safe_sheet_name(name: str, used: set) -> str:
@@ -64,13 +58,32 @@ def build_preview(df: Any, max_rows: int = 3, max_cols: int = 5, max_len: int = 
     return text[:max_len] + ("..." if len(text) > max_len else "")
 
 
-def table_blocks_to_rows(blocks: List[TableBlock]) -> List[Dict[str, Any]]:
+def resolve_marker_cache(temp_cache_dir: Path, pdf_path: Path) -> Optional[Path]:
+    candidates = [
+        temp_cache_dir / f"{pdf_path.name}.txt",
+        temp_cache_dir / f"{pdf_path.stem}.txt",
+        temp_cache_dir / f"{pdf_path.name}.md",
+        temp_cache_dir / f"{pdf_path.stem}.md",
+    ]
+    for path in candidates:
+        if path.exists() and path.is_file():
+            return path
+    return None
+
+
+def table_blocks_to_rows(
+    blocks: List[TableBlock],
+    source_pdf: str,
+    backend_status_map: Dict[str, str],
+) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for block in blocks or []:
         score = score_table_block(block)
         rows.append(
             {
+                "source_pdf": source_pdf,
                 "backend": block.backend,
+                "backend_status": backend_status_map.get(block.backend, "success"),
                 "page": block.page,
                 "table_index": block.table_index,
                 "row_count": block.row_count,
@@ -85,20 +98,55 @@ def table_blocks_to_rows(blocks: List[TableBlock]) -> List[Dict[str, Any]]:
     return rows
 
 
-def summarize_backend(table_rows: List[Dict[str, Any]]) -> pd.DataFrame:
-    if not table_rows:
-        return pd.DataFrame(columns=["backend", "table_count", "avg_quality_score", "good_table_count", "warning_count"])
+def summarize_backends(
+    table_rows: List[Dict[str, Any]],
+    source_pdf: str,
+    backend_status_map: Dict[str, str],
+    backend_error_map: Dict[str, str],
+) -> pd.DataFrame:
     df = pd.DataFrame(table_rows)
-    df["warning"] = df["quality_level"].isin(["BAD"]) | (df["quality_flags"].astype(str) != "")
-    grouped = df.groupby("backend", dropna=False)
-    summary = grouped.agg(
-        table_count=("backend", "count"),
-        avg_quality_score=("quality_score", "mean"),
-        good_table_count=("quality_level", lambda x: int((x == "GOOD").sum())),
-        warning_count=("warning", lambda x: int(x.sum())),
-    ).reset_index()
-    summary["avg_quality_score"] = summary["avg_quality_score"].round(4)
-    return summary
+    summary_rows: List[Dict[str, Any]] = []
+    for backend, backend_status in backend_status_map.items():
+        sub = df[df["backend"] == backend] if not df.empty else pd.DataFrame()
+        table_count = int(len(sub))
+        if table_count > 0:
+            avg_quality_score = round(float(sub["quality_score"].mean()), 4)
+            good_table_count = int((sub["quality_level"] == "GOOD").sum())
+            warning_count = int(
+                ((sub["quality_level"] == "BAD") | (sub["quality_flags"].fillna("").astype(str).str.strip() != "")).sum()
+            )
+        else:
+            avg_quality_score = 0.0
+            good_table_count = 0
+            warning_count = 0
+        summary_rows.append(
+            {
+                "source_pdf": source_pdf,
+                "backend": backend,
+                "backend_status": backend_status,
+                "table_count": table_count,
+                "avg_quality_score": avg_quality_score,
+                "good_table_count": good_table_count,
+                "warning_count": warning_count,
+                "error_message": backend_error_map.get(backend, ""),
+            }
+        )
+    return pd.DataFrame(summary_rows)
+
+
+def run_backend(
+    backend: str,
+    pdf_path: Path,
+    markdown_text: str,
+    table_extraction_cfg: dict,
+) -> List[TableBlock]:
+    if backend == "pdfplumber":
+        return extract_pdfplumber_table_blocks(str(pdf_path), table_extraction_cfg, logger=None)
+    if backend == "marker":
+        return extract_marker_table_blocks(markdown_text, table_extraction_cfg, logger=None)
+    if backend == "docling":
+        return extract_docling_table_blocks(str(pdf_path), table_extraction_cfg, logger=None)
+    return []
 
 
 def parser() -> argparse.ArgumentParser:
@@ -122,50 +170,65 @@ def main() -> int:
     pkg_path.mkdir(parents=True, exist_ok=True)
 
     probe_cfg = config.get("extractor_probe", {}) or {}
-    enabled = bool(probe_cfg.get("enabled", True))
-    backends = probe_cfg.get("backends", ["pdfplumber", "marker"])
-    output_report = bool(probe_cfg.get("output_report", True))
-    if not enabled:
+    if not bool(probe_cfg.get("enabled", True)):
         print("[probe_extractors] extractor_probe disabled by config")
         return 0
+    backends = [str(x).strip().lower() for x in probe_cfg.get("backends", ["pdfplumber", "marker"])]
+    output_report = bool(probe_cfg.get("output_report", True))
+    if not output_report:
+        print("[probe_extractors] output_report disabled by config")
+        return 0
 
-    markdown_cache = Path(config["paths"]["temp_cache_dir"]) / f"{pdf_path.name}.txt"
+    temp_cache_dir = Path(config["paths"]["temp_cache_dir"])
+    marker_cache_path = resolve_marker_cache(temp_cache_dir, pdf_path)
     markdown_text = ""
-    if markdown_cache.exists():
-        markdown_text = markdown_cache.read_text(encoding="utf-8", errors="ignore")
+    if marker_cache_path is not None:
+        markdown_text = marker_cache_path.read_text(encoding="utf-8", errors="ignore")
 
     all_blocks: List[TableBlock] = []
+    backend_status_map: Dict[str, str] = {}
+    backend_error_map: Dict[str, str] = {}
+
     for backend in backends:
-        backend = str(backend).strip().lower()
-        if backend == "pdfplumber":
-            all_blocks.extend(extract_pdfplumber_table_blocks(str(pdf_path), config.get("table_extraction", {}), logger=None))
-        elif backend == "marker":
-            all_blocks.extend(extract_marker_table_blocks(markdown_text, config.get("table_extraction", {}), logger=None))
-        elif backend == "docling":
-            all_blocks.extend(extract_docling_table_blocks(str(pdf_path), config.get("table_extraction", {}), logger=None))
-        else:
+        if backend == "marker" and marker_cache_path is None:
+            backend_status_map[backend] = "unavailable_no_markdown_cache"
+            backend_error_map[backend] = "marker markdown cache not found"
+            continue
+        try:
+            blocks = run_backend(backend, pdf_path, markdown_text, config.get("table_extraction", {}))
+            all_blocks.extend(blocks)
+            if len(blocks) == 0:
+                backend_status_map[backend] = "completed_no_tables"
+            else:
+                backend_status_map[backend] = "success"
+        except Exception as exc:
+            backend_status_map[backend] = "failed"
+            backend_error_map[backend] = str(exc)
             continue
 
-    table_rows = table_blocks_to_rows(all_blocks)
-    summary_df = summarize_backend(table_rows)
+    source_pdf = str(pdf_path)
+    table_rows = table_blocks_to_rows(all_blocks, source_pdf=source_pdf, backend_status_map=backend_status_map)
+    summary_df = summarize_backends(
+        table_rows,
+        source_pdf=source_pdf,
+        backend_status_map=backend_status_map,
+        backend_error_map=backend_error_map,
+    )
 
-    backend_scores = []
-    for row in table_rows:
-        backend_scores.append(
+    backend_scores_df = pd.DataFrame(
+        [
             {
+                "source_pdf": source_pdf,
                 "backend": row["backend"],
                 "quality_score": row["quality_score"],
                 "quality_level": row["quality_level"],
                 "quality_flags": row["quality_flags"],
             }
-        )
-    backend_scores_df = pd.DataFrame(backend_scores)
+            for row in table_rows
+        ]
+    )
 
-    if not output_report:
-        print("[probe_extractors] output_report disabled by config")
-        return 0
-
-    report_path = fallback_path_if_locked(pkg_path / "10_extractor_compare_report.xlsx")
+    report_path = fallback_path_if_locked(pkg_path / f"10_extractor_compare_report_{pdf_path.stem}.xlsx")
     used = set()
     with pd.ExcelWriter(report_path, engine="openpyxl") as writer:
         summary_df.to_excel(writer, sheet_name=safe_sheet_name("summary", used), index=False)
@@ -178,3 +241,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
