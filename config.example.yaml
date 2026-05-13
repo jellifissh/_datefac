@@ -1,0 +1,61 @@
+﻿# Config template for _datefac
+paths:
+  base_ai_path: D:\_datefac\ai_models
+  input_dir: D:\_datefac\input
+  output_dir: D:\_datefac\output
+  temp_cache_dir: D:\_datefac\output\.temp_cache
+
+ollama:
+  url: http://localhost:11434/api/generate
+  model: my-brain
+  timeout: 400
+
+runtime:
+  require_cuda: true
+  keep_markdown_cache: true
+  overwrite_output: false
+  reuse_vision_cache: true
+  markdown_replay_mode: false
+  markdown_replay_dir: D:\_datefac\output\.temp_cache
+
+table_cleaning:
+  enabled: true
+  strict_dedup: true
+  log_detail: true
+  explain: false
+
+table_classification:
+  enabled: true
+  output_report: true
+  min_confidence: 0.25
+  log_detail: true
+
+financial_standardization:
+  enabled: true
+  output_report: true
+  log_detail: true
+
+table_extraction:
+  preferred_backend: pdfplumber
+  pdfplumber_enabled: true
+  fallback_to_marker: true
+  output_raw_marker_tables: false
+  min_pdfplumber_tables: 1
+  add_index_sheet: true
+  sheet_name_strategy: page_table
+  merge_diagnostics_enabled: true
+  output_merge_diagnostics: true
+  pdfplumber_quality_gate: true
+  pdfplumber_min_quality_score: 0.5
+  pdfplumber_min_valid_tables: 1
+
+table_segmentation:
+  enabled: true
+  apply_to_backend: marker
+  min_rows_for_segmentation: 20
+  add_index_sheet: true
+  log_detail: true
+  coalesce_enabled: true
+  coalesce_same_type: true
+  coalesce_ratio_sections: true
+  min_rows_for_standalone_segment: 3
