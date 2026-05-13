@@ -36,6 +36,7 @@ from table_segmenter import (
     build_segment_map_dataframe,
     build_source_table_preview_dataframe,
 )
+from run_state import DocumentRunState
 
 # ========================================================
 # 1. 运行时环境初始化
@@ -48,6 +49,7 @@ OUTPUT_DIR = DEFAULT_CONFIG["paths"]["output_dir"]
 TEMP_CACHE_DIR = DEFAULT_CONFIG["paths"]["temp_cache_dir"]
 RUNTIME_FLAGS = DEFAULT_CONFIG["runtime"].copy()
 LOGGER = logging.getLogger("factory_core")
+ARTIFACT_BATCH_STATUS = "09_batch_run_status.xlsx"
 
 
 def safe_console_print(message):
@@ -353,6 +355,33 @@ def save_workbook_robustly(sheet_df_map, target_path):
     return final_path
 
 
+def export_batch_run_status(run_states, output_dir, logger=None):
+    rows = []
+    for state in run_states or []:
+        rows.append(
+            {
+                "doc_name": state.doc_name,
+                "status": state.status,
+                "markdown_available": state.markdown_available,
+                "vision_attempted": state.vision_attempted,
+                "vision_success": state.vision_success,
+                "vision_error": state.vision_error,
+                "pdfplumber_attempted": state.pdfplumber_attempted,
+                "pdfplumber_success": state.pdfplumber_success,
+                "table_count": state.table_count,
+                "ai_summary_success": state.ai_summary_success,
+                "error_message": state.error_message,
+                "asset_package_path": state.asset_package_path,
+            }
+        )
+    df = pd.DataFrame(rows)
+    target_path = os.path.join(output_dir, ARTIFACT_BATCH_STATUS)
+    final_path = save_single_df_robustly(df, target_path, sheet_name="batch_status")
+    if logger:
+        logger.info("批次状态输出: %s", final_path)
+    return final_path
+
+
 def postprocess_and_export_tables(
     df_list,
     pkg_path,
@@ -584,6 +613,7 @@ def generate_structured_tables(
     config,
     logger,
     pdf_path=None,
+    run_state=None,
 ):
     extraction_config = config.get("table_extraction", {})
     preferred_backend = str(extraction_config.get("preferred_backend", "pdfplumber")).strip().lower()
@@ -607,6 +637,8 @@ def generate_structured_tables(
         and pdf_path
         and os.path.exists(pdf_path)
     )
+    if run_state and should_try_pdfplumber:
+        run_state.pdfplumber_attempted = True
     if should_try_pdfplumber:
         try:
             raw_blocks = extract_tables_from_pdf(pdf_path, pages="all", logger=logger, config=extraction_config)
@@ -677,7 +709,7 @@ def generate_structured_tables(
                     "pdfplumber branch strict_dedup override applied: strict_dedup=%s",
                     pdf_cleaning_config.get("strict_dedup"),
                 )
-                return postprocess_and_export_tables(
+                table_count = postprocess_and_export_tables(
                     raw_dfs,
                     pkg_path,
                     logger=logger,
@@ -690,12 +722,17 @@ def generate_structured_tables(
                     backend="pdfplumber",
                     table_segmentation_config=config.get("table_segmentation", {}),
                 )
+                if run_state:
+                    run_state.pdfplumber_success = table_count > 0
+                return table_count
             reason = f"insufficient_tables({len(raw_blocks)} < {min_pdfplumber_tables})"
             logger.warning("Structured table extraction backend=pdfplumber fallback to marker, reason=%s", reason)
         except Exception as exc:
             logger.warning("Structured table extraction backend=pdfplumber fallback to marker, reason=%s", exc)
         if fallback_to_marker:
             logger.info("Structured table extraction backend=marker")
+            if run_state:
+                run_state.marker_attempted = True
             return stage3_waterfall_engine(full_text, pkg_path, **marker_kwargs)
         return 0
 
@@ -705,6 +742,8 @@ def generate_structured_tables(
         logger.info("Structured table extraction backend=marker (pdfplumber disabled)")
     else:
         logger.info("Structured table extraction backend=marker")
+    if run_state:
+        run_state.marker_attempted = True
     return stage3_waterfall_engine(full_text, pkg_path, **marker_kwargs)
 
 # ========================================================
@@ -779,18 +818,64 @@ def vision_worker_process(input_dir, cache_dir, files, require_cuda=True, error_
         write_vision_error(error_log_path, current_pdf)
         sys.exit(1)
 
-def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf_path=None):
+
+def run_single_pdf_vision(pdf_name, logger):
+    error_log_path = os.path.join(TEMP_CACHE_DIR, f"vision_error_{os.path.splitext(pdf_name)[0]}.log")
+    if os.path.exists(error_log_path):
+        os.remove(error_log_path)
+    p = multiprocessing.Process(
+        target=vision_worker_process,
+        args=(
+            INPUT_DIR,
+            TEMP_CACHE_DIR,
+            [pdf_name],
+            RUNTIME_FLAGS.get("require_cuda", True),
+            error_log_path,
+            BASE_AI_PATH,
+        ),
+        name=f"marker_vision_worker_{pdf_name}",
+    )
+    p.start()
+    p.join()
+    if p.exitcode == 0:
+        return True, ""
+    error_message = f"vision process exitcode={p.exitcode}"
+    if os.path.exists(error_log_path):
+        try:
+            with open(error_log_path, "r", encoding="utf-8") as f:
+                detail = f.read().strip()
+            if detail:
+                error_message = detail[-3000:]
+        except Exception:
+            pass
+    logger.error("单PDF vision失败: pdf=%s, error=%s", pdf_name, error_message)
+    return False, error_message
+
+def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf_path=None, run_state=None):
     os.makedirs(pkg_path, exist_ok=True)
     markdown_path = os.path.join(pkg_path, ARTIFACT_MARKDOWN)
     with open(markdown_path, "w", encoding="utf-8") as f:
         f.write(full_text)
     logger.info("Markdown 底稿输出: %s", markdown_path)
+    if run_state:
+        run_state.markdown_available = bool(full_text and full_text.strip())
 
     if not full_text or not full_text.strip():
-        logger.warning("检测到空 Markdown，已跳过表格提取与 AI 请求: doc=%s", doc_name)
+        logger.warning("检测到空 Markdown: doc=%s", doc_name)
+        t_count = 0
+        if pdf_path and os.path.exists(pdf_path):
+            logger.info("空 Markdown 场景下尝试结构化抽表: doc=%s", doc_name)
+            t_count = generate_structured_tables(
+                full_text="",
+                pkg_path=pkg_path,
+                config=config,
+                logger=logger,
+                pdf_path=pdf_path,
+                run_state=run_state,
+            )
         final_summary_df = pd.DataFrame([{
             "研报名称": doc_name,
-            "解析表数": 0,
+            "解析表数": t_count,
             "状态": "空 Markdown，已跳过表格和 AI 处理",
         }])
         summary_path = os.path.join(pkg_path, ARTIFACT_SUMMARY)
@@ -805,7 +890,8 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
         return {
             "markdown_path": markdown_path,
             "summary_path": actual_summary_path,
-            "table_count": 0,
+            "table_count": t_count,
+            "ai_summary_success": False,
         }
 
     t_count = generate_structured_tables(
@@ -814,10 +900,14 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
         config=config,
         logger=logger,
         pdf_path=pdf_path,
+        run_state=run_state,
     )
     logger.info("提取表格数量: doc=%s, count=%s", doc_name, t_count)
 
     ai_data = generate_investment_summary(full_text, doc_name, config, logger)
+    ai_summary_success = "状态" not in ai_data
+    if run_state:
+        run_state.ai_summary_success = ai_summary_success
 
     final_summary_data = {
         "研报名称": doc_name,
@@ -844,6 +934,7 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
         "markdown_path": markdown_path,
         "summary_path": actual_summary_path,
         "table_count": t_count,
+        "ai_summary_success": ai_summary_success,
     }
 
 
@@ -894,76 +985,89 @@ def run_full_pdf_mode(config, logger, log_path):
         logger.warning("input 目录中未发现 PDF 文件。")
         safe_console_print("[-] 请在 input 放入 PDF。")
         return
-
-    cached_pdfs = []
-    pending_vision_pdfs = []
     reuse_vision_cache = config["runtime"].get("reuse_vision_cache", False)
-    for f_name in pdf_files:
-        cache_p = os.path.join(TEMP_CACHE_DIR, f"{f_name}.txt")
-        if reuse_vision_cache and is_valid_markdown_cache(cache_p):
-            cached_pdfs.append(f_name)
-            logger.info("PDF 使用已有视觉缓存: pdf=%s, cache=%s", f_name, cache_p)
-        else:
-            if reuse_vision_cache and os.path.exists(cache_p) and os.path.getsize(cache_p) == 0:
-                logger.warning("发现空缓存文件，视为无效缓存并重新视觉解析: pdf=%s, cache=%s", f_name, cache_p)
-            pending_vision_pdfs.append(f_name)
-            logger.info("PDF 需要重新视觉解析: pdf=%s", f_name)
-
-    vision_error_log = os.path.join(TEMP_CACHE_DIR, "vision_error.log")
-    if os.path.exists(vision_error_log):
-        os.remove(vision_error_log)
-
-    if pending_vision_pdfs:
-        logger.info("vision 子进程启动，待解析 PDF: %s", pending_vision_pdfs)
-        p = multiprocessing.Process(
-            target=vision_worker_process,
-            args=(
-                INPUT_DIR,
-                TEMP_CACHE_DIR,
-                pending_vision_pdfs,
-                RUNTIME_FLAGS.get("require_cuda", True),
-                vision_error_log,
-                BASE_AI_PATH,
-            ),
-            name="marker_vision_worker",
-        )
-        p.start(); p.join()
-        logger.info("vision 子进程结束，exitcode=%s", p.exitcode)
-        if p.exitcode != 0:
-            if os.path.exists(vision_error_log):
-                with open(vision_error_log, "r", encoding="utf-8") as f:
-                    logger.error("vision 子进程错误日志:\n%s", f.read())
-            safe_console_print(f"阶段一：视觉解析环节故障。详细日志见: {vision_error_log if os.path.exists(vision_error_log) else log_path}")
-            return
-    else:
-        logger.info("本轮所有 PDF 均命中视觉缓存，跳过 marker 子进程。")
-
-    missing_cache_pdfs = [
-        f_name for f_name in pdf_files
-        if not is_valid_markdown_cache(os.path.join(TEMP_CACHE_DIR, f"{f_name}.txt"))
-    ]
-    if missing_cache_pdfs:
-        logger.error("视觉阶段完成后仍缺少有效 Markdown 缓存: %s", missing_cache_pdfs)
-        safe_console_print("阶段一：视觉解析环节故障。存在缺失或空的 Markdown 缓存。")
-        return
+    run_states = []
 
     for f_name in pdf_files:
         start_t = time.time()
         cache_p = os.path.join(TEMP_CACHE_DIR, f"{f_name}.txt")
+        source_pdf_path = os.path.abspath(os.path.join(INPUT_DIR, f_name))
         pkg_path = build_asset_package_path(OUTPUT_DIR, f_name)
+        state = DocumentRunState(
+            doc_name=f_name,
+            pdf_path=source_pdf_path,
+            asset_package_path=pkg_path,
+            markdown_cache_path=cache_p,
+        )
+        run_states.append(state)
         logger.info("开始处理 PDF: %s", f_name)
         logger.info("Markdown 缓存路径: %s", cache_p)
+
         try:
-            with open(cache_p, "r", encoding="utf-8") as f:
-                full_text = f.read()
-            source_pdf_path = os.path.abspath(os.path.join(INPUT_DIR, f_name))
-            logger.info("PDF source path for structured extraction: %s (exists=%s)", source_pdf_path, os.path.exists(source_pdf_path))
-            process_markdown_document(f_name, full_text, pkg_path, config, logger, pdf_path=source_pdf_path)
+            if reuse_vision_cache and is_valid_markdown_cache(cache_p):
+                state.markdown_available = True
+                logger.info("PDF 使用已有视觉缓存: pdf=%s, cache=%s", f_name, cache_p)
+            else:
+                if reuse_vision_cache and os.path.exists(cache_p) and os.path.getsize(cache_p) == 0:
+                    logger.warning("发现空缓存文件，视为无效缓存并重新视觉解析: pdf=%s, cache=%s", f_name, cache_p)
+                state.vision_attempted = True
+                vision_ok, vision_err = run_single_pdf_vision(f_name, logger)
+                state.vision_success = vision_ok
+                state.vision_error = vision_err
+                state.markdown_available = is_valid_markdown_cache(cache_p)
+                logger.info(
+                    "单PDF vision结果: pdf=%s, vision_success=%s, markdown_available=%s",
+                    f_name,
+                    state.vision_success,
+                    state.markdown_available,
+                )
+
+            full_text = ""
+            if state.markdown_available:
+                try:
+                    with open(cache_p, "r", encoding="utf-8") as f:
+                        full_text = f.read()
+                except Exception as read_exc:
+                    state.markdown_available = False
+                    state.error_message = f"读取Markdown缓存失败: {read_exc}"
+                    logger.exception("读取Markdown缓存失败: pdf=%s", f_name)
+
+            logger.info(
+                "PDF source path for structured extraction: %s (exists=%s)",
+                source_pdf_path,
+                os.path.exists(source_pdf_path),
+            )
+            result = process_markdown_document(
+                f_name,
+                full_text,
+                pkg_path,
+                config,
+                logger,
+                pdf_path=source_pdf_path,
+                run_state=state,
+            )
+            state.table_count = int(result.get("table_count", 0) or 0)
+            state.ai_summary_success = bool(result.get("ai_summary_success", False))
+
+            if state.table_count > 0 or state.markdown_available or state.ai_summary_success:
+                state.status = "SUCCESS"
+            else:
+                state.status = "FAILED"
+                if not state.error_message:
+                    state.error_message = "无有效Markdown且未抽取到结构化表格"
             safe_console_print(f"{f_name} 收割完毕。")
             logger.info("PDF 处理完成: %s, elapsed=%.2fs", f_name, time.time() - start_t)
-        except Exception:
+        except Exception as exc:
+            state.status = "FAILED"
+            state.error_message = str(exc)
             safe_console_print(f"{f_name} 处理报错。")
             logger.exception("PDF 处理报错: %s", f_name)
+            continue
+
+    try:
+        export_batch_run_status(run_states, OUTPUT_DIR, logger=logger)
+    except Exception:
+        logger.exception("批次状态输出失败")
 
 
 def run_factory():
