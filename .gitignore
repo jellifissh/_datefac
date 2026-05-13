@@ -31,6 +31,12 @@ input/*.pdf
 *.xlsx
 *.xls
 
+# ---- Debug summary exports (lightweight) ----
+debug_reports/**
+!debug_reports/**/
+!debug_reports/**/*.csv
+!debug_reports/**/*.md
+
 # ---- Local machine configs ----
 config.yaml
 

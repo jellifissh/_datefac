@@ -1,0 +1,6 @@
+﻿backend,page,table_index,row_count,col_count,empty_cell_ratio,quality_score,quality_level,quality_flags,preview
+pdfplumber,2,1,1,6,0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",指标 | 2024A | 2025A | 2026E | 2027E
+pdfplumber,3,1,1,6,0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",资产负债表(百万元) | 2024A | 2025A | 2026E | 2027E
+pdfplumber,3,2,1,6,0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",利润表（百万元） | 2024A | 2025A | 2026E | 2027E
+pdfplumber,3,3,1,6,0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",主要财务比率 | 2024A | 2025A | 2026E | 2027E
+pdfplumber,3,4,1,6,0,0.35,BAD,"too_few_rows,too_few_non_empty_cells,header_only_like",现金流量表(百万元) | 2024A | 2025A | 2026E | 2027E

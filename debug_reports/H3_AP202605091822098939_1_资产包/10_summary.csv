@@ -1,0 +1,3 @@
+﻿backend,table_count,avg_quality_score,good_table_count,warning_count
+marker,3,1.0,3,1
+pdfplumber,2,0.8,1,0
