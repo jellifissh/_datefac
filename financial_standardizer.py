@@ -14,7 +14,17 @@ DEFAULT_FINANCIAL_STANDARDIZATION_CONFIG: Dict[str, object] = {
 
 STANDARD_METRIC_ALIASES: Dict[str, List[str]] = {
     "营业收入": ["营业收入"],
-    "归属母公司净利润": ["归属母公司净利润", "归属于母公司净利润", "归母净利润"],
+    "归属母公司净利润": [
+        "归属母公司净利润",
+        "归属于母公司净利润",
+        "归属母公司股东净利润",
+        "归属于母公司股东的净利润",
+        "归属于母公司所有者的净利润",
+        "归属于上市公司股东的净利润",
+        "归母净利润",
+        "归母净利",
+        "母公司股东净利润",
+    ],
     "毛利率": ["毛利率", "毛利率(%)", "毛利率%"],
     "ROE": ["ROE", "ROE(%)", "ROE %"],
     "每股收益": ["每股收益", "EPS", "EPS(元)"],
@@ -35,6 +45,14 @@ YEAR_COLUMN_RE = re.compile(r"^(20\d{2})([A-Z])?$")
 YEAR_TOKEN_RE = re.compile(r"(20\d{2})([AE])?", re.IGNORECASE)
 YOY_GUARD_TERMS = ("同比", "增速", "增长率", "YOY")
 YOY_GUARD_METRICS = {"营业收入", "归属母公司净利润"}
+NET_PROFIT_EXCLUDE_TERMS = (
+    "净利润增长率",
+    "归母净利润同比",
+    "归母净利润增速",
+    "归母净利润增长率",
+    "扣非归母净利润",
+    "少数股东损益",
+)
 
 
 def _resolve_config(config=None) -> Dict[str, object]:
@@ -119,6 +137,13 @@ def _is_yoy_like_label(label: str) -> bool:
     if not compact:
         return False
     return any(term in compact for term in YOY_GUARD_TERMS)
+
+
+def _is_excluded_net_profit_label(label: str) -> bool:
+    compact = _compact_text(label)
+    if not compact:
+        return False
+    return any(_compact_text(term) in compact for term in NET_PROFIT_EXCLUDE_TERMS)
 
 
 def _prepare_df_for_financial_standardization(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, object]]:
@@ -240,9 +265,12 @@ def _match_standard_metric(label: str) -> Optional[Dict[str, object]]:
     if not normalized:
         return None
     is_yoy_like = _is_yoy_like_label(label)
+    is_excluded_net_profit = _is_excluded_net_profit_label(label)
 
     for standard_metric, aliases in STANDARD_METRIC_ALIASES.items():
         if is_yoy_like and standard_metric in YOY_GUARD_METRICS:
+            continue
+        if is_excluded_net_profit and standard_metric == "归属母公司净利润":
             continue
         canonical = aliases[0]
         if normalized == canonical:
@@ -263,6 +291,8 @@ def _match_standard_metric(label: str) -> Optional[Dict[str, object]]:
 
     for standard_metric, aliases in STANDARD_METRIC_ALIASES.items():
         if is_yoy_like and standard_metric in YOY_GUARD_METRICS:
+            continue
+        if is_excluded_net_profit and standard_metric == "归属母公司净利润":
             continue
         for alias in aliases:
             if compact == _compact_text(alias):
