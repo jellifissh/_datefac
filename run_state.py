@@ -14,6 +14,11 @@ class DocumentRunState:
     pdfplumber_attempted: bool = False
     pdfplumber_success: bool = False
     marker_attempted: bool = False
+    raw_tables_exported: bool = False
+    structured_tables_exported: bool = False
+    fallback_attempted: bool = False
+    fallback_success: bool = False
+    fallback_error_message: str = ""
     table_count: int = 0
     ai_summary_success: bool = False
     status: str = "PENDING"

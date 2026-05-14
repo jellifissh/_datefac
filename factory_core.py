@@ -271,6 +271,7 @@ def stage3_waterfall_engine(
     financial_standardization_config=None,
     table_segmentation_config=None,
     segment_validation_config=None,
+    glued_table_splitter_config=None,
 ):
     """Marker Markdown table extraction engine (kept as fallback backend)."""
     try:
@@ -478,6 +479,11 @@ def export_batch_run_status(run_states, output_dir, logger=None):
                 "vision_error": state.vision_error,
                 "pdfplumber_attempted": state.pdfplumber_attempted,
                 "pdfplumber_success": state.pdfplumber_success,
+                "raw_tables_exported": state.raw_tables_exported,
+                "structured_tables_exported": state.structured_tables_exported,
+                "fallback_attempted": state.fallback_attempted,
+                "fallback_success": state.fallback_success,
+                "fallback_error_message": state.fallback_error_message,
                 "table_count": state.table_count,
                 "ai_summary_success": state.ai_summary_success,
                 "error_message": state.error_message,
@@ -949,6 +955,8 @@ def generate_structured_tables(
                         save_workbook_func=save_workbook_robustly,
                         logger=logger,
                     )
+                    if run_state:
+                        run_state.raw_tables_exported = True
                 except Exception:
                     logger.exception("Raw table asset export failed for pdfplumber raw blocks")
                 quality_gate_enabled = bool(extraction_config.get("pdfplumber_quality_gate", True))
@@ -959,13 +967,38 @@ def generate_structured_tables(
                     logger.warning("fallback_reason=%s", reason)
                     if fallback_to_marker:
                         logger.info("Structured table extraction backend=marker")
-                        return stage3_waterfall_engine(
-                            full_text,
-                            pkg_path,
-                            source_pdf=pdf_path or "",
-                            **marker_kwargs,
-                        )
-                    return 0
+                        if run_state:
+                            run_state.fallback_attempted = True
+                            run_state.marker_attempted = True
+                        try:
+                            marker_table_count = stage3_waterfall_engine(
+                                full_text,
+                                pkg_path,
+                                source_pdf=pdf_path or "",
+                                **marker_kwargs,
+                            )
+                            if marker_table_count > 0:
+                                if run_state:
+                                    run_state.fallback_success = True
+                                    run_state.structured_tables_exported = True
+                                return marker_table_count
+                            if run_state:
+                                run_state.fallback_success = False
+                                run_state.fallback_error_message = "marker_fallback_returned_0_tables"
+                            logger.warning(
+                                "Marker fallback returned 0 tables after pdfplumber quality gate; continue pdfplumber postprocess"
+                            )
+                        except Exception as fallback_exc:
+                            if run_state:
+                                run_state.fallback_success = False
+                                run_state.fallback_error_message = str(fallback_exc)
+                            logger.exception(
+                                "Marker fallback failed after pdfplumber quality gate; continue pdfplumber postprocess"
+                            )
+                            if not raw_blocks:
+                                return 0
+                    else:
+                        return 0
                 diagnostics = []
                 if extraction_config.get("merge_diagnostics_enabled", True):
                     diagnostics = diagnose_cross_page_merge_candidates(raw_blocks, logger=logger, config=extraction_config)
@@ -1037,6 +1070,7 @@ def generate_structured_tables(
                 )
                 if run_state:
                     run_state.pdfplumber_success = table_count > 0
+                    run_state.structured_tables_exported = table_count > 0
                 return table_count
             reason = f"insufficient_tables({len(raw_blocks)} < {min_pdfplumber_tables})"
             logger.warning("Structured table extraction backend=pdfplumber fallback to marker, reason=%s", reason)
@@ -1046,12 +1080,24 @@ def generate_structured_tables(
             logger.info("Structured table extraction backend=marker")
             if run_state:
                 run_state.marker_attempted = True
-            return stage3_waterfall_engine(
-                full_text,
-                pkg_path,
-                source_pdf=pdf_path or "",
-                **marker_kwargs,
-            )
+                run_state.fallback_attempted = True
+            try:
+                marker_table_count = stage3_waterfall_engine(
+                    full_text,
+                    pkg_path,
+                    source_pdf=pdf_path or "",
+                    **marker_kwargs,
+                )
+                if run_state:
+                    run_state.fallback_success = True
+                    run_state.structured_tables_exported = marker_table_count > 0
+                return marker_table_count
+            except Exception as fallback_exc:
+                if run_state:
+                    run_state.fallback_success = False
+                    run_state.fallback_error_message = str(fallback_exc)
+                logger.exception("Marker fallback failed")
+                return 0
         return 0
 
     if preferred_backend == "pdfplumber" and (not pdf_path or not os.path.exists(pdf_path)):
@@ -1379,6 +1425,8 @@ def run_full_pdf_mode(config, logger, log_path):
             )
             state.table_count = int(result.get("table_count", 0) or 0)
             state.ai_summary_success = bool(result.get("ai_summary_success", False))
+            if state.table_count > 0:
+                state.structured_tables_exported = True
 
             if state.table_count > 0 or state.markdown_available or state.ai_summary_success:
                 state.status = "SUCCESS"
@@ -1386,6 +1434,10 @@ def run_full_pdf_mode(config, logger, log_path):
                 state.status = "FAILED"
                 if not state.error_message:
                     state.error_message = "无有效Markdown且未抽取到结构化表格"
+            if state.fallback_error_message:
+                base_error = state.error_message or ""
+                prefix = (base_error + " | ").strip(" |") if base_error else ""
+                state.error_message = f"{prefix}fallback_error={state.fallback_error_message}"
             safe_console_print(f"{f_name} 收割完毕。")
             logger.info("PDF 处理完成: %s, elapsed=%.2fs", f_name, time.time() - start_t)
         except Exception as exc:
