@@ -199,6 +199,41 @@ def _find_row_label(row: pd.Series) -> Tuple[str, str]:
     return "", ""
 
 
+def _is_unit_like_label(text: str) -> bool:
+    compact = _compact_text(text)
+    if not compact:
+        return False
+    unit_keywords = ("单位", "币种", "百万", "亿元", "万元", "元")
+    return any(k in compact for k in unit_keywords) and len(compact) <= 12
+
+
+def _find_metric_label_candidates(
+    row: pd.Series, max_scan_cols: int = 8
+) -> List[Tuple[str, str, Dict[str, object]]]:
+    candidates: List[Tuple[str, str, Dict[str, object]]] = []
+    seen_metrics = set()
+    scan_columns = row.index.tolist()[: max(1, int(max_scan_cols))]
+    for col in scan_columns:
+        value = _normalize_text(row[col])
+        if not value:
+            continue
+        if _is_year_column(col):
+            continue
+        if _is_probably_numeric(value):
+            continue
+        if _is_unit_like_label(value):
+            continue
+        metric_match = _match_standard_metric(value)
+        if not metric_match:
+            continue
+        standard_metric = metric_match.get("standard_metric")
+        if standard_metric in seen_metrics:
+            continue
+        seen_metrics.add(standard_metric)
+        candidates.append((value, str(col), metric_match))
+    return candidates
+
+
 def _match_standard_metric(label: str) -> Optional[Dict[str, object]]:
     normalized = _normalize_text(label)
     compact = _compact_text(label)
@@ -268,6 +303,7 @@ def _build_detail_row(
     source_row_index: int,
     source_row_label: str,
     source_label_column: str,
+    label_detect_method: str,
     header_repaired: bool,
     header_source_row: object,
 ) -> Dict[str, object]:
@@ -279,6 +315,7 @@ def _build_detail_row(
         "source_table_type": source_table_type,
         "source_row_index": source_row_index,
         "source_label_column": source_label_column,
+        "label_detect_method": label_detect_method,
         "source_column": ",".join(raw_col for raw_col, _ in year_columns),
         "matched_alias": metric_match["matched_alias"],
         "match_method": metric_match["match_method"],
@@ -315,40 +352,57 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
 
         source_table_type = result_map.get(table_index, {}).get("table_type", "其他")
         for row_index, row in prepared_df.iterrows():
-            source_row_label, source_label_column = _find_row_label(row)
-            metric_match = _match_standard_metric(source_row_label)
-            if not metric_match:
-                continue
             values = {raw_col: _normalize_text(row[raw_col]) for raw_col, _ in year_columns}
             if not any(values.values()):
                 continue
-            detail_row = _build_detail_row(
-                metric_match=metric_match,
-                values=values,
-                year_columns=year_columns,
-                source_table_index=table_index,
-                source_table_type=source_table_type,
-                source_row_index=int(row_index),
-                source_row_label=source_row_label,
-                source_label_column=source_label_column,
-                header_repaired=bool(header_meta.get("header_repaired", False)),
-                header_source_row=header_meta.get("header_source_row", ""),
+            metric_candidates = _find_metric_label_candidates(
+                row,
+                max_scan_cols=int(config.get("max_scan_label_cols", 8)),
             )
-            detail_rows.append(detail_row)
-            if logger and config.get("log_detail", True):
-                logger.info(
-                    "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s match_method=%s confidence=%.2f non_empty_year_count=%s header_repaired=%s header_source_row=%s",
-                    detail_row["标准指标"],
-                    table_index,
-                    source_table_type,
-                    row_index,
-                    source_row_label,
-                    detail_row["match_method"],
-                    detail_row["confidence"],
-                    detail_row["non_empty_year_count"],
-                    detail_row["header_repaired"],
-                    detail_row["header_source_row"],
+            selected_hits: List[Tuple[str, str, Dict[str, object], str]] = []
+            if metric_candidates:
+                for source_row_label, source_label_column, metric_match in metric_candidates:
+                    selected_hits.append(
+                        (source_row_label, source_label_column, metric_match, "metric_candidate_scan")
+                    )
+            else:
+                source_row_label, source_label_column = _find_row_label(row)
+                metric_match = _match_standard_metric(source_row_label)
+                if metric_match:
+                    selected_hits.append(
+                        (source_row_label, source_label_column, metric_match, "fallback_first_columns")
+                    )
+
+            for source_row_label, source_label_column, metric_match, label_detect_method in selected_hits:
+                detail_row = _build_detail_row(
+                    metric_match=metric_match,
+                    values=values,
+                    year_columns=year_columns,
+                    source_table_index=table_index,
+                    source_table_type=source_table_type,
+                    source_row_index=int(row_index),
+                    source_row_label=source_row_label,
+                    source_label_column=source_label_column,
+                    label_detect_method=label_detect_method,
+                    header_repaired=bool(header_meta.get("header_repaired", False)),
+                    header_source_row=header_meta.get("header_source_row", ""),
                 )
+                detail_rows.append(detail_row)
+                if logger and config.get("log_detail", True):
+                    logger.info(
+                        "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s label_detect_method=%s match_method=%s confidence=%.2f non_empty_year_count=%s header_repaired=%s header_source_row=%s",
+                        detail_row["标准指标"],
+                        table_index,
+                        source_table_type,
+                        row_index,
+                        source_row_label,
+                        detail_row["label_detect_method"],
+                        detail_row["match_method"],
+                        detail_row["confidence"],
+                        detail_row["non_empty_year_count"],
+                        detail_row["header_repaired"],
+                        detail_row["header_source_row"],
+                    )
 
     ordered_year_columns = [
         year_display_map[key]
@@ -410,6 +464,7 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
         "source_table_type",
         "source_row_index",
         "source_label_column",
+        "label_detect_method",
         "source_column",
         "matched_alias",
         "match_method",
