@@ -27,7 +27,19 @@ STANDARD_METRIC_ALIASES: Dict[str, List[str]] = {
     ],
     "毛利率": ["毛利率", "毛利率(%)", "毛利率%"],
     "ROE": ["ROE", "ROE(%)", "ROE %"],
-    "每股收益": ["每股收益", "EPS", "EPS(元)"],
+    "每股收益": [
+        "每股收益",
+        "EPS",
+        "EPS(元)",
+        "EPS（元）",
+        "EPS（摊薄/元）",
+        "EPS(摊薄/元)",
+        "EPS摊薄",
+        "摊薄EPS",
+        "摊薄每股收益",
+        "基本每股收益",
+        "稀释每股收益",
+    ],
     "P/E": ["P/E", "PE"],
     "P/B": ["P/B", "PB"],
     "EV/EBITDA": ["EV/EBITDA", "EVEBITDA"],
@@ -53,6 +65,20 @@ NET_PROFIT_EXCLUDE_TERMS = (
     "扣非归母净利润",
     "少数股东损益",
 )
+EV_PREFIXES = ("EV/EBITDA", "EVEBITDA")
+EV_OTHER_METRIC_TERMS = (
+    "营业收入",
+    "归属母公司",
+    "归母净利润",
+    "毛利率",
+    "ROE",
+    "EPS",
+    "每股收益",
+    "P/E",
+    "PE",
+    "P/B",
+    "PB",
+)
 
 
 def _resolve_config(config=None) -> Dict[str, object]:
@@ -73,6 +99,67 @@ def _compact_text(value) -> str:
     text = text.replace("（", "(").replace("）", ")").replace("％", "%")
     text = re.sub(r"\s+", "", text)
     return text.upper()
+
+
+def _clean_metric_label_noise(label: str) -> str:
+    text = _normalize_text(label)
+    if not text:
+        return ""
+    text = text.replace("（", "(").replace("）", ")").replace("／", "/")
+    text = re.sub(r"\s+", " ", text).strip()
+
+    compact = _compact_text(text)
+    has_metric_token = any(
+        token in compact
+        for token in (
+            "EV/EBITDA",
+            "EVEBITDA",
+            "EPS",
+            "ROE",
+            "P/E",
+            "P/B",
+            "营业收入",
+            "归属母公司",
+            "归母净利润",
+            "毛利率",
+            "每股收益",
+        )
+    )
+    if not has_metric_token:
+        return text
+
+    # Remove trailing numeric-like glue noise for metric labels only.
+    text = re.sub(
+        r"([\s\|,:：;；]+[-+]?\d*\.?\d+(?:[%％])?)+\s*$",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
+    return text
+
+
+def _match_ev_prefix_with_noise(label: str) -> bool:
+    compact = _compact_text(label)
+    if not compact:
+        return False
+
+    prefix = ""
+    for p in EV_PREFIXES:
+        if compact.startswith(p):
+            prefix = p
+            break
+    if not prefix:
+        return False
+
+    for term in EV_OTHER_METRIC_TERMS:
+        if _compact_text(term) in compact:
+            return False
+
+    tail = compact[len(prefix) :]
+    if not tail:
+        return True
+    # Allow only numeric/punctuation glue noise after EV prefix.
+    return bool(re.fullmatch(r"[0-9\.\,\:\;\|\-_/\\]+", tail))
 
 
 def _normalize_year_token(value: str) -> str:
@@ -130,6 +217,13 @@ def _is_probably_numeric(text: str) -> bool:
         return False
     compact = text.replace(",", "").replace("%", "").replace(" ", "")
     return bool(re.fullmatch(r"[-+]?\d+(?:\.\d+)?", compact))
+
+
+def _extract_numeric_tokens(text: str) -> List[str]:
+    normalized = _normalize_text(text)
+    if not normalized:
+        return []
+    return re.findall(r"[-+]?\d*\.?\d+", normalized)
 
 
 def _is_yoy_like_label(label: str) -> bool:
@@ -242,14 +336,12 @@ def _find_metric_label_candidates(
         value = _normalize_text(row[col])
         if not value:
             continue
-        if _is_year_column(col):
-            continue
         if _is_probably_numeric(value):
-            continue
-        if _is_unit_like_label(value):
             continue
         metric_match = _match_standard_metric(value)
         if not metric_match:
+            if _is_unit_like_label(value):
+                continue
             continue
         standard_metric = metric_match.get("standard_metric")
         if standard_metric in seen_metrics:
@@ -260,12 +352,21 @@ def _find_metric_label_candidates(
 
 
 def _match_standard_metric(label: str) -> Optional[Dict[str, object]]:
-    normalized = _normalize_text(label)
-    compact = _compact_text(label)
+    cleaned_label = _clean_metric_label_noise(label)
+    normalized = _normalize_text(cleaned_label)
+    compact = _compact_text(cleaned_label)
     if not normalized:
         return None
     is_yoy_like = _is_yoy_like_label(label)
     is_excluded_net_profit = _is_excluded_net_profit_label(label)
+
+    if _match_ev_prefix_with_noise(cleaned_label):
+        return {
+            "standard_metric": "EV/EBITDA",
+            "matched_alias": "EV/EBITDA",
+            "match_method": "ev_prefix_noise_guard",
+            "confidence": 0.92,
+        }
 
     for standard_metric, aliases in STANDARD_METRIC_ALIASES.items():
         if is_yoy_like and standard_metric in YOY_GUARD_METRICS:
@@ -364,25 +465,46 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
     result_map = _classification_map(classification_results)
     detail_rows: List[Dict[str, object]] = []
     year_display_map: Dict[str, str] = {}
+    year_template_columns: List[Tuple[str, str]] = []
+    prepared_tables: List[Tuple[int, pd.DataFrame, Dict[str, object], str]] = []
 
     for table_index, df in enumerate(df_list):
         if df is None or df.empty:
             continue
 
+        source_table_type = result_map.get(table_index, {}).get("table_type", "其他")
         prepared_df, header_meta = _prepare_df_for_financial_standardization(df)
         if prepared_df is None or prepared_df.empty:
             continue
+        prepared_tables.append((table_index, prepared_df, header_meta, source_table_type))
 
         year_columns = _extract_year_columns(prepared_df)
+        if len(year_columns) > len(year_template_columns):
+            year_template_columns = list(year_columns)
+
+    for table_index, prepared_df, header_meta, source_table_type in prepared_tables:
+        year_columns = _extract_year_columns(prepared_df)
+        fallback_use_template = False
+        if not year_columns and year_template_columns:
+            # Fallback only when this table has no year columns but the document already
+            # has a valid year template from other financial tables.
+            year_columns = list(year_template_columns)
+            fallback_use_template = True
         if not year_columns:
             continue
 
         for raw_col, normalized_col in year_columns:
             year_display_map.setdefault(normalized_col, raw_col)
-
-        source_table_type = result_map.get(table_index, {}).get("table_type", "其他")
         for row_index, row in prepared_df.iterrows():
-            values = {raw_col: _normalize_text(row[raw_col]) for raw_col, _ in year_columns}
+            values = {}
+            if fallback_use_template:
+                row_tokens: List[str] = []
+                for cell in row.tolist():
+                    row_tokens.extend(_extract_numeric_tokens(cell))
+                for i, (raw_col, _) in enumerate(year_columns):
+                    values[raw_col] = row_tokens[i] if i < len(row_tokens) else ""
+            else:
+                values = {raw_col: _normalize_text(row[raw_col]) for raw_col, _ in year_columns}
             if not any(values.values()):
                 continue
             metric_candidates = _find_metric_label_candidates(
@@ -404,6 +526,11 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                     )
 
             for source_row_label, source_label_column, metric_match, label_detect_method in selected_hits:
+                if (
+                    fallback_use_template
+                    and metric_match.get("standard_metric") != "EV/EBITDA"
+                ):
+                    continue
                 detail_row = _build_detail_row(
                     metric_match=metric_match,
                     values=values,
