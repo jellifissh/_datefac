@@ -61,6 +61,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "pdfplumber_min_quality_score": 0.5,
         "pdfplumber_min_valid_tables": 1,
     },
+    "pdfplumber_profiles": {
+        "enabled": True,
+        "fallback_enabled": True,
+        "profiles": ["default", "text_text", "text_lines"],
+        "fallback_min_good_tables": 1,
+        "fallback_trigger_if_table_count_lt": 3,
+        "fallback_trigger_if_all_bad": True,
+        "output_profile_diagnostics": True,
+    },
     "table_segmentation": {
         "enabled": True,
         "apply_to_backend": "marker",
@@ -173,6 +182,7 @@ class ConfigManager:
             "table_classification": self.config.get("table_classification", {}),
             "financial_standardization": self.config.get("financial_standardization", {}),
             "table_extraction": self.config.get("table_extraction", {}),
+            "pdfplumber_profiles": self.config.get("pdfplumber_profiles", {}),
             "table_segmentation": self.config.get("table_segmentation", {}),
             "segment_validation": self.config.get("segment_validation", {}),
             "extractor_probe": self.config.get("extractor_probe", {}),

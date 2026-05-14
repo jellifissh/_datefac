@@ -18,6 +18,7 @@ from artifact_names import (
     ARTIFACT_TABLES,
     ARTIFACT_SUMMARY,
     ARTIFACT_MERGE_DIAGNOSTICS,
+    ARTIFACT_PDFPLUMBER_PROFILE_DIAGNOSTICS,
 )
 from ai_summary_service import generate_investment_summary
 from config_manager import ConfigManager, DEFAULT_CONFIG
@@ -33,6 +34,7 @@ from pdfplumber_table_extractor import (
 from pdfplumber_table_postprocessor import postprocess_pdfplumber_blocks
 from pdfplumber_table_postprocessor import diagnose_cross_page_merge_candidates
 from pdfplumber_table_postprocessor import evaluate_pdfplumber_table_quality
+from pdfplumber_profile_extractor import extract_tables_with_pdfplumber_profiles
 from extractor_adapter import extract_marker_table_blocks
 from raw_table_exporter import export_raw_table_assets
 from segment_validator import validate_segments
@@ -765,6 +767,9 @@ def generate_structured_tables(
     min_pdfplumber_tables = int(extraction_config.get("min_pdfplumber_tables", 1) or 1)
     add_index_sheet = bool(extraction_config.get("add_index_sheet", True))
     sheet_name_strategy = str(extraction_config.get("sheet_name_strategy", "page_table")).strip().lower()
+    profile_config = config.get("pdfplumber_profiles", {}) or {}
+    profile_enabled = bool(profile_config.get("enabled", True))
+    profile_output_diag = bool(profile_config.get("output_profile_diagnostics", True))
 
     marker_kwargs = {
         "logger": logger,
@@ -785,7 +790,49 @@ def generate_structured_tables(
         run_state.pdfplumber_attempted = True
     if should_try_pdfplumber:
         try:
-            raw_blocks = extract_tables_from_pdf(pdf_path, pages="all", logger=logger, config=extraction_config)
+            raw_blocks = []
+            profile_diag_df = pd.DataFrame()
+            if profile_enabled:
+                try:
+                    raw_blocks, profile_diag_df = extract_tables_with_pdfplumber_profiles(
+                        pdf_path=pdf_path,
+                        config=config,
+                        logger=logger,
+                    )
+                    selected_profile = "default"
+                    if not profile_diag_df.empty and "selected_profile" in profile_diag_df.columns:
+                        selected_values = [
+                            str(x).strip()
+                            for x in profile_diag_df["selected_profile"].dropna().tolist()
+                            if str(x).strip()
+                        ]
+                        if selected_values:
+                            selected_profile = selected_values[0]
+                    logger.info(
+                        "pdfplumber profile extractor enabled: selected_profile=%s table_count=%s",
+                        selected_profile,
+                        len(raw_blocks),
+                    )
+                    if profile_output_diag:
+                        try:
+                            diag06a_path = safe_join_path(
+                                pkg_path,
+                                ARTIFACT_PDFPLUMBER_PROFILE_DIAGNOSTICS,
+                                fallback_name="06A_pdfplumber_profile_diagnostics.xlsx",
+                            )
+                            final_diag06a_path = save_single_df_robustly(
+                                profile_diag_df,
+                                diag06a_path,
+                                sheet_name="profile_diagnostics",
+                            )
+                            logger.info("pdfplumber profile diagnostics output: %s", final_diag06a_path)
+                        except Exception:
+                            logger.exception("pdfplumber profile diagnostics export failed")
+                except Exception:
+                    logger.exception("pdfplumber profile extractor failed, fallback to legacy pdfplumber extractor")
+                    raw_blocks = extract_tables_from_pdf(pdf_path, pages="all", logger=logger, config=extraction_config)
+            else:
+                raw_blocks = extract_tables_from_pdf(pdf_path, pages="all", logger=logger, config=extraction_config)
             if len(raw_blocks) >= min_pdfplumber_tables:
                 logger.info("Structured table extraction backend=pdfplumber, tables=%s", len(raw_blocks))
                 logger.info("pdfplumber raw table count=%s", len(raw_blocks))

@@ -49,6 +49,18 @@ table_extraction:
   pdfplumber_min_quality_score: 0.5
   pdfplumber_min_valid_tables: 1
 
+pdfplumber_profiles:
+  enabled: true
+  fallback_enabled: true
+  profiles:
+    - default
+    - text_text
+    - text_lines
+  fallback_min_good_tables: 1
+  fallback_trigger_if_table_count_lt: 3
+  fallback_trigger_if_all_bad: true
+  output_profile_diagnostics: true
+
 table_segmentation:
   enabled: true
   apply_to_backend: marker
