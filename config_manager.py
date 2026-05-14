@@ -70,6 +70,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "fallback_trigger_if_all_bad": True,
         "output_profile_diagnostics": True,
     },
+    "glued_table_splitter": {
+        "enabled": True,
+        "append_split_tables": True,
+        "min_col_count": 10,
+        "min_row_count": 10,
+        "trigger_flags": ["possible_glued_table"],
+        "output_diagnostics": True,
+        "max_split_tables_per_source": 5,
+    },
     "table_segmentation": {
         "enabled": True,
         "apply_to_backend": "marker",
@@ -183,6 +192,7 @@ class ConfigManager:
             "financial_standardization": self.config.get("financial_standardization", {}),
             "table_extraction": self.config.get("table_extraction", {}),
             "pdfplumber_profiles": self.config.get("pdfplumber_profiles", {}),
+            "glued_table_splitter": self.config.get("glued_table_splitter", {}),
             "table_segmentation": self.config.get("table_segmentation", {}),
             "segment_validation": self.config.get("segment_validation", {}),
             "extractor_probe": self.config.get("extractor_probe", {}),

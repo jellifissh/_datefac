@@ -13,6 +13,7 @@ from pathlib import Path
 
 from artifact_names import (
     ARTIFACT_BATCH_STATUS,
+    ARTIFACT_GLUED_SPLIT_DIAGNOSTICS,
     ARTIFACT_MARKDOWN,
     ARTIFACT_SEGMENT_MAP,
     ARTIFACT_TABLES,
@@ -35,6 +36,7 @@ from pdfplumber_table_postprocessor import postprocess_pdfplumber_blocks
 from pdfplumber_table_postprocessor import diagnose_cross_page_merge_candidates
 from pdfplumber_table_postprocessor import evaluate_pdfplumber_table_quality
 from pdfplumber_profile_extractor import extract_tables_with_pdfplumber_profiles
+from glued_table_splitter import split_glued_tables
 from extractor_adapter import extract_marker_table_blocks
 from raw_table_exporter import export_raw_table_assets
 from segment_validator import validate_segments
@@ -503,6 +505,7 @@ def postprocess_and_export_tables(
     index_df=None,
     backend="marker",
     table_segmentation_config=None,
+    glued_table_splitter_config=None,
 ):
     excel_path = safe_join_path(pkg_path, ARTIFACT_TABLES, fallback_name="02_tables.xlsx")
     pure_dfs = df_list or []
@@ -606,6 +609,107 @@ def postprocess_and_export_tables(
                     len(cleaned_dfs),
                     len(sheet_names),
                 )
+
+    split_cfg = glued_table_splitter_config or {}
+    split_diag_df = pd.DataFrame()
+    if backend == "pdfplumber" and bool(split_cfg.get("enabled", True)):
+        try:
+            table_meta_list = []
+            for idx, _ in enumerate(cleaned_dfs):
+                meta = {}
+                if cleaned_sheet_names and idx < len(cleaned_sheet_names):
+                    meta["sheet_name"] = cleaned_sheet_names[idx]
+                if cleaned_index_df is not None and not cleaned_index_df.empty and idx < len(cleaned_index_df):
+                    try:
+                        row_meta = cleaned_index_df.iloc[idx].to_dict()
+                        meta.update(row_meta)
+                    except Exception:
+                        pass
+                table_meta_list.append(meta)
+
+            enhanced_dfs, split_diag_df = split_glued_tables(
+                cleaned_dfs,
+                table_meta_list=table_meta_list,
+                config=split_cfg,
+                logger=logger,
+            )
+            if enhanced_dfs and len(enhanced_dfs) >= len(cleaned_dfs):
+                appended_count = len(enhanced_dfs) - len(cleaned_dfs)
+                cleaned_dfs = enhanced_dfs
+                if logger:
+                    logger.info(
+                        "GluedTableSplitter applied: appended_count=%s enhanced_table_count=%s",
+                        appended_count,
+                        len(cleaned_dfs),
+                    )
+
+                if cleaned_sheet_names and appended_count > 0:
+                    split_rows = pd.DataFrame()
+                    if split_diag_df is not None and not split_diag_df.empty:
+                        split_rows = split_diag_df[split_diag_df["appended"] == True].copy()
+                        split_rows = split_rows.sort_values(["source_table_index", "split_index"])
+
+                    name_counter = {}
+                    extra_names = []
+                    split_index_rows = []
+                    for _, srow in split_rows.iterrows():
+                        source_idx = int(srow.get("source_table_index", -1))
+                        base_name = (
+                            cleaned_sheet_names[source_idx]
+                            if 0 <= source_idx < len(cleaned_sheet_names)
+                            else f"table_{source_idx + 1 if source_idx >= 0 else len(cleaned_sheet_names) + 1}"
+                        )
+                        name_counter[source_idx] = name_counter.get(source_idx, 0) + 1
+                        split_name = f"{base_name}_split_{name_counter[source_idx]}"
+                        extra_names.append(split_name)
+
+                        idx_row = {c: "" for c in cleaned_index_df.columns} if cleaned_index_df is not None else {}
+                        if cleaned_index_df is not None and not cleaned_index_df.empty and 0 <= source_idx < len(cleaned_index_df):
+                            try:
+                                idx_row.update(cleaned_index_df.iloc[source_idx].to_dict())
+                            except Exception:
+                                pass
+                        idx_row["sheet_name"] = split_name
+                        if "rows" in idx_row:
+                            idx_row["rows"] = srow.get("row_count", "")
+                        if "cols" in idx_row:
+                            idx_row["cols"] = srow.get("col_count", "")
+                        if "preview" in idx_row:
+                            idx_row["preview"] = srow.get("preview", "")
+                        if "table_index" in idx_row:
+                            idx_row["table_index"] = f"{idx_row.get('table_index', '')}+split{name_counter[source_idx]}"
+                        if "source_blocks" in idx_row:
+                            sb = str(idx_row.get("source_blocks", "") or "")
+                            idx_row["source_blocks"] = f"{sb}|split_{name_counter[source_idx]}".strip("|")
+                        split_index_rows.append(idx_row)
+
+                    if extra_names:
+                        cleaned_sheet_names = list(cleaned_sheet_names) + extra_names
+                        if cleaned_index_df is not None and split_index_rows:
+                            split_idx_df = pd.DataFrame(split_index_rows)
+                            cleaned_index_df = pd.concat([cleaned_index_df, split_idx_df], ignore_index=True)
+        except Exception:
+            if logger:
+                logger.exception("GluedTableSplitter failed, fallback to original cleaned tables")
+            split_diag_df = pd.DataFrame()
+
+    if backend == "pdfplumber" and bool(split_cfg.get("enabled", True)) and bool(split_cfg.get("output_diagnostics", True)):
+        try:
+            diag_path = safe_join_path(
+                pkg_path,
+                ARTIFACT_GLUED_SPLIT_DIAGNOSTICS,
+                fallback_name="07A_glued_table_split_diagnostics.xlsx",
+            )
+            final_split_diag_path = save_single_df_robustly(
+                split_diag_df if split_diag_df is not None else pd.DataFrame(),
+                diag_path,
+                sheet_name="glued_split_diagnostics",
+            )
+            if logger:
+                logger.info("GluedTableSplitter diagnostics output: %s", final_split_diag_path)
+        except Exception:
+            if logger:
+                logger.exception("GluedTableSplitter diagnostics export failed")
 
     try:
         if cleaned_sheet_names:
@@ -778,6 +882,7 @@ def generate_structured_tables(
         "financial_standardization_config": config.get("financial_standardization", {}),
         "table_segmentation_config": config.get("table_segmentation", {}),
         "segment_validation_config": config.get("segment_validation", {}),
+        "glued_table_splitter_config": config.get("glued_table_splitter", {}),
     }
 
     should_try_pdfplumber = (
@@ -928,6 +1033,7 @@ def generate_structured_tables(
                     index_df=index_df,
                     backend="pdfplumber",
                     table_segmentation_config=config.get("table_segmentation", {}),
+                    glued_table_splitter_config=config.get("glued_table_splitter", {}),
                 )
                 if run_state:
                     run_state.pdfplumber_success = table_count > 0

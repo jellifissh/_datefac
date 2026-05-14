@@ -61,6 +61,16 @@ pdfplumber_profiles:
   fallback_trigger_if_all_bad: true
   output_profile_diagnostics: true
 
+glued_table_splitter:
+  enabled: true
+  append_split_tables: true
+  min_col_count: 10
+  min_row_count: 10
+  trigger_flags:
+    - possible_glued_table
+  output_diagnostics: true
+  max_split_tables_per_source: 5
+
 table_segmentation:
   enabled: true
   apply_to_backend: marker
