@@ -12,11 +12,12 @@ import multiprocessing
 from pathlib import Path
 
 from artifact_names import (
+    ARTIFACT_BATCH_STATUS,
     ARTIFACT_MARKDOWN,
+    ARTIFACT_SEGMENT_MAP,
     ARTIFACT_TABLES,
     ARTIFACT_SUMMARY,
     ARTIFACT_MERGE_DIAGNOSTICS,
-    ARTIFACT_SEGMENT_MAP,
 )
 from ai_summary_service import generate_investment_summary
 from config_manager import ConfigManager, DEFAULT_CONFIG
@@ -55,7 +56,8 @@ OUTPUT_DIR = DEFAULT_CONFIG["paths"]["output_dir"]
 TEMP_CACHE_DIR = DEFAULT_CONFIG["paths"]["temp_cache_dir"]
 RUNTIME_FLAGS = DEFAULT_CONFIG["runtime"].copy()
 LOGGER = logging.getLogger("factory_core")
-ARTIFACT_BATCH_STATUS = "09_batch_run_status.xlsx"
+WINDOWS_ILLEGAL_CHARS_RE = re.compile(r'[<>:"/\\|?*]')
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f]")
 
 
 def safe_console_print(message):
@@ -64,6 +66,66 @@ def safe_console_print(message):
     except UnicodeEncodeError:
         fallback = message.encode("gbk", errors="ignore").decode("gbk", errors="ignore")
         print(fallback)
+
+
+def _contains_control_chars(text):
+    if text is None:
+        return False
+    return bool(CONTROL_CHARS_RE.search(str(text)))
+
+
+def sanitize_windows_filename(name: str, fallback_name: str = "unnamed") -> str:
+    cleaned = CONTROL_CHARS_RE.sub("", str(name or ""))
+    cleaned = WINDOWS_ILLEGAL_CHARS_RE.sub("_", cleaned)
+    cleaned = cleaned.strip().strip(".")
+    if not cleaned:
+        return fallback_name
+    return cleaned
+
+
+def safe_join_path(parent, filename, fallback_name: str = "unnamed"):
+    return os.path.join(parent, sanitize_windows_filename(filename, fallback_name=fallback_name))
+
+
+def _build_path_diag(path_value):
+    p = str(path_value or "")
+    filename = os.path.basename(p)
+    return {
+        "path": p,
+        "repr": repr(p),
+        "abspath": os.path.abspath(p) if p else "",
+        "has_control_chars": _contains_control_chars(p),
+        "filename_length": len(filename),
+        "parent_exists": os.path.isdir(os.path.dirname(p)) if p else False,
+    }
+
+
+def _log_output_path_diagnostics(logger, stage, path_value):
+    diag = _build_path_diag(path_value)
+    active_logger = logger or LOGGER
+    if active_logger:
+        active_logger.info(
+            "PathDiagnostics stage=%s path=%s repr=%s abspath=%s has_control_chars=%s filename_length=%s parent_exists=%s",
+            stage,
+            diag["path"],
+            diag["repr"],
+            diag["abspath"],
+            diag["has_control_chars"],
+            diag["filename_length"],
+            diag["parent_exists"],
+        )
+
+
+def _resolve_output_path(target_path):
+    final_path = target_path
+    if os.path.exists(target_path):
+        try:
+            with open(target_path, "a"):
+                pass
+        except PermissionError:
+            timestamp = datetime.now().strftime("%H%M%S")
+            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
+    return final_path
 
 
 def apply_runtime_config(config):
@@ -291,20 +353,26 @@ def stage3_waterfall_engine(
     )
 
 def save_excel_robustly(df_list, target_path):
-    final_path = target_path
-    if os.path.exists(target_path):
-        try:
-            with open(target_path, 'a'): pass
-        except PermissionError:
-            timestamp = datetime.now().strftime("%H%M%S")
-            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
-
-    with pd.ExcelWriter(final_path, engine='openpyxl') as writer:
-        for i, df in enumerate(df_list):
-            raw_name = str(df.columns[0]).strip() if not df.empty else f"Table{i+1}"
-            sheet_title = re.sub(r'[\\/*?:\[\]]', '', raw_name)[:20].strip()
-            if not sheet_title or len(sheet_title) < 2: sheet_title = f"Table_{i+1}"
-            df.to_excel(writer, sheet_name=sheet_title, index=False)
+    final_path = _resolve_output_path(target_path)
+    _log_output_path_diagnostics(LOGGER, "save_excel_robustly.target_path", target_path)
+    _log_output_path_diagnostics(LOGGER, "save_excel_robustly.final_path", final_path)
+    try:
+        with pd.ExcelWriter(final_path, engine='openpyxl') as writer:
+            for i, df in enumerate(df_list):
+                raw_name = str(df.columns[0]).strip() if not df.empty else f"Table{i+1}"
+                sheet_title = re.sub(r'[\\/*?:\[\]]', '', raw_name)[:20].strip()
+                if not sheet_title or len(sheet_title) < 2:
+                    sheet_title = f"Table_{i+1}"
+                df.to_excel(writer, sheet_name=sheet_title, index=False)
+    except (OSError, PermissionError):
+        LOGGER.exception(
+            "save_excel_robustly failed: target_path=%s target_repr=%s final_path=%s final_repr=%s",
+            target_path,
+            repr(target_path),
+            final_path,
+            repr(final_path),
+        )
+        raise
     return final_path
 
 
@@ -324,59 +392,72 @@ def _safe_sheet_name(raw_name, used_names=None):
 
 
 def save_excel_with_named_sheets(df_list, sheet_names, target_path, index_df=None, add_index_sheet=False):
-    final_path = target_path
-    if os.path.exists(target_path):
-        try:
-            with open(target_path, "a"):
-                pass
-        except PermissionError:
-            timestamp = datetime.now().strftime("%H%M%S")
-            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
-
+    final_path = _resolve_output_path(target_path)
+    _log_output_path_diagnostics(LOGGER, "save_excel_with_named_sheets.target_path", target_path)
+    _log_output_path_diagnostics(LOGGER, "save_excel_with_named_sheets.final_path", final_path)
     used_names = set()
-    with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
-        if add_index_sheet and index_df is not None:
-            index_sheet_name = _safe_sheet_name("00_目录", used_names)
-            index_df.to_excel(writer, sheet_name=index_sheet_name, index=False)
+    try:
+        with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
+            if add_index_sheet and index_df is not None:
+                index_sheet_name = _safe_sheet_name("00_目录", used_names)
+                index_df.to_excel(writer, sheet_name=index_sheet_name, index=False)
 
-        for i, df in enumerate(df_list):
-            sheet_name = sheet_names[i] if i < len(sheet_names) else f"Table_{i+1}"
-            safe_name = _safe_sheet_name(sheet_name, used_names)
-            df.to_excel(writer, sheet_name=safe_name, index=False)
+            for i, df in enumerate(df_list):
+                sheet_name = sheet_names[i] if i < len(sheet_names) else f"Table_{i+1}"
+                safe_name = _safe_sheet_name(sheet_name, used_names)
+                df.to_excel(writer, sheet_name=safe_name, index=False)
+    except (OSError, PermissionError):
+        LOGGER.exception(
+            "save_excel_with_named_sheets failed: target_path=%s target_repr=%s final_path=%s final_repr=%s",
+            target_path,
+            repr(target_path),
+            final_path,
+            repr(final_path),
+        )
+        raise
     return final_path
 
 
 def save_single_df_robustly(df, target_path, sheet_name="sheet1"):
-    final_path = target_path
-    if os.path.exists(target_path):
-        try:
-            with open(target_path, "a"):
-                pass
-        except PermissionError:
-            timestamp = datetime.now().strftime("%H%M%S")
-            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
-    with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
-        safe_name = _safe_sheet_name(sheet_name)
-        df.to_excel(writer, sheet_name=safe_name, index=False)
+    final_path = _resolve_output_path(target_path)
+    _log_output_path_diagnostics(LOGGER, "save_single_df_robustly.target_path", target_path)
+    _log_output_path_diagnostics(LOGGER, "save_single_df_robustly.final_path", final_path)
+    try:
+        with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
+            safe_name = _safe_sheet_name(sheet_name)
+            df.to_excel(writer, sheet_name=safe_name, index=False)
+    except (OSError, PermissionError):
+        LOGGER.exception(
+            "save_single_df_robustly failed: target_path=%s target_repr=%s final_path=%s final_repr=%s",
+            target_path,
+            repr(target_path),
+            final_path,
+            repr(final_path),
+        )
+        raise
     return final_path
 
 
 def save_workbook_robustly(sheet_df_map, target_path):
-    final_path = target_path
-    if os.path.exists(target_path):
-        try:
-            with open(target_path, "a"):
-                pass
-        except PermissionError:
-            timestamp = datetime.now().strftime("%H%M%S")
-            final_path = target_path.replace(".xlsx", f"_副本_{timestamp}.xlsx")
-
+    final_path = _resolve_output_path(target_path)
+    _log_output_path_diagnostics(LOGGER, "save_workbook_robustly.target_path", target_path)
+    _log_output_path_diagnostics(LOGGER, "save_workbook_robustly.final_path", final_path)
     used_names = set()
-    with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
-        for raw_name, df in (sheet_df_map or {}).items():
-            safe_name = _safe_sheet_name(raw_name, used_names)
-            out_df = df if isinstance(df, pd.DataFrame) else pd.DataFrame()
-            out_df.to_excel(writer, sheet_name=safe_name, index=False)
+    try:
+        with pd.ExcelWriter(final_path, engine="openpyxl") as writer:
+            for raw_name, df in (sheet_df_map or {}).items():
+                safe_name = _safe_sheet_name(raw_name, used_names)
+                out_df = df if isinstance(df, pd.DataFrame) else pd.DataFrame()
+                out_df.to_excel(writer, sheet_name=safe_name, index=False)
+    except (OSError, PermissionError):
+        LOGGER.exception(
+            "save_workbook_robustly failed: target_path=%s target_repr=%s final_path=%s final_repr=%s",
+            target_path,
+            repr(target_path),
+            final_path,
+            repr(final_path),
+        )
+        raise
     return final_path
 
 
@@ -400,7 +481,7 @@ def export_batch_run_status(run_states, output_dir, logger=None):
             }
         )
     df = pd.DataFrame(rows)
-    target_path = os.path.join(output_dir, ARTIFACT_BATCH_STATUS)
+    target_path = safe_join_path(output_dir, ARTIFACT_BATCH_STATUS, fallback_name="09_batch_run_status.xlsx")
     final_path = save_single_df_robustly(df, target_path, sheet_name="batch_status")
     if logger:
         logger.info("批次状态输出: %s", final_path)
@@ -421,7 +502,7 @@ def postprocess_and_export_tables(
     backend="marker",
     table_segmentation_config=None,
 ):
-    excel_path = os.path.join(pkg_path, ARTIFACT_TABLES)
+    excel_path = safe_join_path(pkg_path, ARTIFACT_TABLES, fallback_name="02_tables.xlsx")
     pure_dfs = df_list or []
     cleaned_dfs = pure_dfs
     cleaning_config = table_cleaning_config or {}
@@ -592,7 +673,7 @@ def postprocess_and_export_tables(
                     logger=logger,
                     config=validation_cfg,
                 )
-                segment_diag_path = os.path.join(pkg_path, ARTIFACT_SEGMENT_MAP)
+                segment_diag_path = safe_join_path(pkg_path, ARTIFACT_SEGMENT_MAP, fallback_name="07_table_segment_map.xlsx")
                 sheet_map = {"segment_validation": validation_df}
                 if segment_map_df is not None:
                     sheet_map["segment_map"] = segment_map_df
@@ -608,7 +689,7 @@ def postprocess_and_export_tables(
             # Keep existing segment_map diagnostics behavior when validation is disabled.
             if segment_map_df is not None and source_preview_df is not None:
                 try:
-                    segment_diag_path = os.path.join(pkg_path, ARTIFACT_SEGMENT_MAP)
+                    segment_diag_path = safe_join_path(pkg_path, ARTIFACT_SEGMENT_MAP, fallback_name="07_table_segment_map.xlsx")
                     final_segment_diag_path = save_workbook_robustly(
                         {
                             "segment_map": segment_map_df,
@@ -739,7 +820,7 @@ def generate_structured_tables(
                     if extraction_config.get("output_merge_diagnostics", True):
                         try:
                             diagnostics_df = pd.DataFrame(diagnostics)
-                            diag_path = os.path.join(pkg_path, ARTIFACT_MERGE_DIAGNOSTICS)
+                            diag_path = safe_join_path(pkg_path, ARTIFACT_MERGE_DIAGNOSTICS, fallback_name="06_pdfplumber_merge_diagnostics.xlsx")
                             final_diag_path = save_single_df_robustly(diagnostics_df, diag_path, sheet_name="merge_diagnostics")
                             logger.info("pdfplumber merge diagnostics output: %s", final_diag_path)
                         except Exception:
@@ -925,9 +1006,18 @@ def run_single_pdf_vision(pdf_name, logger):
 
 def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf_path=None, run_state=None):
     os.makedirs(pkg_path, exist_ok=True)
-    markdown_path = os.path.join(pkg_path, ARTIFACT_MARKDOWN)
-    with open(markdown_path, "w", encoding="utf-8") as f:
-        f.write(full_text)
+    markdown_path = safe_join_path(pkg_path, ARTIFACT_MARKDOWN, fallback_name="01_markdown.md")
+    _log_output_path_diagnostics(logger, "process_markdown_document.markdown_path", markdown_path)
+    try:
+        with open(markdown_path, "w", encoding="utf-8") as f:
+            f.write(full_text)
+    except OSError:
+        logger.exception(
+            "Markdown 底稿写出失败: markdown_path=%s markdown_repr=%s",
+            markdown_path,
+            repr(markdown_path),
+        )
+        raise
     logger.info("Markdown 底稿输出: %s", markdown_path)
     if run_state:
         run_state.markdown_available = bool(full_text and full_text.strip())
@@ -950,7 +1040,8 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
             "解析表数": t_count,
             "状态": "空 Markdown，已跳过表格和 AI 处理",
         }])
-        summary_path = os.path.join(pkg_path, ARTIFACT_SUMMARY)
+        summary_path = safe_join_path(pkg_path, ARTIFACT_SUMMARY, fallback_name="03_summary.xlsx")
+        _log_output_path_diagnostics(logger, "process_markdown_document.empty.summary_path", summary_path)
         try:
             final_summary_df.to_excel(summary_path, index=False)
             actual_summary_path = summary_path
@@ -958,6 +1049,13 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
             ts = datetime.now().strftime("%H%M%S")
             actual_summary_path = summary_path.replace(".xlsx", f"_副本_{ts}.xlsx")
             final_summary_df.to_excel(actual_summary_path, index=False)
+        except OSError:
+            logger.exception(
+                "空 Markdown 摘要写出失败: summary_path=%s summary_repr=%s",
+                summary_path,
+                repr(summary_path),
+            )
+            raise
         logger.info("空 Markdown 摘要输出: %s", actual_summary_path)
         return {
             "markdown_path": markdown_path,
@@ -992,7 +1090,8 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
             final_summary_data[k] = v
 
     final_summary_df = pd.DataFrame([final_summary_data])
-    summary_path = os.path.join(pkg_path, ARTIFACT_SUMMARY)
+    summary_path = safe_join_path(pkg_path, ARTIFACT_SUMMARY, fallback_name="03_summary.xlsx")
+    _log_output_path_diagnostics(logger, "process_markdown_document.summary_path", summary_path)
 
     try:
         final_summary_df.to_excel(summary_path, index=False)
@@ -1001,6 +1100,13 @@ def process_markdown_document(doc_name, full_text, pkg_path, config, logger, pdf
         ts = datetime.now().strftime("%H%M%S")
         actual_summary_path = summary_path.replace(".xlsx", f"_副本_{ts}.xlsx")
         final_summary_df.to_excel(actual_summary_path, index=False)
+    except OSError:
+        logger.exception(
+            "投研结论写出失败: summary_path=%s summary_repr=%s",
+            summary_path,
+            repr(summary_path),
+        )
+        raise
     logger.info("投研结论 Excel 输出: %s", actual_summary_path)
     return {
         "markdown_path": markdown_path,
