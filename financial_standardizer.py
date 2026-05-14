@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -15,8 +15,8 @@ DEFAULT_FINANCIAL_STANDARDIZATION_CONFIG: Dict[str, object] = {
 STANDARD_METRIC_ALIASES: Dict[str, List[str]] = {
     "营业收入": ["营业收入"],
     "归属母公司净利润": ["归属母公司净利润", "归属于母公司净利润", "归母净利润"],
-    "毛利率": ["毛利率", "毛利率(%)", "毛利率 (%)"],
-    "ROE": ["ROE", "ROE(%)", "ROE (%)"],
+    "毛利率": ["毛利率", "毛利率(%)", "毛利率%"],
+    "ROE": ["ROE", "ROE(%)", "ROE %"],
     "每股收益": ["每股收益", "EPS", "EPS(元)"],
     "P/E": ["P/E", "PE"],
     "P/B": ["P/B", "PB"],
@@ -32,6 +32,9 @@ SOURCE_TYPE_PRIORITY: Dict[str, int] = {
 }
 
 YEAR_COLUMN_RE = re.compile(r"^(20\d{2})([A-Z])?$")
+YEAR_TOKEN_RE = re.compile(r"(20\d{2})([AE])?", re.IGNORECASE)
+YOY_GUARD_TERMS = ("同比", "增速", "增长率", "YOY")
+YOY_GUARD_METRICS = {"营业收入", "归属母公司净利润"}
 
 
 def _resolve_config(config=None) -> Dict[str, object]:
@@ -54,16 +57,45 @@ def _compact_text(value) -> str:
     return text.upper()
 
 
+def _normalize_year_token(value: str) -> str:
+    compact = _compact_text(value)
+    if not compact:
+        return ""
+    compact = compact.replace("年", "")
+    compact = re.sub(r"[（）()\[\]{}<>《》【】.,。:：;；'\"`·]", "", compact)
+    match = YEAR_TOKEN_RE.search(compact)
+    if not match:
+        return ""
+    year = match.group(1)
+    suffix = (match.group(2) or "").upper()
+    normalized = f"{year}{suffix}"
+    return normalized if YEAR_COLUMN_RE.fullmatch(normalized) else ""
+
+
 def _is_year_column(column_name: str) -> bool:
-    compact = _compact_text(column_name)
-    return bool(YEAR_COLUMN_RE.fullmatch(compact))
+    return bool(_normalize_year_token(column_name))
+
+
+def _make_unique_columns(columns: List[str]) -> List[str]:
+    seen: Dict[str, int] = {}
+    result: List[str] = []
+    for col in columns:
+        base = _normalize_text(col) or "未命名列"
+        if base not in seen:
+            seen[base] = 0
+            result.append(base)
+        else:
+            seen[base] += 1
+            result.append(f"{base}.{seen[base]}")
+    return result
 
 
 def _extract_year_columns(df: pd.DataFrame) -> List[Tuple[str, str]]:
     year_columns = []
     for col in df.columns.tolist():
-        if _is_year_column(col):
-            year_columns.append((str(col), _compact_text(col)))
+        token = _normalize_year_token(str(col))
+        if token:
+            year_columns.append((str(col), token))
     return year_columns
 
 
@@ -80,6 +112,73 @@ def _is_probably_numeric(text: str) -> bool:
         return False
     compact = text.replace(",", "").replace("%", "").replace(" ", "")
     return bool(re.fullmatch(r"[-+]?\d+(?:\.\d+)?", compact))
+
+
+def _is_yoy_like_label(label: str) -> bool:
+    compact = _compact_text(label)
+    if not compact:
+        return False
+    return any(term in compact for term in YOY_GUARD_TERMS)
+
+
+def _prepare_df_for_financial_standardization(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, object]]:
+    metadata: Dict[str, object] = {
+        "header_repaired": False,
+        "header_source_row": "",
+        "original_columns": "|".join([str(c) for c in df.columns.tolist()]),
+        "prepared_columns": "|".join([str(c) for c in df.columns.tolist()]),
+        "detected_year_columns": "",
+    }
+
+    if df is None or df.empty:
+        return df, metadata
+
+    existing_year_columns = _extract_year_columns(df)
+    if existing_year_columns:
+        metadata["detected_year_columns"] = "|".join([norm for _, norm in existing_year_columns])
+        return df, metadata
+
+    scan_rows = min(5, len(df))
+    best_row_idx = -1
+    best_year_count = 0
+    for ridx in range(scan_rows):
+        row = df.iloc[ridx]
+        tokens = []
+        for val in row.tolist():
+            token = _normalize_year_token(_normalize_text(val))
+            if token:
+                tokens.append(token)
+        unique_count = len(set(tokens))
+        if unique_count > best_year_count:
+            best_year_count = unique_count
+            best_row_idx = ridx
+
+    if best_row_idx < 0 or best_year_count < 2:
+        return df, metadata
+
+    header_row = df.iloc[best_row_idx]
+    new_columns: List[str] = []
+    for original_col, header_val in zip(df.columns.tolist(), header_row.tolist()):
+        token = _normalize_year_token(_normalize_text(header_val))
+        if token:
+            new_columns.append(token)
+            continue
+        candidate = _normalize_text(header_val)
+        if candidate:
+            new_columns.append(candidate)
+        else:
+            new_columns.append(str(original_col))
+    new_columns = _make_unique_columns(new_columns)
+
+    prepared_df = df.iloc[best_row_idx + 1 :].copy().reset_index(drop=True)
+    prepared_df.columns = new_columns
+
+    detected_after = _extract_year_columns(prepared_df)
+    metadata["header_repaired"] = True
+    metadata["header_source_row"] = int(best_row_idx)
+    metadata["prepared_columns"] = "|".join([str(c) for c in prepared_df.columns.tolist()])
+    metadata["detected_year_columns"] = "|".join([norm for _, norm in detected_after])
+    return prepared_df, metadata
 
 
 def _find_row_label(row: pd.Series) -> Tuple[str, str]:
@@ -105,8 +204,11 @@ def _match_standard_metric(label: str) -> Optional[Dict[str, object]]:
     compact = _compact_text(label)
     if not normalized:
         return None
+    is_yoy_like = _is_yoy_like_label(label)
 
     for standard_metric, aliases in STANDARD_METRIC_ALIASES.items():
+        if is_yoy_like and standard_metric in YOY_GUARD_METRICS:
+            continue
         canonical = aliases[0]
         if normalized == canonical:
             return {
@@ -125,6 +227,8 @@ def _match_standard_metric(label: str) -> Optional[Dict[str, object]]:
                 }
 
     for standard_metric, aliases in STANDARD_METRIC_ALIASES.items():
+        if is_yoy_like and standard_metric in YOY_GUARD_METRICS:
+            continue
         for alias in aliases:
             if compact == _compact_text(alias):
                 return {
@@ -164,6 +268,8 @@ def _build_detail_row(
     source_row_index: int,
     source_row_label: str,
     source_label_column: str,
+    header_repaired: bool,
+    header_source_row: object,
 ) -> Dict[str, object]:
     non_empty_year_count = sum(1 for raw_col, _ in year_columns if _normalize_text(values.get(raw_col, "")))
     detail_row = {
@@ -178,6 +284,8 @@ def _build_detail_row(
         "match_method": metric_match["match_method"],
         "confidence": metric_match["confidence"],
         "non_empty_year_count": non_empty_year_count,
+        "header_repaired": header_repaired,
+        "header_source_row": header_source_row,
     }
     for raw_col, _ in year_columns:
         detail_row[raw_col] = _normalize_text(values.get(raw_col, ""))
@@ -193,14 +301,20 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
     for table_index, df in enumerate(df_list):
         if df is None or df.empty:
             continue
-        year_columns = _extract_year_columns(df)
+
+        prepared_df, header_meta = _prepare_df_for_financial_standardization(df)
+        if prepared_df is None or prepared_df.empty:
+            continue
+
+        year_columns = _extract_year_columns(prepared_df)
         if not year_columns:
             continue
+
         for raw_col, normalized_col in year_columns:
             year_display_map.setdefault(normalized_col, raw_col)
 
         source_table_type = result_map.get(table_index, {}).get("table_type", "其他")
-        for row_index, row in df.iterrows():
+        for row_index, row in prepared_df.iterrows():
             source_row_label, source_label_column = _find_row_label(row)
             metric_match = _match_standard_metric(source_row_label)
             if not metric_match:
@@ -217,11 +331,13 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                 source_row_index=int(row_index),
                 source_row_label=source_row_label,
                 source_label_column=source_label_column,
+                header_repaired=bool(header_meta.get("header_repaired", False)),
+                header_source_row=header_meta.get("header_source_row", ""),
             )
             detail_rows.append(detail_row)
             if logger and config.get("log_detail", True):
                 logger.info(
-                    "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s match_method=%s confidence=%.2f non_empty_year_count=%s",
+                    "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s match_method=%s confidence=%.2f non_empty_year_count=%s header_repaired=%s header_source_row=%s",
                     detail_row["标准指标"],
                     table_index,
                     source_table_type,
@@ -230,6 +346,8 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                     detail_row["match_method"],
                     detail_row["confidence"],
                     detail_row["non_empty_year_count"],
+                    detail_row["header_repaired"],
+                    detail_row["header_source_row"],
                 )
 
     ordered_year_columns = [
@@ -297,6 +415,8 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
         "match_method",
         "confidence",
         "non_empty_year_count",
+        "header_repaired",
+        "header_source_row",
     ] + ordered_year_columns
 
     wide_df = pd.DataFrame(wide_rows, columns=wide_columns)
