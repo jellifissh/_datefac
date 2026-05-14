@@ -262,6 +262,15 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
     raw_good_ok_ratio = float(summary.get("raw_good_ok_ratio", 0.0) or 0.0)
     structured_sheet_count = int(summary.get("structured_sheet_count", 0) or 0)
     hit_count = int(summary.get("financial_metric_hit_count", 0) or 0)
+    extraction_coverage_status = "ok"
+    extraction_coverage_flags = ""
+
+    if raw_table_count == 0:
+        extraction_coverage_status = "bad"
+        extraction_coverage_flags = "no_raw_tables"
+    elif raw_table_count < 3:
+        extraction_coverage_status = "partial"
+        extraction_coverage_flags = "too_few_raw_tables"
 
     if consistency_status and consistency_status != "OK":
         bottleneck = "asset_consistency"
@@ -304,6 +313,9 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
     if extraction_status == "bad" and financial_status in ("bad", "partial"):
         bottleneck = "extraction_layer"
         recommendation = "优先改抽取后端/后端仲裁，不要继续修 05"
+    elif raw_table_count < 3 and hit_count < 3:
+        bottleneck = "extraction_coverage"
+        recommendation = "原始表格覆盖不足，优先检查抽取后端/marker缓存/pdfplumber漏表，不要优先继续修05"
     elif extraction_status == "good" and financial_status == "bad":
         bottleneck = "financial_standardizer"
         recommendation = "优先修 05 规则"
@@ -325,6 +337,8 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
         "extraction_layer_status": extraction_status,
         "postprocess_layer_status": postprocess_status,
         "financial_standardization_status": financial_status,
+        "extraction_coverage_status": extraction_coverage_status,
+        "extraction_coverage_flags": extraction_coverage_flags,
         "primary_bottleneck": bottleneck,
         "recommendation": recommendation,
     }
