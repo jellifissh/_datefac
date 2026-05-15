@@ -79,6 +79,30 @@ EV_OTHER_METRIC_TERMS = (
     "P/B",
     "PB",
 )
+VALUE_LABEL_TOKENS = (
+    "营业收入",
+    "净利润",
+    "归母",
+    "归属母公司",
+    "毛利率",
+    "ROE",
+    "EPS",
+    "每股收益",
+    "P/E",
+    "P/B",
+    "EV/EBITDA",
+    "税金",
+    "营业成本",
+    "资产",
+    "负债",
+    "现金流",
+    "现金流量",
+)
+AMOUNT_METRICS = {"营业收入", "归属母公司净利润"}
+RATIO_METRICS = {"毛利率", "ROE"}
+EPS_METRICS = {"每股收益"}
+MULTIPLE_METRICS = {"P/E", "P/B", "EV/EBITDA"}
+AMOUNT_FORBID_TOKENS = ("税金", "资产", "负债", "现金流", "现金流量", "营业成本")
 
 
 def _resolve_config(config=None) -> Dict[str, object]:
@@ -224,6 +248,163 @@ def _extract_numeric_tokens(text: str) -> List[str]:
     if not normalized:
         return []
     return re.findall(r"[-+]?\d*\.?\d+", normalized)
+
+
+def _parse_numeric_value(raw_value: str) -> Tuple[Optional[float], str]:
+    raw = _normalize_text(raw_value)
+    if not raw:
+        return None, "empty"
+    compact = raw.replace(",", "").replace(" ", "").replace("（", "(").replace("）", ")")
+    compact = compact.replace("％", "%")
+    is_percent = compact.endswith("%")
+    if is_percent:
+        compact = compact[:-1]
+    if re.fullmatch(r"[-+]?\d+(?:\.\d+)?", compact):
+        return float(compact), ("percent" if is_percent else "numeric")
+    tokens = re.findall(r"[-+]?\d+(?:\.\d+)?", compact)
+    if tokens:
+        return float(tokens[0]), "mixed_text_numeric"
+    return None, "text"
+
+
+def _count_issue_flags(issue_flags: str) -> int:
+    flags = [x for x in _normalize_text(issue_flags).split("|") if x]
+    return len(flags)
+
+
+def _table_row_sort_key(value) -> int:
+    text = _normalize_text(value)
+    if not text:
+        return 999999
+    m = re.search(r"-?\d+", text)
+    if not m:
+        return 999999
+    try:
+        return int(m.group(0))
+    except Exception:
+        return 999999
+
+
+def _value_status_rank(status: str) -> int:
+    order = {"valid": 0, "suspicious": 1, "invalid": 2, "empty": 3}
+    return order.get(_normalize_text(status), 9)
+
+
+def _validate_metric_candidate_values(
+    standard_metric: str,
+    year_values: Dict[str, str],
+    source_row_label: Optional[str] = None,
+) -> Dict[str, object]:
+    parsed_values: Dict[str, object] = {}
+    issues: List[str] = []
+    valid_year_count = 0
+    invalid_year_count = 0
+
+    row_label = _normalize_text(source_row_label)
+    row_label_compact = _compact_text(row_label)
+    has_non_empty = False
+
+    for year_col, raw_val in (year_values or {}).items():
+        raw = _normalize_text(raw_val)
+        if not raw:
+            continue
+        has_non_empty = True
+        parsed, parse_type = _parse_numeric_value(raw)
+        parsed_values[year_col] = parsed if parsed is not None else ""
+
+        raw_compact = _compact_text(raw)
+        local_invalid = False
+        local_suspicious = False
+
+        if any(_compact_text(tok) in raw_compact for tok in VALUE_LABEL_TOKENS):
+            issues.append("label_value_glued")
+            local_suspicious = True
+
+        if parse_type == "mixed_text_numeric":
+            issues.append("mixed_text_values")
+            local_suspicious = True
+
+        if parsed is None:
+            issues.append("non_numeric_value")
+            invalid_year_count += 1
+            continue
+
+        if standard_metric in AMOUNT_METRICS:
+            if "%" in raw or "％" in raw:
+                issues.append("amount_has_percent")
+                local_invalid = True
+            if any(tok in raw for tok in AMOUNT_FORBID_TOKENS):
+                issues.append("likely_wrong_row")
+                local_suspicious = True
+            if abs(parsed) > 1e12:
+                issues.append("suspicious_amount_extreme")
+                local_suspicious = True
+
+        if standard_metric in RATIO_METRICS:
+            if abs(parsed) > 300:
+                issues.append("invalid_ratio_too_large")
+                local_invalid = True
+            if any(tok in row_label for tok in ("资产", "负债", "现金流", "现金流量")):
+                issues.append("likely_wrong_row")
+                local_suspicious = True
+
+        if standard_metric in EPS_METRICS:
+            if abs(parsed) > 100:
+                issues.append("invalid_eps_too_large")
+                local_invalid = True
+            if any(tok in row_label for tok in ("资产", "负债", "现金流", "现金流量")):
+                issues.append("likely_wrong_row")
+                local_suspicious = True
+
+        if standard_metric in MULTIPLE_METRICS:
+            if standard_metric == "P/B" and abs(parsed) > 100:
+                issues.append("suspicious_pb_too_large")
+                local_suspicious = True
+            if standard_metric in {"P/E", "EV/EBITDA"} and abs(parsed) > 1000:
+                issues.append("suspicious_multiple_extreme")
+                local_suspicious = True
+
+        if local_invalid:
+            invalid_year_count += 1
+        elif local_suspicious:
+            pass
+        else:
+            valid_year_count += 1
+
+    uniq_issues: List[str] = []
+    seen = set()
+    for item in issues:
+        if item and item not in seen:
+            uniq_issues.append(item)
+            seen.add(item)
+
+    hard_invalid_flags = {
+        "label_value_glued",
+        "non_numeric_value",
+        "amount_has_percent",
+        "invalid_ratio_too_large",
+        "invalid_eps_too_large",
+    }
+    issue_set = set(uniq_issues)
+    if not has_non_empty:
+        status = "empty"
+    elif issue_set & hard_invalid_flags:
+        # Candidate-level hard block: do not allow obviously wrong values into wide table.
+        status = "invalid"
+    elif invalid_year_count > 0:
+        status = "suspicious"
+    elif uniq_issues:
+        status = "suspicious"
+    else:
+        status = "valid"
+
+    return {
+        "value_validation_status": status,
+        "value_issue_flags": "|".join(uniq_issues),
+        "valid_year_count": int(valid_year_count),
+        "invalid_year_count": int(invalid_year_count),
+        "parsed_values": parsed_values,
+    }
 
 
 def _is_yoy_like_label(label: str) -> bool:
@@ -544,10 +725,19 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                     header_repaired=bool(header_meta.get("header_repaired", False)),
                     header_source_row=header_meta.get("header_source_row", ""),
                 )
+                value_validation = _validate_metric_candidate_values(
+                    metric_match["standard_metric"],
+                    {raw_col: detail_row.get(raw_col, "") for raw_col, _ in year_columns},
+                    source_row_label=source_row_label,
+                )
+                detail_row["value_validation_status"] = value_validation["value_validation_status"]
+                detail_row["value_issue_flags"] = value_validation["value_issue_flags"]
+                detail_row["valid_year_count"] = value_validation["valid_year_count"]
+                detail_row["invalid_year_count"] = value_validation["invalid_year_count"]
                 detail_rows.append(detail_row)
                 if logger and config.get("log_detail", True):
                     logger.info(
-                        "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s label_detect_method=%s match_method=%s confidence=%.2f non_empty_year_count=%s header_repaired=%s header_source_row=%s",
+                        "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s label_detect_method=%s match_method=%s confidence=%.2f non_empty_year_count=%s value_validation_status=%s value_issue_flags=%s header_repaired=%s header_source_row=%s",
                         detail_row["标准指标"],
                         table_index,
                         source_table_type,
@@ -557,6 +747,8 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                         detail_row["match_method"],
                         detail_row["confidence"],
                         detail_row["non_empty_year_count"],
+                        detail_row["value_validation_status"],
+                        detail_row["value_issue_flags"],
                         detail_row["header_repaired"],
                         detail_row["header_source_row"],
                     )
@@ -574,16 +766,24 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
             best_rows[metric] = detail_row
             continue
         current_key = (
+            _value_status_rank(detail_row.get("value_validation_status", "")),
+            -int(detail_row.get("valid_year_count", 0)),
+            _count_issue_flags(detail_row.get("value_issue_flags", "")),
+            -float(detail_row.get("confidence", 0) or 0),
             _source_type_rank(detail_row["source_table_type"]),
             -int(detail_row["non_empty_year_count"]),
-            int(detail_row["source_table_index"]),
-            int(detail_row["source_row_index"]),
+            _table_row_sort_key(detail_row["source_table_index"]),
+            _table_row_sort_key(detail_row["source_row_index"]),
         )
         best_key = (
+            _value_status_rank(current_best.get("value_validation_status", "")),
+            -int(current_best.get("valid_year_count", 0)),
+            _count_issue_flags(current_best.get("value_issue_flags", "")),
+            -float(current_best.get("confidence", 0) or 0),
             _source_type_rank(current_best["source_table_type"]),
             -int(current_best["non_empty_year_count"]),
-            int(current_best["source_table_index"]),
-            int(current_best["source_row_index"]),
+            _table_row_sort_key(current_best["source_table_index"]),
+            _table_row_sort_key(current_best["source_row_index"]),
         )
         if current_key < best_key:
             best_rows[metric] = detail_row
@@ -599,21 +799,27 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
             "来源指标名": "",
             "来源列": "",
             "置信度": "",
+            "value_validation_status": "",
+            "value_issue_flags": "",
         }
         for year_col in ordered_year_columns:
             row[year_col] = ""
         if selected:
-            for year_col in ordered_year_columns:
-                row[year_col] = selected.get(year_col, "")
+            selected_status = _normalize_text(selected.get("value_validation_status", ""))
+            if selected_status != "invalid":
+                for year_col in ordered_year_columns:
+                    row[year_col] = selected.get(year_col, "")
             row["来源表"] = selected["source_table_index"]
             row["来源类型"] = selected["source_table_type"]
             row["来源行号"] = selected["source_row_index"]
             row["来源指标名"] = selected["source_row_label"]
             row["来源列"] = selected["source_column"]
             row["置信度"] = selected["confidence"]
+            row["value_validation_status"] = selected_status
+            row["value_issue_flags"] = selected.get("value_issue_flags", "")
         wide_rows.append(row)
 
-    wide_columns = ["指标"] + ordered_year_columns + ["来源表", "来源类型", "来源行号", "来源指标名", "来源列", "置信度"]
+    wide_columns = ["指标"] + ordered_year_columns + ["来源表", "来源类型", "来源行号", "来源指标名", "来源列", "置信度", "value_validation_status", "value_issue_flags"]
     detail_columns = [
         "标准指标",
         "source_row_label",
@@ -627,6 +833,10 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
         "match_method",
         "confidence",
         "non_empty_year_count",
+        "value_validation_status",
+        "value_issue_flags",
+        "valid_year_count",
+        "invalid_year_count",
         "header_repaired",
         "header_source_row",
     ] + ordered_year_columns
