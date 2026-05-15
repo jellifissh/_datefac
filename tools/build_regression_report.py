@@ -1,6 +1,7 @@
 import argparse
 import os
 import re
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -10,17 +11,18 @@ import pandas as pd
 
 DEFAULT_OUTPUT_DIR = r"D:\_datefac\output"
 DEFAULT_REPORT_PATH = r"D:\_datefac\output\08_批量回归报告.xlsx"
-ASSET_SUFFIX = "\u8d44\u4ea7\u5305"  # 资产包
-CORE_METRICS = [
-    "\u8425\u4e1a\u6536\u5165",  # 营业收入
-    "\u5f52\u5c5e\u6bcd\u516c\u53f8\u51c0\u5229\u6da6",  # 归属母公司净利润
-    "\u6bdb\u5229\u7387",  # 毛利率
-    "ROE",
-    "\u6bcf\u80a1\u6536\u76ca",  # 每股收益
-    "P/E",
-    "P/B",
-    "EV/EBITDA",
-]
+DEFAULT_VALUE_REPORT_PATH = r"D:\_datefac\output\19_financial_value_validation_report.xlsx"
+ASSET_SUFFIX = "资产包"
+CORE_METRICS = ["营业收入", "归属母公司净利润", "毛利率", "ROE", "每股收益", "P/E", "P/B", "EV/EBITDA"]
+TIER_ORDER = ["A_usable", "B_partial_review", "C_label_only_untrusted", "D_insufficient", "E_hard_sample"]
+
+
+def _norm(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, float) and pd.isna(v):
+        return ""
+    return str(v).strip()
 
 
 def _safe_preview(df: pd.DataFrame, max_rows: int = 3, max_cols: int = 5, max_chars: int = 300) -> str:
@@ -38,7 +40,7 @@ def _safe_preview(df: pd.DataFrame, max_rows: int = 3, max_cols: int = 5, max_ch
 
 
 def _safe_sheet_name(name: str, used: set) -> str:
-    cleaned = re.sub(r"[\\/*?:\[\]]", "_", str(name or "Sheet"))[:31] or "Sheet"
+    cleaned = re.sub(r"[\\/*?:\[\]]", "_", _norm(name or "Sheet"))[:31] or "Sheet"
     base = cleaned
     i = 1
     while cleaned in used:
@@ -107,16 +109,16 @@ def _load_consistency_map(output_dir: str) -> Dict[str, Dict[str, object]]:
 
     mapping: Dict[str, Dict[str, object]] = {}
     for _, row in df.iterrows():
-        name = str(row.get("asset_package", "")).strip()
+        name = _norm(row.get("asset_package", ""))
         if not name:
             continue
         mapping[name] = {
-            "consistency_status": str(row.get("consistency_status", "")).strip(),
-            "issue_flags": str(row.get("issue_flags", "")).strip(),
-            "recommendation": str(row.get("recommendation", "")).strip(),
+            "consistency_status": _norm(row.get("consistency_status", "")),
+            "issue_flags": _norm(row.get("issue_flags", "")),
+            "recommendation": _norm(row.get("recommendation", "")),
             "can_join_financial_regression": bool(row.get("can_join_financial_regression", False)),
-            "missing_core_artifacts": str(row.get("missing_core_artifacts", "")).strip(),
-            "missing_optional_artifacts": str(row.get("missing_optional_artifacts", "")).strip(),
+            "missing_core_artifacts": _norm(row.get("missing_core_artifacts", "")),
+            "missing_optional_artifacts": _norm(row.get("missing_optional_artifacts", "")),
         }
     return mapping
 
@@ -131,10 +133,99 @@ def _load_raw_vs_structured_map(output_dir: str) -> Dict[str, Dict[str, object]]
         return {}
     mapping: Dict[str, Dict[str, object]] = {}
     for _, row in df.iterrows():
-        name = str(row.get("asset_package", "")).strip()
+        name = _norm(row.get("asset_package", ""))
         if not name:
             continue
         mapping[name] = row.to_dict()
+    return mapping
+
+
+def _load_value_validation_maps(output_dir: str) -> Tuple[bool, Dict[str, Dict[str, object]], Dict[Tuple[str, str, str], Dict[str, object]]]:
+    report_path = Path(DEFAULT_VALUE_REPORT_PATH)
+    if not report_path.exists():
+        return False, {}, {}
+
+    try:
+        asset_df = pd.read_excel(str(report_path), sheet_name="asset_value_summary")
+        detail_df = pd.read_excel(str(report_path), sheet_name="metric_value_details")
+    except Exception:
+        return False, {}, {}
+
+    asset_map: Dict[str, Dict[str, object]] = {}
+    for _, row in asset_df.iterrows():
+        asset = _norm(row.get("asset_package", ""))
+        if not asset:
+            continue
+        asset_map[asset] = {
+            "label_hit_metric_count": row.get("label_hit_metric_count", ""),
+            "value_valid_metric_count": row.get("value_valid_metric_count", ""),
+            "value_suspicious_metric_count": row.get("value_suspicious_metric_count", ""),
+            "value_invalid_metric_count": row.get("value_invalid_metric_count", ""),
+            "value_missing_metric_count": row.get("missing_metric_count", ""),
+            "value_valid_ratio": row.get("value_valid_ratio", ""),
+            "primary_value_issue": _norm(row.get("primary_value_issue", "")),
+        }
+
+    detail_map: Dict[Tuple[str, str, str], Dict[str, object]] = {}
+    grouped = defaultdict(list)
+    for _, row in detail_df.fillna("").iterrows():
+        asset = _norm(row.get("asset_package", ""))
+        metric = _norm(row.get("standard_metric", ""))
+        label = _norm(row.get("source_row_label", ""))
+        if not asset or not metric:
+            continue
+        grouped[(asset, metric, label)].append(row.to_dict())
+
+    for key, rows in grouped.items():
+        valid_cnt = sum(1 for r in rows if _norm(r.get("validation_status", "")) == "valid")
+        invalid_cnt = sum(1 for r in rows if _norm(r.get("validation_status", "")) == "invalid")
+        suspicious_cnt = sum(1 for r in rows if _norm(r.get("validation_status", "")) == "suspicious")
+        flags = []
+        for r in rows:
+            parts = [x.strip() for x in _norm(r.get("issue_flags", "")).split("|") if x.strip()]
+            flags.extend(parts)
+        uniq_flags = []
+        seen = set()
+        for f in flags:
+            if f not in seen:
+                seen.add(f)
+                uniq_flags.append(f)
+        if invalid_cnt > 0:
+            status = "invalid"
+        elif valid_cnt > 0 and suspicious_cnt == 0:
+            status = "valid"
+        elif valid_cnt > 0 or suspicious_cnt > 0:
+            status = "suspicious"
+        else:
+            status = "missing"
+
+        detail_map[key] = {
+            "value_validation_status": status,
+            "value_issue_flags": "|".join(uniq_flags),
+            "valid_year_count": int(valid_cnt),
+            "invalid_year_count": int(invalid_cnt),
+        }
+    return True, asset_map, detail_map
+
+
+def _load_hard_probe_map(output_dir: str) -> Dict[str, Dict[str, object]]:
+    root = Path(output_dir)
+    mapping: Dict[str, Dict[str, object]] = {}
+    for pkg in _find_asset_packages(output_dir):
+        file_21 = _latest_file(pkg, "21_")
+        if not file_21:
+            continue
+        try:
+            df = pd.read_excel(str(file_21), sheet_name="group_summary")
+            if df.empty or "value_valid_metric_count" not in df.columns:
+                continue
+            best = int(pd.to_numeric(df["value_valid_metric_count"], errors="coerce").fillna(0).max())
+            mapping[pkg.name] = {
+                "probe_file": str(file_21),
+                "best_value_valid_metric_count": best,
+            }
+        except Exception:
+            continue
     return mapping
 
 
@@ -154,7 +245,7 @@ def _raw_quality(file_02a: Optional[Path]) -> Tuple[Dict[str, object], List[Dict
     try:
         xls = pd.ExcelFile(str(file_02a))
         idx_sheet = next(
-            (s for s in xls.sheet_names if s.startswith("00_") and ("\u7d22\u5f15" in s or "index" in s.lower())),
+            (s for s in xls.sheet_names if s.startswith("00_") and ("索引" in s or "index" in s.lower())),
             xls.sheet_names[0],
         )
         idx_df = pd.read_excel(str(file_02a), sheet_name=idx_sheet)
@@ -188,7 +279,7 @@ def _structured_quality(file_02: Optional[Path]) -> Tuple[Dict[str, object], Lis
         return summary, rows
     try:
         xls = pd.ExcelFile(str(file_02))
-        data_sheets = [s for s in xls.sheet_names if not (s.startswith("00_") and ("\u76ee\u5f55" in s or "index" in s.lower()))]
+        data_sheets = [s for s in xls.sheet_names if not (s.startswith("00_") and ("目录" in s or "index" in s.lower()))]
         summary["structured_sheet_count"] = len(data_sheets)
         for s in data_sheets:
             try:
@@ -232,6 +323,7 @@ def _financial_quality(file_05: Optional[Path]) -> Tuple[Dict[str, object], List
         "financial_missing_metrics": "|".join(CORE_METRICS),
         "header_repaired_count": 0,
         "suspicious_misextract_count": 0,
+        "invalid_blocked_count": 0,
     }
     rows: List[Dict[str, object]] = []
     if not summary["has_05"]:
@@ -244,7 +336,7 @@ def _financial_quality(file_05: Optional[Path]) -> Tuple[Dict[str, object], List
             df = pd.read_excel(str(file_05), sheet_name=sn)
             if "source_row_label" in df.columns:
                 detail_df = df
-                metric_col = "\u6807\u51c6\u6307\u6807" if "\u6807\u51c6\u6307\u6807" in df.columns else df.columns[0]
+                metric_col = "标准指标" if "标准指标" in df.columns else df.columns[0]
                 break
         if detail_df is None or detail_df.empty:
             return summary, rows
@@ -263,16 +355,25 @@ def _financial_quality(file_05: Optional[Path]) -> Tuple[Dict[str, object], List
                 detail_df["header_repaired"].astype(str).str.lower().isin(["true", "1"]).sum()
             )
 
-        suspicious = 0
         if "source_row_label" in detail_df.columns:
             labels = detail_df["source_row_label"].fillna("").astype(str)
             suspicious = int(
-                labels.str.contains(
-                    "\u540c\u6bd4|\u589e\u901f|\u589e\u957f\u7387|\u6263\u975e|\u5c11\u6570\u80a1\u4e1c\u635f\u76ca",
-                    regex=True,
-                ).sum()
+                labels.str.contains("同比|增速|增长率|扣非|少数股东损益", regex=True, na=False).sum()
             )
-        summary["suspicious_misextract_count"] = suspicious
+            summary["suspicious_misextract_count"] = suspicious
+
+        # invalid blocked in wide table: invalid status with all year cells empty.
+        wide_df = pd.read_excel(str(file_05), sheet_name=0).fillna("")
+        year_cols = [c for c in wide_df.columns if re.fullmatch(r"20\d{2}[AE]?", _norm(c))]
+        blocked = 0
+        if "value_validation_status" in wide_df.columns and year_cols:
+            for _, row in wide_df.iterrows():
+                if _norm(row.get("value_validation_status", "")) != "invalid":
+                    continue
+                has_year_value = any(_norm(row.get(c, "")) != "" for c in year_cols)
+                if not has_year_value:
+                    blocked += 1
+        summary["invalid_blocked_count"] = int(blocked)
         rows = detail_df.to_dict(orient="records")
     except Exception:
         pass
@@ -319,22 +420,22 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
 
     if extraction_status == "bad" and financial_status in ("bad", "partial"):
         bottleneck = "extraction_layer"
-        recommendation = "优先改抽取后端/后端仲裁，不要继续修 05"
+        recommendation = "优先改抽取后端/后端仲裁，不要继续修05"
     elif raw_table_count < 3 and hit_count < 3:
         bottleneck = "extraction_coverage"
         recommendation = "原始表格覆盖不足，优先检查抽取后端/缓存/漏表"
     elif extraction_status == "good" and financial_status == "bad":
         bottleneck = "financial_standardizer"
-        recommendation = "优先修 05 规则"
+        recommendation = "优先修05规则"
     elif financial_status == "good":
         bottleneck = "none_or_minor"
         recommendation = "保持当前策略，优先扩样本验证"
     elif postprocess_status == "partial":
         bottleneck = "postprocess_layer"
-        recommendation = "复核 02 相对 02A 的丢表/过滤"
+        recommendation = "复核02相对02A的丢表/过滤"
     else:
         bottleneck = "financial_standardizer"
-        recommendation = "定向审计 05 未命中指标"
+        recommendation = "定向审计05未命中指标"
 
     return {
         "extraction_layer_status": extraction_status,
@@ -345,10 +446,57 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
     }
 
 
-def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dict[str, int]]:
+def _top_issue_flags_from_detail_rows(rows: List[Dict[str, object]], topn: int = 3) -> str:
+    flags = []
+    for r in rows:
+        text = _norm(r.get("issue_flags", ""))
+        if not text:
+            continue
+        flags.extend([x.strip() for x in text.split("|") if x.strip()])
+    if not flags:
+        return ""
+    c = Counter(flags)
+    return "|".join([f"{k}:{int(v)}" for k, v in c.most_common(topn)])
+
+
+def _compute_data_tier(
+    label_hit_metric_count: int,
+    value_valid_metric_count: int,
+    value_invalid_metric_count: int,
+    hard_probe_best_valid: Optional[int],
+) -> str:
+    if (value_valid_metric_count == 0 and label_hit_metric_count >= 6) or (
+        hard_probe_best_valid is not None and hard_probe_best_valid == 0
+    ):
+        return "E_hard_sample"
+    if value_valid_metric_count >= 6 and value_invalid_metric_count == 0:
+        return "A_usable"
+    if 3 <= value_valid_metric_count < 6:
+        return "B_partial_review"
+    if label_hit_metric_count >= 6 and value_valid_metric_count < 3:
+        return "C_label_only_untrusted"
+    if label_hit_metric_count < 3:
+        return "D_insufficient"
+    return "B_partial_review"
+
+
+def _tier_recommendation(tier: str) -> str:
+    mapping = {
+        "A_usable": "可进入下游AI分析，但仍保留来源追溯",
+        "B_partial_review": "可部分进入报告，缺失/可疑指标需要人工复核",
+        "C_label_only_untrusted": "标签命中但值不可信，优先修列对齐/值绑定，不要直接进入分析",
+        "D_insufficient": "抽取或结构化覆盖不足，优先检查02A/02",
+        "E_hard_sample": "当前规则不适合自动处理，建议更强后端或人工复核",
+    }
+    return mapping.get(tier, "建议人工复核")
+
+
+def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dict[str, float]]:
     packages = _find_asset_packages(output_dir)
     consistency_map = _load_consistency_map(output_dir)
     raw_vs_map = _load_raw_vs_structured_map(output_dir)
+    has_value_report, value_asset_map, value_detail_map = _load_value_validation_maps(output_dir)
+    hard_probe_map = _load_hard_probe_map(output_dir)
 
     summary_rows: List[Dict[str, object]] = []
     asset_details_rows: List[Dict[str, object]] = []
@@ -364,20 +512,18 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
     for pkg in packages:
         asset = pkg.name
         cinfo = consistency_map.get(asset, {})
-        consistency_status = str(cinfo.get("consistency_status", "")).strip()
-        issue_flags = str(cinfo.get("issue_flags", "")).strip()
-        missing_core = str(cinfo.get("missing_core_artifacts", "")).strip()
-        missing_optional = str(cinfo.get("missing_optional_artifacts", "")).strip()
+        consistency_status = _norm(cinfo.get("consistency_status", ""))
+        issue_flags = _norm(cinfo.get("issue_flags", ""))
+        missing_core = _norm(cinfo.get("missing_core_artifacts", ""))
+        missing_optional = _norm(cinfo.get("missing_optional_artifacts", ""))
 
         file_02a = _latest_file(pkg, "02A_")
         file_02 = _latest_02(pkg)
         file_05 = _latest_file(pkg, "05_")
 
-        # Fallback if consistency report does not yet provide can_join field.
         can_join = bool(cinfo.get("can_join_financial_regression", False))
         if "can_join_financial_regression" not in cinfo:
             can_join = bool(file_02a and file_02 and file_05)
-
         is_eligible = bool(consistency_status == "OK" or can_join)
 
         if consistency_status == "OK":
@@ -401,6 +547,7 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
                 "financial_missing_metrics": "|".join(CORE_METRICS),
                 "header_repaired_count": 0,
                 "suspicious_misextract_count": 0,
+                "invalid_blocked_count": 0,
             },
             [],
         )
@@ -419,8 +566,8 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
         }
 
         if asset in raw_vs_map:
-            summary_row["raw_vs_structured_diagnosis"] = str(raw_vs_map[asset].get("diagnosis", ""))
-            summary_row["raw_vs_structured_error"] = str(raw_vs_map[asset].get("error_message", ""))
+            summary_row["raw_vs_structured_diagnosis"] = _norm(raw_vs_map[asset].get("diagnosis", ""))
+            summary_row["raw_vs_structured_error"] = _norm(raw_vs_map[asset].get("error_message", ""))
         else:
             summary_row["raw_vs_structured_diagnosis"] = ""
             summary_row["raw_vs_structured_error"] = ""
@@ -430,8 +577,49 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
 
         if not is_eligible:
             summary_row["primary_bottleneck"] = "core_artifacts_missing"
-            summary_row["recommendation"] = "缺少 02A/02/05，先补核心产物后再纳入 05 回归"
+            summary_row["recommendation"] = "缺少02A/02/05，先补核心产物后再纳入05回归"
             summary_row["financial_standardization_status"] = "bad"
+
+        # Value-quality enrichment from report 19.
+        if has_value_report and asset in value_asset_map:
+            v = value_asset_map[asset]
+            summary_row["label_hit_metric_count"] = v.get("label_hit_metric_count", "")
+            summary_row["value_valid_metric_count"] = v.get("value_valid_metric_count", "")
+            summary_row["value_suspicious_metric_count"] = v.get("value_suspicious_metric_count", "")
+            summary_row["value_invalid_metric_count"] = v.get("value_invalid_metric_count", "")
+            summary_row["value_missing_metric_count"] = v.get("value_missing_metric_count", "")
+            summary_row["value_valid_ratio"] = v.get("value_valid_ratio", "")
+
+            # top issue flags from 19 detail rows
+            detail_rows_for_asset = []
+            for (a, _, _), vv in value_detail_map.items():
+                if a == asset:
+                    detail_rows_for_asset.append({"issue_flags": vv.get("value_issue_flags", "")})
+            summary_row["value_top_issue_flags"] = _top_issue_flags_from_detail_rows(detail_rows_for_asset)
+            summary_row["invalid_blocked_count"] = summary_row.get("invalid_blocked_count", 0)
+
+            hard_best = None
+            if asset in hard_probe_map:
+                hard_best = hard_probe_map[asset].get("best_value_valid_metric_count")
+            tier = _compute_data_tier(
+                int(summary_row.get("label_hit_metric_count", 0) or 0),
+                int(summary_row.get("value_valid_metric_count", 0) or 0),
+                int(summary_row.get("value_invalid_metric_count", 0) or 0),
+                int(hard_best) if hard_best is not None else None,
+            )
+            summary_row["data_usability_tier"] = tier
+            summary_row["value_quality_recommendation"] = _tier_recommendation(tier)
+        else:
+            summary_row["label_hit_metric_count"] = ""
+            summary_row["value_valid_metric_count"] = ""
+            summary_row["value_suspicious_metric_count"] = ""
+            summary_row["value_invalid_metric_count"] = ""
+            summary_row["value_missing_metric_count"] = ""
+            summary_row["value_valid_ratio"] = ""
+            summary_row["invalid_blocked_count"] = ""
+            summary_row["value_top_issue_flags"] = ""
+            summary_row["data_usability_tier"] = ""
+            summary_row["value_quality_recommendation"] = ""
 
         summary_rows.append(summary_row)
 
@@ -446,6 +634,22 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             for r in financial_rows:
                 rec = {"asset_package": asset}
                 rec.update(r)
+                metric = _norm(rec.get("标准指标", rec.get("指标", "")))
+                label = _norm(rec.get("source_row_label", ""))
+                dkey = (asset, metric, label)
+                if dkey in value_detail_map:
+                    vv = value_detail_map[dkey]
+                    rec.setdefault("value_validation_status", vv.get("value_validation_status", ""))
+                    rec.setdefault("value_issue_flags", vv.get("value_issue_flags", ""))
+                    rec.setdefault("valid_year_count", vv.get("valid_year_count", ""))
+                    rec.setdefault("invalid_year_count", vv.get("invalid_year_count", ""))
+                # required columns in sheet even if 19 not available
+                rec.setdefault("value_validation_status", _norm(rec.get("value_validation_status", "")))
+                rec.setdefault("value_issue_flags", _norm(rec.get("value_issue_flags", "")))
+                rec.setdefault("valid_year_count", rec.get("valid_year_count", ""))
+                rec.setdefault("invalid_year_count", rec.get("invalid_year_count", ""))
+                rec.setdefault("value_repair_applied", rec.get("value_repair_applied", ""))
+                rec.setdefault("value_repair_strategy", rec.get("value_repair_strategy", ""))
                 financial_metric_rows.append(rec)
 
         for r in raw_rows:
@@ -453,6 +657,8 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             rec.update(r)
             raw_table_quality_rows.append(rec)
 
+        tier = _norm(summary_row.get("data_usability_tier", ""))
+        value_rec = _norm(summary_row.get("value_quality_recommendation", ""))
         rec_rows.append(
             {
                 "asset_package": asset,
@@ -464,6 +670,8 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
                 "extraction_layer_status": summary_row["extraction_layer_status"],
                 "postprocess_layer_status": summary_row["postprocess_layer_status"],
                 "financial_standardization_status": summary_row["financial_standardization_status"],
+                "data_usability_tier": tier,
+                "value_quality_recommendation": value_rec,
             }
         )
 
@@ -484,7 +692,26 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
         report_path,
     )
 
-    counters = {
+    # Tier counters on eligible assets.
+    eligible_df = summary_df[summary_df.get("regression_eligible", False) == True] if not summary_df.empty else pd.DataFrame()
+    tier_counts = {tier: 0 for tier in TIER_ORDER}
+    if not eligible_df.empty and "data_usability_tier" in eligible_df.columns:
+        vc = eligible_df["data_usability_tier"].fillna("").astype(str).value_counts()
+        for t in TIER_ORDER:
+            tier_counts[t] = int(vc.get(t, 0))
+
+    total_label_hit_metrics = 0
+    total_value_valid_metrics = 0
+    overall_value_valid_ratio = 0.0
+    if not eligible_df.empty and "label_hit_metric_count" in eligible_df.columns:
+        total_label_hit_metrics = int(pd.to_numeric(eligible_df["label_hit_metric_count"], errors="coerce").fillna(0).sum())
+    if not eligible_df.empty and "value_valid_metric_count" in eligible_df.columns:
+        total_value_valid_metrics = int(pd.to_numeric(eligible_df["value_valid_metric_count"], errors="coerce").fillna(0).sum())
+    denom = int(len(eligible_df) * len(CORE_METRICS)) if len(eligible_df) > 0 else 0
+    if denom > 0:
+        overall_value_valid_ratio = round(total_value_valid_metrics / denom, 4)
+
+    counters: Dict[str, float] = {
         "total_asset_packages": len(packages),
         "summary_rows": len(summary_df),
         "asset_details_rows": len(asset_details_df),
@@ -495,12 +722,22 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
         "consistency_ok_count": consistency_ok_count,
         "consistency_warning_but_eligible_count": warning_but_eligible_count,
         "core_artifacts_missing_count": core_missing_count,
+        "total_regression_eligible_assets": eligible_count,
+        "A_usable_count": tier_counts["A_usable"],
+        "B_partial_review_count": tier_counts["B_partial_review"],
+        "C_label_only_untrusted_count": tier_counts["C_label_only_untrusted"],
+        "D_insufficient_count": tier_counts["D_insufficient"],
+        "E_hard_sample_count": tier_counts["E_hard_sample"],
+        "total_label_hit_metrics": total_label_hit_metrics,
+        "total_value_valid_metrics": total_value_valid_metrics,
+        "overall_value_valid_ratio": overall_value_valid_ratio,
+        "has_value_report": int(has_value_report),
     }
     return final, counters
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build batch regression report with layer diagnostics.")
+    parser = argparse.ArgumentParser(description="Build batch regression report with layer diagnostics and value-quality tiers.")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="Output root containing *_资产包 directories.")
     parser.add_argument("--report-path", default=DEFAULT_REPORT_PATH, help="Target report xlsx path.")
     args = parser.parse_args()
@@ -516,6 +753,14 @@ def main() -> None:
         "口径统计: total_asset_packages={total_asset_packages}, regression_eligible_asset_count={regression_eligible_asset_count}, "
         "consistency_ok_count={consistency_ok_count}, consistency_warning_but_eligible_count={consistency_warning_but_eligible_count}, "
         "core_artifacts_missing_count={core_artifacts_missing_count}".format(**counters)
+    )
+    print(
+        "tier统计: A={A_usable_count}, B={B_partial_review_count}, C={C_label_only_untrusted_count}, "
+        "D={D_insufficient_count}, E={E_hard_sample_count}".format(**counters)
+    )
+    print(
+        "value统计: total_label_hit_metrics={total_label_hit_metrics}, total_value_valid_metrics={total_value_valid_metrics}, "
+        "overall_value_valid_ratio={overall_value_valid_ratio}".format(**counters)
     )
 
 
