@@ -103,6 +103,18 @@ RATIO_METRICS = {"毛利率", "ROE"}
 EPS_METRICS = {"每股收益"}
 MULTIPLE_METRICS = {"P/E", "P/B", "EV/EBITDA"}
 AMOUNT_FORBID_TOKENS = ("税金", "资产", "负债", "现金流", "现金流量", "营业成本")
+VALUE_REPAIR_FORBID_TOKENS = (
+    "税金",
+    "营业成本",
+    "成本",
+    "资产",
+    "负债",
+    "现金流",
+    "少数股东",
+    "扣非",
+    "减值",
+    "费用",
+)
 
 
 def _resolve_config(config=None) -> Dict[str, object]:
@@ -407,6 +419,179 @@ def _validate_metric_candidate_values(
     }
 
 
+def _metric_strong_aliases(standard_metric: str, matched_alias: Optional[str] = None) -> List[str]:
+    aliases = []
+    for alias in STANDARD_METRIC_ALIASES.get(standard_metric, []):
+        text = _normalize_text(alias)
+        if text:
+            aliases.append(text)
+    if _normalize_text(matched_alias):
+        aliases.append(_normalize_text(matched_alias))
+
+    if standard_metric == "归属母公司净利润":
+        aliases.extend(
+            [
+                "归母净利润",
+                "归母净利",
+                "归属于母公司净利润",
+                "归属于母公司股东的净利润",
+            ]
+        )
+    if standard_metric == "EV/EBITDA":
+        aliases.extend(["EV EBITDA", "EVEBITDA"])
+    if standard_metric == "每股收益":
+        aliases.extend(["EPS（元）", "EPS(元)", "EPS（摊薄/元）", "EPS(摊薄/元)"])
+
+    uniq: List[str] = []
+    seen = set()
+    for alias in aliases + [standard_metric]:
+        if alias and alias not in seen:
+            seen.add(alias)
+            uniq.append(alias)
+    return uniq
+
+
+def _contains_forbid_repair_context(text: str) -> bool:
+    value = _normalize_text(text)
+    if not value:
+        return False
+    return any(tok in value for tok in VALUE_REPAIR_FORBID_TOKENS)
+
+
+def _raw_starts_with_alias(raw_value: str, alias_texts: List[str]) -> bool:
+    raw_compact = _compact_text(raw_value)
+    if not raw_compact:
+        return False
+    for alias in alias_texts:
+        compact_alias = _compact_text(alias)
+        if compact_alias and raw_compact.startswith(compact_alias):
+            return True
+    return False
+
+
+def _is_label_high_match(label: str, alias_texts: List[str]) -> bool:
+    label_compact = _compact_text(label)
+    if not label_compact:
+        return False
+    for alias in alias_texts:
+        compact_alias = _compact_text(alias)
+        if not compact_alias:
+            continue
+        if label_compact == compact_alias:
+            return True
+        if compact_alias in label_compact and len(label_compact) - len(compact_alias) <= 3:
+            return True
+    return False
+
+
+def _safe_numeric_to_text(number: Optional[float]) -> str:
+    if number is None:
+        return ""
+    try:
+        value = float(number)
+    except Exception:
+        return ""
+    if abs(value - round(value)) < 1e-9:
+        return str(int(round(value)))
+    return str(value)
+
+
+def _repair_metric_candidate_values(
+    standard_metric: str,
+    year_values: Dict[str, str],
+    source_row_label: Optional[str] = None,
+    matched_alias: Optional[str] = None,
+) -> Dict[str, object]:
+    repaired_values = {k: _normalize_text(v) for k, v in (year_values or {}).items()}
+    alias_texts = _metric_strong_aliases(standard_metric, matched_alias=matched_alias)
+    source_label = _normalize_text(source_row_label)
+    source_label_match = _is_label_high_match(source_label, alias_texts)
+
+    repair_applied = False
+    repaired_year_count = 0
+    issue_flags: List[str] = []
+    used_strategies: List[str] = []
+
+    source_has_forbid_context = _contains_forbid_repair_context(source_label)
+
+    for year_col, raw_val in repaired_values.items():
+        raw = _normalize_text(raw_val)
+        if not raw:
+            continue
+        raw_has_forbid_context = _contains_forbid_repair_context(raw)
+        if source_has_forbid_context or raw_has_forbid_context:
+            issue_flags.append("forbid_context_no_repair")
+            continue
+        if standard_metric in AMOUNT_METRICS and ("%" in raw or "％" in raw):
+            issue_flags.append("amount_percent_no_repair")
+            continue
+
+        numeric_tokens = re.findall(r"[-+]?\d+(?:\.\d+)?", raw)
+        repaired_number: Optional[float] = None
+        strategy = ""
+
+        # Strategy 1: trailing number from matching label prefix.
+        if _raw_starts_with_alias(raw, alias_texts) and numeric_tokens:
+            try:
+                repaired_number = float(numeric_tokens[-1])
+                strategy = "trailing_number_from_matching_label"
+            except Exception:
+                repaired_number = None
+
+        # Strategy 2: exact/synonym row label + one text label and one number.
+        if repaired_number is None:
+            if source_label_match and _raw_starts_with_alias(raw, alias_texts) and len(numeric_tokens) == 1:
+                try:
+                    repaired_number = float(numeric_tokens[0])
+                    strategy = "numeric_tail_if_source_label_exact"
+                except Exception:
+                    repaired_number = None
+
+        if repaired_number is None:
+            continue
+
+        # Safety guard: do not "repair" obviously wrong extreme values.
+        if standard_metric in RATIO_METRICS and abs(repaired_number) > 300:
+            issue_flags.append("ratio_extreme_no_repair")
+            continue
+        if standard_metric in EPS_METRICS and abs(repaired_number) > 100:
+            issue_flags.append("eps_extreme_no_repair")
+            continue
+
+        repaired_text = _safe_numeric_to_text(repaired_number)
+        if not repaired_text:
+            issue_flags.append("repair_parse_failed")
+            continue
+
+        if repaired_text != raw:
+            repaired_values[year_col] = repaired_text
+            repair_applied = True
+            repaired_year_count += 1
+            used_strategies.append(strategy)
+
+    unique_flags: List[str] = []
+    seen_flags = set()
+    for flag in issue_flags:
+        if flag and flag not in seen_flags:
+            unique_flags.append(flag)
+            seen_flags.add(flag)
+
+    if not used_strategies:
+        repair_strategy = ""
+    elif len(set(used_strategies)) == 1:
+        repair_strategy = used_strategies[0]
+    else:
+        repair_strategy = "mixed_strategies"
+
+    return {
+        "repaired_year_values": repaired_values,
+        "repair_applied": repair_applied,
+        "repair_strategy": repair_strategy,
+        "repair_issue_flags": "|".join(unique_flags),
+        "repaired_year_count": int(repaired_year_count),
+    }
+
+
 def _is_yoy_like_label(label: str) -> bool:
     compact = _compact_text(label)
     if not compact:
@@ -635,6 +820,11 @@ def _build_detail_row(
         "non_empty_year_count": non_empty_year_count,
         "header_repaired": header_repaired,
         "header_source_row": header_source_row,
+        "raw_year_values": "",
+        "value_repair_applied": False,
+        "value_repair_strategy": "",
+        "value_repair_issue_flags": "",
+        "repaired_year_count": 0,
     }
     for raw_col, _ in year_columns:
         detail_row[raw_col] = _normalize_text(values.get(raw_col, ""))
@@ -725,11 +915,30 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                     header_repaired=bool(header_meta.get("header_repaired", False)),
                     header_source_row=header_meta.get("header_source_row", ""),
                 )
+                raw_year_values = {raw_col: detail_row.get(raw_col, "") for raw_col, _ in year_columns}
+                detail_row["raw_year_values"] = "|".join(
+                    f"{raw_col}:{_normalize_text(raw_year_values.get(raw_col, ''))}" for raw_col, _ in year_columns
+                )
+                repair_result = _repair_metric_candidate_values(
+                    metric_match["standard_metric"],
+                    raw_year_values,
+                    source_row_label=source_row_label,
+                    matched_alias=metric_match.get("matched_alias"),
+                )
+                candidate_year_values = repair_result.get("repaired_year_values", raw_year_values) or raw_year_values
+                if bool(repair_result.get("repair_applied", False)):
+                    for raw_col, _ in year_columns:
+                        detail_row[raw_col] = _normalize_text(candidate_year_values.get(raw_col, ""))
                 value_validation = _validate_metric_candidate_values(
                     metric_match["standard_metric"],
-                    {raw_col: detail_row.get(raw_col, "") for raw_col, _ in year_columns},
+                    candidate_year_values,
                     source_row_label=source_row_label,
                 )
+                detail_row["_selected_year_values"] = candidate_year_values
+                detail_row["value_repair_applied"] = bool(repair_result.get("repair_applied", False))
+                detail_row["value_repair_strategy"] = repair_result.get("repair_strategy", "")
+                detail_row["value_repair_issue_flags"] = repair_result.get("repair_issue_flags", "")
+                detail_row["repaired_year_count"] = int(repair_result.get("repaired_year_count", 0))
                 detail_row["value_validation_status"] = value_validation["value_validation_status"]
                 detail_row["value_issue_flags"] = value_validation["value_issue_flags"]
                 detail_row["valid_year_count"] = value_validation["valid_year_count"]
@@ -737,7 +946,7 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                 detail_rows.append(detail_row)
                 if logger and config.get("log_detail", True):
                     logger.info(
-                        "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s label_detect_method=%s match_method=%s confidence=%.2f non_empty_year_count=%s value_validation_status=%s value_issue_flags=%s header_repaired=%s header_source_row=%s",
+                        "FinancialStandardizer hit: metric=%s table_index=%s table_type=%s row_index=%s label=%s label_detect_method=%s match_method=%s confidence=%.2f non_empty_year_count=%s value_repair_applied=%s value_repair_strategy=%s repaired_year_count=%s value_validation_status=%s value_issue_flags=%s header_repaired=%s header_source_row=%s",
                         detail_row["标准指标"],
                         table_index,
                         source_table_type,
@@ -747,6 +956,9 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                         detail_row["match_method"],
                         detail_row["confidence"],
                         detail_row["non_empty_year_count"],
+                        detail_row["value_repair_applied"],
+                        detail_row["value_repair_strategy"],
+                        detail_row["repaired_year_count"],
                         detail_row["value_validation_status"],
                         detail_row["value_issue_flags"],
                         detail_row["header_repaired"],
@@ -799,6 +1011,8 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
             "来源指标名": "",
             "来源列": "",
             "置信度": "",
+            "value_repair_applied": "",
+            "value_repair_strategy": "",
             "value_validation_status": "",
             "value_issue_flags": "",
         }
@@ -807,19 +1021,22 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
         if selected:
             selected_status = _normalize_text(selected.get("value_validation_status", ""))
             if selected_status != "invalid":
+                selected_year_values = selected.get("_selected_year_values", {}) or {}
                 for year_col in ordered_year_columns:
-                    row[year_col] = selected.get(year_col, "")
+                    row[year_col] = selected_year_values.get(year_col, selected.get(year_col, ""))
             row["来源表"] = selected["source_table_index"]
             row["来源类型"] = selected["source_table_type"]
             row["来源行号"] = selected["source_row_index"]
             row["来源指标名"] = selected["source_row_label"]
             row["来源列"] = selected["source_column"]
             row["置信度"] = selected["confidence"]
+            row["value_repair_applied"] = selected.get("value_repair_applied", False)
+            row["value_repair_strategy"] = selected.get("value_repair_strategy", "")
             row["value_validation_status"] = selected_status
             row["value_issue_flags"] = selected.get("value_issue_flags", "")
         wide_rows.append(row)
 
-    wide_columns = ["指标"] + ordered_year_columns + ["来源表", "来源类型", "来源行号", "来源指标名", "来源列", "置信度", "value_validation_status", "value_issue_flags"]
+    wide_columns = ["指标"] + ordered_year_columns + ["来源表", "来源类型", "来源行号", "来源指标名", "来源列", "置信度", "value_repair_applied", "value_repair_strategy", "value_validation_status", "value_issue_flags"]
     detail_columns = [
         "标准指标",
         "source_row_label",
@@ -833,6 +1050,11 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
         "match_method",
         "confidence",
         "non_empty_year_count",
+        "raw_year_values",
+        "value_repair_applied",
+        "value_repair_strategy",
+        "value_repair_issue_flags",
+        "repaired_year_count",
         "value_validation_status",
         "value_issue_flags",
         "valid_year_count",
