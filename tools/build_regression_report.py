@@ -12,9 +12,24 @@ import pandas as pd
 DEFAULT_OUTPUT_DIR = r"D:\_datefac\output"
 DEFAULT_REPORT_PATH = r"D:\_datefac\output\08_批量回归报告.xlsx"
 DEFAULT_VALUE_REPORT_PATH = r"D:\_datefac\output\19_financial_value_validation_report.xlsx"
-ASSET_SUFFIX = "资产包"
-CORE_METRICS = ["营业收入", "归属母公司净利润", "毛利率", "ROE", "每股收益", "P/E", "P/B", "EV/EBITDA"]
+DEFAULT_REPORT_TYPE_PATH = r"D:\_datefac\output\24_report_type_diagnostics.xlsx"
+
+ASSET_SUFFIX = "_资产包"
+CORE_METRICS = [
+    "\u8425\u4e1a\u6536\u5165",
+    "\u5f52\u5c5e\u6bcd\u516c\u53f8\u51c0\u5229\u6da6",
+    "\u6bdb\u5229\u7387",
+    "ROE",
+    "\u6bcf\u80a1\u6536\u76ca",
+    "P/E",
+    "P/B",
+    "EV/EBITDA",
+]
 TIER_ORDER = ["A_usable", "B_partial_review", "C_label_only_untrusted", "D_insufficient", "E_hard_sample"]
+
+EVAL_SCOPE_IN = "in_scope_8_metric_eval"
+EVAL_SCOPE_OUT = "out_of_scope_non_target"
+EVAL_SCOPE_UNKNOWN = "unknown_scope"
 
 
 def _norm(v) -> str:
@@ -23,6 +38,19 @@ def _norm(v) -> str:
     if isinstance(v, float) and pd.isna(v):
         return ""
     return str(v).strip()
+
+
+def _to_bool(v) -> bool:
+    if isinstance(v, bool):
+        return v
+    return _norm(v).lower() in {"1", "true", "yes", "y"}
+
+
+def _to_int(v, default: int = 0) -> int:
+    try:
+        return int(float(v))
+    except Exception:
+        return default
 
 
 def _safe_preview(df: pd.DataFrame, max_rows: int = 3, max_cols: int = 5, max_chars: int = 300) -> str:
@@ -74,10 +102,7 @@ def _find_asset_packages(output_dir: str) -> List[Path]:
     root = Path(output_dir)
     if not root.is_dir():
         return []
-    return sorted(
-        [x for x in root.iterdir() if x.is_dir() and x.name.endswith(f"_{ASSET_SUFFIX}")],
-        key=lambda x: x.name,
-    )
+    return sorted([x for x in root.iterdir() if x.is_dir() and x.name.endswith(ASSET_SUFFIX)], key=lambda x: x.name)
 
 
 def _latest_file(pkg: Path, prefix: str) -> Optional[Path]:
@@ -116,7 +141,7 @@ def _load_consistency_map(output_dir: str) -> Dict[str, Dict[str, object]]:
             "consistency_status": _norm(row.get("consistency_status", "")),
             "issue_flags": _norm(row.get("issue_flags", "")),
             "recommendation": _norm(row.get("recommendation", "")),
-            "can_join_financial_regression": bool(row.get("can_join_financial_regression", False)),
+            "can_join_financial_regression": _to_bool(row.get("can_join_financial_regression", False)),
             "missing_core_artifacts": _norm(row.get("missing_core_artifacts", "")),
             "missing_optional_artifacts": _norm(row.get("missing_optional_artifacts", "")),
         }
@@ -140,7 +165,7 @@ def _load_raw_vs_structured_map(output_dir: str) -> Dict[str, Dict[str, object]]
     return mapping
 
 
-def _load_value_validation_maps(output_dir: str) -> Tuple[bool, Dict[str, Dict[str, object]], Dict[Tuple[str, str, str], Dict[str, object]]]:
+def _load_value_validation_maps() -> Tuple[bool, Dict[str, Dict[str, object]], Dict[Tuple[str, str, str], Dict[str, object]]]:
     report_path = Path(DEFAULT_VALUE_REPORT_PATH)
     if not report_path.exists():
         return False, {}, {}
@@ -180,16 +205,18 @@ def _load_value_validation_maps(output_dir: str) -> Tuple[bool, Dict[str, Dict[s
         valid_cnt = sum(1 for r in rows if _norm(r.get("validation_status", "")) == "valid")
         invalid_cnt = sum(1 for r in rows if _norm(r.get("validation_status", "")) == "invalid")
         suspicious_cnt = sum(1 for r in rows if _norm(r.get("validation_status", "")) == "suspicious")
+
         flags = []
         for r in rows:
-            parts = [x.strip() for x in _norm(r.get("issue_flags", "")).split("|") if x.strip()]
-            flags.extend(parts)
+            flags.extend([x.strip() for x in _norm(r.get("issue_flags", "")).split("|") if x.strip()])
+
         uniq_flags = []
         seen = set()
         for f in flags:
             if f not in seen:
                 seen.add(f)
                 uniq_flags.append(f)
+
         if invalid_cnt > 0:
             status = "invalid"
         elif valid_cnt > 0 and suspicious_cnt == 0:
@@ -209,7 +236,6 @@ def _load_value_validation_maps(output_dir: str) -> Tuple[bool, Dict[str, Dict[s
 
 
 def _load_hard_probe_map(output_dir: str) -> Dict[str, Dict[str, object]]:
-    root = Path(output_dir)
     mapping: Dict[str, Dict[str, object]] = {}
     for pkg in _find_asset_packages(output_dir):
         file_21 = _latest_file(pkg, "21_")
@@ -220,13 +246,42 @@ def _load_hard_probe_map(output_dir: str) -> Dict[str, Dict[str, object]]:
             if df.empty or "value_valid_metric_count" not in df.columns:
                 continue
             best = int(pd.to_numeric(df["value_valid_metric_count"], errors="coerce").fillna(0).max())
-            mapping[pkg.name] = {
-                "probe_file": str(file_21),
-                "best_value_valid_metric_count": best,
-            }
+            mapping[pkg.name] = {"probe_file": str(file_21), "best_value_valid_metric_count": best}
         except Exception:
             continue
     return mapping
+
+
+def _load_report_type_map() -> Tuple[bool, Dict[str, Dict[str, object]]]:
+    path = Path(DEFAULT_REPORT_TYPE_PATH)
+    if not path.exists():
+        return False, {}
+    try:
+        df = pd.read_excel(path, sheet_name="report_type_summary", engine="openpyxl").fillna("")
+    except Exception:
+        return False, {}
+
+    mapping: Dict[str, Dict[str, object]] = {}
+    for _, row in df.iterrows():
+        asset = _norm(row.get("asset_package"))
+        if not asset:
+            continue
+        mapping[asset] = {
+            "report_type": _norm(row.get("report_type")),
+            "target_applicability": _norm(row.get("target_applicability")),
+            "should_include_in_8_metric_eval": _to_bool(row.get("should_include_in_8_metric_eval")),
+        }
+    return True, mapping
+
+
+def _eval_scope(report_type: str, target_applicability: str, include_in_eval: Optional[bool]) -> str:
+    if include_in_eval is True:
+        return EVAL_SCOPE_IN
+    if include_in_eval is False:
+        if _norm(target_applicability) or _norm(report_type):
+            return EVAL_SCOPE_OUT
+        return EVAL_SCOPE_UNKNOWN
+    return EVAL_SCOPE_UNKNOWN
 
 
 def _raw_quality(file_02a: Optional[Path]) -> Tuple[Dict[str, object], List[Dict[str, object]]]:
@@ -244,10 +299,7 @@ def _raw_quality(file_02a: Optional[Path]) -> Tuple[Dict[str, object], List[Dict
         return summary, rows
     try:
         xls = pd.ExcelFile(str(file_02a))
-        idx_sheet = next(
-            (s for s in xls.sheet_names if s.startswith("00_") and ("索引" in s or "index" in s.lower())),
-            xls.sheet_names[0],
-        )
+        idx_sheet = next((s for s in xls.sheet_names if s.startswith("00_")), xls.sheet_names[0])
         idx_df = pd.read_excel(str(file_02a), sheet_name=idx_sheet)
         if idx_df.empty:
             return summary, rows
@@ -263,6 +315,7 @@ def _raw_quality(file_02a: Optional[Path]) -> Tuple[Dict[str, object], List[Dict
         if bcol:
             bvc = idx_df[bcol].fillna("NA").astype(str).value_counts()
             summary["raw_backend_distribution"] = "|".join([f"{k}:{int(v)}" for k, v in bvc.items()])
+
         table_cnt = int(summary["raw_table_count"])
         good_ok = int(summary["raw_good_count"]) + int(summary["raw_ok_count"])
         summary["raw_good_ok_ratio"] = round((good_ok / table_cnt), 4) if table_cnt > 0 else 0.0
@@ -279,15 +332,13 @@ def _structured_quality(file_02: Optional[Path]) -> Tuple[Dict[str, object], Lis
         return summary, rows
     try:
         xls = pd.ExcelFile(str(file_02))
-        data_sheets = [s for s in xls.sheet_names if not (s.startswith("00_") and ("目录" in s or "index" in s.lower()))]
+        data_sheets = [s for s in xls.sheet_names if not s.startswith("00_")]
         summary["structured_sheet_count"] = len(data_sheets)
         for s in data_sheets:
             try:
                 df = pd.read_excel(str(file_02), sheet_name=s)
                 total = int(df.shape[0] * df.shape[1]) if not df.empty else 0
-                non_empty = (
-                    int(df.fillna("").astype(str).replace(r"^\s*$", "", regex=True).ne("").sum().sum()) if total else 0
-                )
+                non_empty = int(df.fillna("").astype(str).replace(r"^\s*$", "", regex=True).ne("").sum().sum()) if total else 0
                 empty_ratio = round((total - non_empty) / total, 4) if total else 0.0
                 rows.append(
                     {
@@ -299,15 +350,7 @@ def _structured_quality(file_02: Optional[Path]) -> Tuple[Dict[str, object], Lis
                     }
                 )
             except Exception as exc:
-                rows.append(
-                    {
-                        "sheet_name": s,
-                        "row_count": "",
-                        "col_count": "",
-                        "empty_cell_ratio": "",
-                        "preview": f"read_error: {exc}",
-                    }
-                )
+                rows.append({"sheet_name": s, "row_count": "", "col_count": "", "empty_cell_ratio": "", "preview": f"read_error: {exc}"})
     except Exception:
         pass
     return summary, rows
@@ -336,10 +379,11 @@ def _financial_quality(file_05: Optional[Path]) -> Tuple[Dict[str, object], List
             df = pd.read_excel(str(file_05), sheet_name=sn)
             if "source_row_label" in df.columns:
                 detail_df = df
-                metric_col = "标准指标" if "标准指标" in df.columns else df.columns[0]
+                metric_col = "标准指标" if "标准指标" in df.columns else ("standard_metric" if "standard_metric" in df.columns else df.columns[0])
                 break
         if detail_df is None or detail_df.empty:
             return summary, rows
+
         detail_df = detail_df.fillna("")
         hits = sorted(set(detail_df[metric_col].astype(str).str.strip().tolist()))
         hits = [h for h in hits if h]
@@ -351,18 +395,13 @@ def _financial_quality(file_05: Optional[Path]) -> Tuple[Dict[str, object], List
         summary["financial_missing_metrics"] = "|".join(missing)
 
         if "header_repaired" in detail_df.columns:
-            summary["header_repaired_count"] = int(
-                detail_df["header_repaired"].astype(str).str.lower().isin(["true", "1"]).sum()
-            )
+            summary["header_repaired_count"] = int(detail_df["header_repaired"].astype(str).str.lower().isin(["true", "1"]).sum())
 
         if "source_row_label" in detail_df.columns:
             labels = detail_df["source_row_label"].fillna("").astype(str)
-            suspicious = int(
-                labels.str.contains("同比|增速|增长率|扣非|少数股东损益", regex=True, na=False).sum()
-            )
+            suspicious = int(labels.str.contains("同比|增速|增长率|扣非|少数股东损益", regex=True, na=False).sum())
             summary["suspicious_misextract_count"] = suspicious
 
-        # invalid blocked in wide table: invalid status with all year cells empty.
         wide_df = pd.read_excel(str(file_05), sheet_name=0).fillna("")
         year_cols = [c for c in wide_df.columns if re.fullmatch(r"20\d{2}[AE]?", _norm(c))]
         blocked = 0
@@ -423,7 +462,7 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
         recommendation = "优先改抽取后端/后端仲裁，不要继续修05"
     elif raw_table_count < 3 and hit_count < 3:
         bottleneck = "extraction_coverage"
-        recommendation = "原始表格覆盖不足，优先检查抽取后端/缓存/漏表"
+        recommendation = "原始表覆盖不足，优先检查抽取链路"
     elif extraction_status == "good" and financial_status == "bad":
         bottleneck = "financial_standardizer"
         recommendation = "优先修05规则"
@@ -432,7 +471,7 @@ def _diagnose(summary: Dict[str, object]) -> Dict[str, str]:
         recommendation = "保持当前策略，优先扩样本验证"
     elif postprocess_status == "partial":
         bottleneck = "postprocess_layer"
-        recommendation = "复核02相对02A的丢表/过滤"
+        recommendation = "复核02相对02A的丢表与过滤"
     else:
         bottleneck = "financial_standardizer"
         recommendation = "定向审计05未命中指标"
@@ -484,7 +523,7 @@ def _tier_recommendation(tier: str) -> str:
     mapping = {
         "A_usable": "可进入下游AI分析，但仍保留来源追溯",
         "B_partial_review": "可部分进入报告，缺失/可疑指标需要人工复核",
-        "C_label_only_untrusted": "标签命中但值不可信，优先修列对齐/值绑定，不要直接进入分析",
+        "C_label_only_untrusted": "标签命中但值不可信，优先修列对齐和值绑定",
         "D_insufficient": "抽取或结构化覆盖不足，优先检查02A/02",
         "E_hard_sample": "当前规则不适合自动处理，建议更强后端或人工复核",
     }
@@ -495,8 +534,9 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
     packages = _find_asset_packages(output_dir)
     consistency_map = _load_consistency_map(output_dir)
     raw_vs_map = _load_raw_vs_structured_map(output_dir)
-    has_value_report, value_asset_map, value_detail_map = _load_value_validation_maps(output_dir)
+    has_value_report, value_asset_map, value_detail_map = _load_value_validation_maps()
     hard_probe_map = _load_hard_probe_map(output_dir)
+    has_report_type, report_type_map = _load_report_type_map()
 
     summary_rows: List[Dict[str, object]] = []
     asset_details_rows: List[Dict[str, object]] = []
@@ -521,7 +561,7 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
         file_02 = _latest_02(pkg)
         file_05 = _latest_file(pkg, "05_")
 
-        can_join = bool(cinfo.get("can_join_financial_regression", False))
+        can_join = _to_bool(cinfo.get("can_join_financial_regression", False))
         if "can_join_financial_regression" not in cinfo:
             can_join = bool(file_02a and file_02 and file_05)
         is_eligible = bool(consistency_status == "OK" or can_join)
@@ -552,6 +592,14 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             [],
         )
 
+        rt = report_type_map.get(asset, {}) if has_report_type else {}
+        report_type = _norm(rt.get("report_type", ""))
+        target_applicability = _norm(rt.get("target_applicability", ""))
+        include_8_metric = rt.get("should_include_in_8_metric_eval", None)
+        if include_8_metric is not None:
+            include_8_metric = bool(include_8_metric)
+        eval_scope = _eval_scope(report_type, target_applicability, include_8_metric)
+
         summary_row: Dict[str, object] = {
             "asset_package": asset,
             "consistency_status": consistency_status,
@@ -563,6 +611,10 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             **raw_summary,
             **structured_summary,
             **financial_summary,
+            "report_type": report_type,
+            "target_applicability": target_applicability,
+            "should_include_in_8_metric_eval": include_8_metric if include_8_metric is not None else "",
+            "eval_scope": eval_scope,
         }
 
         if asset in raw_vs_map:
@@ -572,15 +624,13 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             summary_row["raw_vs_structured_diagnosis"] = ""
             summary_row["raw_vs_structured_error"] = ""
 
-        diag = _diagnose(summary_row)
-        summary_row.update(diag)
+        summary_row.update(_diagnose(summary_row))
 
         if not is_eligible:
             summary_row["primary_bottleneck"] = "core_artifacts_missing"
             summary_row["recommendation"] = "缺少02A/02/05，先补核心产物后再纳入05回归"
             summary_row["financial_standardization_status"] = "bad"
 
-        # Value-quality enrichment from report 19.
         if has_value_report and asset in value_asset_map:
             v = value_asset_map[asset]
             summary_row["label_hit_metric_count"] = v.get("label_hit_metric_count", "")
@@ -590,7 +640,6 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             summary_row["value_missing_metric_count"] = v.get("value_missing_metric_count", "")
             summary_row["value_valid_ratio"] = v.get("value_valid_ratio", "")
 
-            # top issue flags from 19 detail rows
             detail_rows_for_asset = []
             for (a, _, _), vv in value_detail_map.items():
                 if a == asset:
@@ -602,10 +651,10 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             if asset in hard_probe_map:
                 hard_best = hard_probe_map[asset].get("best_value_valid_metric_count")
             tier = _compute_data_tier(
-                int(summary_row.get("label_hit_metric_count", 0) or 0),
-                int(summary_row.get("value_valid_metric_count", 0) or 0),
-                int(summary_row.get("value_invalid_metric_count", 0) or 0),
-                int(hard_best) if hard_best is not None else None,
+                _to_int(summary_row.get("label_hit_metric_count", 0), 0),
+                _to_int(summary_row.get("value_valid_metric_count", 0), 0),
+                _to_int(summary_row.get("value_invalid_metric_count", 0), 0),
+                _to_int(hard_best, 0) if hard_best is not None else None,
             )
             summary_row["data_usability_tier"] = tier
             summary_row["value_quality_recommendation"] = _tier_recommendation(tier)
@@ -621,6 +670,9 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             summary_row["data_usability_tier"] = ""
             summary_row["value_quality_recommendation"] = ""
 
+        if eval_scope == EVAL_SCOPE_OUT:
+            summary_row["recommendation"] = "不纳入8项核心财务指标质量统计；建议进入报告类型专用流程或跳过。"
+
         summary_rows.append(summary_row)
 
         for r in structured_rows:
@@ -634,7 +686,7 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             for r in financial_rows:
                 rec = {"asset_package": asset}
                 rec.update(r)
-                metric = _norm(rec.get("标准指标", rec.get("指标", "")))
+                metric = _norm(rec.get("标准指标", rec.get("standard_metric", rec.get("指标", ""))))
                 label = _norm(rec.get("source_row_label", ""))
                 dkey = (asset, metric, label)
                 if dkey in value_detail_map:
@@ -643,7 +695,6 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
                     rec.setdefault("value_issue_flags", vv.get("value_issue_flags", ""))
                     rec.setdefault("valid_year_count", vv.get("valid_year_count", ""))
                     rec.setdefault("invalid_year_count", vv.get("invalid_year_count", ""))
-                # required columns in sheet even if 19 not available
                 rec.setdefault("value_validation_status", _norm(rec.get("value_validation_status", "")))
                 rec.setdefault("value_issue_flags", _norm(rec.get("value_issue_flags", "")))
                 rec.setdefault("valid_year_count", rec.get("valid_year_count", ""))
@@ -657,8 +708,6 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
             rec.update(r)
             raw_table_quality_rows.append(rec)
 
-        tier = _norm(summary_row.get("data_usability_tier", ""))
-        value_rec = _norm(summary_row.get("value_quality_recommendation", ""))
         rec_rows.append(
             {
                 "asset_package": asset,
@@ -670,8 +719,12 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
                 "extraction_layer_status": summary_row["extraction_layer_status"],
                 "postprocess_layer_status": summary_row["postprocess_layer_status"],
                 "financial_standardization_status": summary_row["financial_standardization_status"],
-                "data_usability_tier": tier,
-                "value_quality_recommendation": value_rec,
+                "data_usability_tier": _norm(summary_row.get("data_usability_tier", "")),
+                "value_quality_recommendation": _norm(summary_row.get("value_quality_recommendation", "")),
+                "report_type": report_type,
+                "target_applicability": target_applicability,
+                "should_include_in_8_metric_eval": include_8_metric if include_8_metric is not None else "",
+                "eval_scope": eval_scope,
             }
         )
 
@@ -692,7 +745,7 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
         report_path,
     )
 
-    # Tier counters on eligible assets.
+    # full-scope stats (existing semantics).
     eligible_df = summary_df[summary_df.get("regression_eligible", False) == True] if not summary_df.empty else pd.DataFrame()
     tier_counts = {tier: 0 for tier in TIER_ORDER}
     if not eligible_df.empty and "data_usability_tier" in eligible_df.columns:
@@ -711,7 +764,36 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
     if denom > 0:
         overall_value_valid_ratio = round(total_value_valid_metrics / denom, 4)
 
+    # new report-type scope stats.
+    total_assets_all = len(summary_df)
+    total_assets_in_scope = int((summary_df.get("eval_scope", "") == EVAL_SCOPE_IN).sum()) if not summary_df.empty else 0
+    total_assets_out_of_scope = int((summary_df.get("eval_scope", "") == EVAL_SCOPE_OUT).sum()) if not summary_df.empty else 0
+    total_assets_unknown_scope = int((summary_df.get("eval_scope", "") == EVAL_SCOPE_UNKNOWN).sum()) if not summary_df.empty else 0
+
+    in_scope_eligible_df = summary_df[
+        (summary_df.get("regression_eligible", False) == True)
+        & (summary_df.get("eval_scope", "") == EVAL_SCOPE_IN)
+    ] if not summary_df.empty else pd.DataFrame()
+
+    in_scope_tier_counts = {tier: 0 for tier in TIER_ORDER}
+    if not in_scope_eligible_df.empty and "data_usability_tier" in in_scope_eligible_df.columns:
+        vc = in_scope_eligible_df["data_usability_tier"].fillna("").astype(str).value_counts()
+        for t in TIER_ORDER:
+            in_scope_tier_counts[t] = int(vc.get(t, 0))
+
+    in_scope_total_label_hit_metrics = 0
+    in_scope_total_value_valid_metrics = 0
+    in_scope_overall_value_valid_ratio = 0.0
+    if not in_scope_eligible_df.empty and "label_hit_metric_count" in in_scope_eligible_df.columns:
+        in_scope_total_label_hit_metrics = int(pd.to_numeric(in_scope_eligible_df["label_hit_metric_count"], errors="coerce").fillna(0).sum())
+    if not in_scope_eligible_df.empty and "value_valid_metric_count" in in_scope_eligible_df.columns:
+        in_scope_total_value_valid_metrics = int(pd.to_numeric(in_scope_eligible_df["value_valid_metric_count"], errors="coerce").fillna(0).sum())
+    in_scope_denom = int(len(in_scope_eligible_df) * len(CORE_METRICS)) if len(in_scope_eligible_df) > 0 else 0
+    if in_scope_denom > 0:
+        in_scope_overall_value_valid_ratio = round(in_scope_total_value_valid_metrics / in_scope_denom, 4)
+
     counters: Dict[str, float] = {
+        # existing counters
         "total_asset_packages": len(packages),
         "summary_rows": len(summary_df),
         "asset_details_rows": len(asset_details_df),
@@ -732,12 +814,26 @@ def build_regression_report(output_dir: str, report_path: str) -> Tuple[str, Dic
         "total_value_valid_metrics": total_value_valid_metrics,
         "overall_value_valid_ratio": overall_value_valid_ratio,
         "has_value_report": int(has_value_report),
+        # new scope counters
+        "total_assets_all": total_assets_all,
+        "total_assets_in_scope": total_assets_in_scope,
+        "total_assets_out_of_scope": total_assets_out_of_scope,
+        "total_assets_unknown_scope": total_assets_unknown_scope,
+        "in_scope_A_usable_count": in_scope_tier_counts["A_usable"],
+        "in_scope_B_partial_review_count": in_scope_tier_counts["B_partial_review"],
+        "in_scope_C_label_only_untrusted_count": in_scope_tier_counts["C_label_only_untrusted"],
+        "in_scope_D_insufficient_count": in_scope_tier_counts["D_insufficient"],
+        "in_scope_E_hard_sample_count": in_scope_tier_counts["E_hard_sample"],
+        "in_scope_total_label_hit_metrics": in_scope_total_label_hit_metrics,
+        "in_scope_total_value_valid_metrics": in_scope_total_value_valid_metrics,
+        "in_scope_overall_value_valid_ratio": in_scope_overall_value_valid_ratio,
+        "has_report_type_report": int(has_report_type),
     }
     return final, counters
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build batch regression report with layer diagnostics and value-quality tiers.")
+    parser = argparse.ArgumentParser(description="Build batch regression report with value tiers and report-type scope.")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="Output root containing *_资产包 directories.")
     parser.add_argument("--report-path", default=DEFAULT_REPORT_PATH, help="Target report xlsx path.")
     args = parser.parse_args()
@@ -750,19 +846,33 @@ def main() -> None:
         "raw_table_quality={raw_table_quality_rows}, recommendations={recommendations_rows}".format(**counters)
     )
     print(
-        "口径统计: total_asset_packages={total_asset_packages}, regression_eligible_asset_count={regression_eligible_asset_count}, "
+        "全量口径: total_asset_packages={total_asset_packages}, regression_eligible_asset_count={regression_eligible_asset_count}, "
         "consistency_ok_count={consistency_ok_count}, consistency_warning_but_eligible_count={consistency_warning_but_eligible_count}, "
         "core_artifacts_missing_count={core_artifacts_missing_count}".format(**counters)
     )
     print(
-        "tier统计: A={A_usable_count}, B={B_partial_review_count}, C={C_label_only_untrusted_count}, "
+        "tier统计(全量 eligible): A={A_usable_count}, B={B_partial_review_count}, C={C_label_only_untrusted_count}, "
         "D={D_insufficient_count}, E={E_hard_sample_count}".format(**counters)
     )
     print(
-        "value统计: total_label_hit_metrics={total_label_hit_metrics}, total_value_valid_metrics={total_value_valid_metrics}, "
+        "value统计(全量 eligible): total_label_hit_metrics={total_label_hit_metrics}, total_value_valid_metrics={total_value_valid_metrics}, "
         "overall_value_valid_ratio={overall_value_valid_ratio}".format(**counters)
+    )
+    print(
+        "scope统计: total_assets_all={total_assets_all}, total_assets_in_scope={total_assets_in_scope}, "
+        "total_assets_out_of_scope={total_assets_out_of_scope}, total_assets_unknown_scope={total_assets_unknown_scope}".format(**counters)
+    )
+    print(
+        "in_scope tier: A={in_scope_A_usable_count}, B={in_scope_B_partial_review_count}, C={in_scope_C_label_only_untrusted_count}, "
+        "D={in_scope_D_insufficient_count}, E={in_scope_E_hard_sample_count}".format(**counters)
+    )
+    print(
+        "in_scope value: in_scope_total_label_hit_metrics={in_scope_total_label_hit_metrics}, "
+        "in_scope_total_value_valid_metrics={in_scope_total_value_valid_metrics}, "
+        "in_scope_overall_value_valid_ratio={in_scope_overall_value_valid_ratio}".format(**counters)
     )
 
 
 if __name__ == "__main__":
     main()
+

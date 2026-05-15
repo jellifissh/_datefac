@@ -13,18 +13,16 @@ DEFAULT_INPUT_DIR = Path(r"D:\_datefac\input")
 DEFAULT_REPORT_08 = Path(r"D:\_datefac\output\08_批量回归报告.xlsx")
 DEFAULT_REPORT_19 = Path(r"D:\_datefac\output\19_financial_value_validation_report.xlsx")
 DEFAULT_REPORT_22 = Path(r"D:\_datefac\output\22_manual_review_queue.xlsx")
+DEFAULT_REPORT_24 = Path(r"D:\_datefac\output\24_report_type_diagnostics.xlsx")
 DEFAULT_REPORT_12 = Path(r"D:\_datefac\output\12_asset_consistency_report.xlsx")
 DEFAULT_REPORT_09 = Path(r"D:\_datefac\output\09_batch_run_status.xlsx")
 DEFAULT_OUTPUT_23_XLSX = Path(r"D:\_datefac\output\23_baseline_evaluation_report.xlsx")
 DEFAULT_OUTPUT_23_MD = Path(r"D:\_datefac\output\23_baseline_evaluation_summary.md")
 
-TIER_ORDER = [
-    "A_usable",
-    "B_partial_review",
-    "C_label_only_untrusted",
-    "D_insufficient",
-    "E_hard_sample",
-]
+TIER_ORDER = ["A_usable", "B_partial_review", "C_label_only_untrusted", "D_insufficient", "E_hard_sample"]
+EVAL_SCOPE_IN = "in_scope_8_metric_eval"
+EVAL_SCOPE_OUT = "out_of_scope_non_target"
+EVAL_SCOPE_UNKNOWN = "unknown_scope"
 
 
 def _norm(v) -> str:
@@ -52,8 +50,7 @@ def _to_float(v, default: float = 0.0) -> float:
 def _to_bool(v) -> bool:
     if isinstance(v, bool):
         return v
-    text = _norm(v).lower()
-    return text in {"1", "true", "yes", "y"}
+    return _norm(v).lower() in {"1", "true", "yes", "y"}
 
 
 def _split_flags(s: str) -> List[str]:
@@ -70,8 +67,7 @@ def _split_flags(s: str) -> List[str]:
 
 def _safe_sheet_name(name: str, used: set) -> str:
     raw = _norm(name) or "Sheet"
-    clean = "".join("_" if c in "\\/*?:[]"
-                    else c for c in raw)[:31] or "Sheet"
+    clean = "".join("_" if c in "\\/*?:[]" else c for c in raw)[:31] or "Sheet"
     base = clean
     i = 1
     while clean in used:
@@ -165,10 +161,6 @@ def _mode_or_empty(values: List[str]) -> str:
     return Counter(vals).most_common(1)[0][0]
 
 
-def _find_asset_dirs(output_dir: Path) -> List[Path]:
-    return sorted([p for p in output_dir.iterdir() if p.is_dir() and p.name.endswith("_资产包")]) if output_dir.exists() else []
-
-
 def _best_probe_for_asset(asset_dir: Path) -> str:
     try:
         cands = [p for p in asset_dir.glob("21_*.xlsx") if p.is_file()]
@@ -184,12 +176,42 @@ def _best_probe_for_asset(asset_dir: Path) -> str:
         return f"probe_read_error:{exc}"
 
 
+def _load_report_type_map(report_24: Optional[Path], output_dir: Path) -> Tuple[bool, Dict[str, Dict[str, object]]]:
+    p24 = _resolve_path(report_24, output_dir, "24")
+    if not p24 or not p24.exists():
+        return False, {}
+    try:
+        df = pd.read_excel(p24, sheet_name="report_type_summary", engine="openpyxl").fillna("")
+    except Exception:
+        return False, {}
+    mapping: Dict[str, Dict[str, object]] = {}
+    for _, r in df.iterrows():
+        asset = _norm(r.get("asset_package"))
+        if not asset:
+            continue
+        mapping[asset] = {
+            "report_type": _norm(r.get("report_type")),
+            "target_applicability": _norm(r.get("target_applicability")),
+            "should_include_in_8_metric_eval": _to_bool(r.get("should_include_in_8_metric_eval")),
+        }
+    return True, mapping
+
+
+def _eval_scope(report_type: str, target_applicability: str, include_flag) -> str:
+    if isinstance(include_flag, bool):
+        return EVAL_SCOPE_IN if include_flag else EVAL_SCOPE_OUT
+    if _norm(report_type) or _norm(target_applicability):
+        return EVAL_SCOPE_OUT if _norm(target_applicability) == "non_target" else EVAL_SCOPE_UNKNOWN
+    return EVAL_SCOPE_UNKNOWN
+
+
 def build_baseline_report(
     output_dir: Path,
     input_dir: Path,
     report_08: Optional[Path],
     report_19: Optional[Path],
     report_22: Optional[Path],
+    report_24: Optional[Path],
     report_12: Optional[Path],
     report_09: Optional[Path],
     output_xlsx: Path,
@@ -207,7 +229,6 @@ def build_baseline_report(
         raise FileNotFoundError("22 manual review queue report not found.")
 
     s08 = _read_sheet(r08, "summary")
-    fm08 = _read_sheet(r08, "financial_metrics")
     a19 = _read_sheet(r19, "asset_value_summary")
     c19 = _read_sheet(r19, "metric_candidate_summary")
     d19 = _read_sheet(r19, "metric_value_details")
@@ -217,11 +238,33 @@ def build_baseline_report(
     hs22 = _read_sheet(r22, "hard_samples")
     s12 = _read_sheet(report_12 if report_12 and report_12.exists() else None, "summary")
     s09 = _read_sheet(report_09 if report_09 and report_09.exists() else None, "summary")
+    has_report_type, report_type_map = _load_report_type_map(report_24, output_dir)
 
     if s08.empty:
         raise RuntimeError("08 summary sheet is empty.")
 
-    # baseline_summary
+    # inject report-type scope into s08 view
+    s08 = s08.copy()
+    s08["report_type"] = ""
+    s08["target_applicability"] = ""
+    s08["should_include_in_8_metric_eval"] = ""
+    s08["eval_scope"] = EVAL_SCOPE_UNKNOWN
+    if has_report_type:
+        for i, row in s08.iterrows():
+            asset = _norm(row.get("asset_package"))
+            rt = report_type_map.get(asset, {})
+            report_type = _norm(rt.get("report_type", ""))
+            target_app = _norm(rt.get("target_applicability", ""))
+            include = rt.get("should_include_in_8_metric_eval", "")
+            s08.at[i, "report_type"] = report_type
+            s08.at[i, "target_applicability"] = target_app
+            if isinstance(include, bool):
+                s08.at[i, "should_include_in_8_metric_eval"] = "true" if include else "false"
+            else:
+                s08.at[i, "should_include_in_8_metric_eval"] = ""
+            s08.at[i, "eval_scope"] = _eval_scope(report_type, target_app, include if isinstance(include, bool) else None)
+
+    # baseline_summary (full + in_scope)
     total_pdf_count = len(list(input_dir.glob("*.pdf"))) if input_dir.exists() else 0
     total_asset_packages = len(s08)
     eligible_mask = s08["regression_eligible"].apply(_to_bool) if "regression_eligible" in s08.columns else pd.Series([False] * len(s08))
@@ -238,6 +281,22 @@ def build_baseline_report(
     denom = max(1, len(eligible_df) * 8)
     overall_value_valid_ratio = round(total_value_valid_metrics / denom, 4)
     invalid_blocked_count = _to_int(pd.to_numeric(eligible_df.get("invalid_blocked_count", pd.Series(dtype=float)), errors="coerce").fillna(0).sum(), 0)
+
+    total_assets_all = len(s08)
+    total_assets_in_scope = int((s08["eval_scope"].astype(str) == EVAL_SCOPE_IN).sum())
+    total_assets_out_of_scope = int((s08["eval_scope"].astype(str) == EVAL_SCOPE_OUT).sum())
+    total_assets_unknown_scope = int((s08["eval_scope"].astype(str) == EVAL_SCOPE_UNKNOWN).sum())
+
+    in_scope_eligible_df = eligible_df[eligible_df["eval_scope"].astype(str) == EVAL_SCOPE_IN].copy()
+    in_scope_tier_counts = {t: 0 for t in TIER_ORDER}
+    if "data_usability_tier" in in_scope_eligible_df.columns:
+        vc = in_scope_eligible_df["data_usability_tier"].astype(str).value_counts()
+        for t in TIER_ORDER:
+            in_scope_tier_counts[t] = _to_int(vc.get(t, 0), 0)
+    in_scope_total_label_hit_metrics = _to_int(pd.to_numeric(in_scope_eligible_df.get("label_hit_metric_count", pd.Series(dtype=float)), errors="coerce").fillna(0).sum(), 0)
+    in_scope_total_value_valid_metrics = _to_int(pd.to_numeric(in_scope_eligible_df.get("value_valid_metric_count", pd.Series(dtype=float)), errors="coerce").fillna(0).sum(), 0)
+    in_scope_denom = max(1, len(in_scope_eligible_df) * 8)
+    in_scope_overall_value_valid_ratio = round(in_scope_total_value_valid_metrics / in_scope_denom, 4) if len(in_scope_eligible_df) > 0 else 0.0
 
     p_counter = Counter(rs22.get("review_priority", pd.Series(dtype=str)).astype(str).tolist()) if not rs22.empty else Counter()
 
@@ -265,14 +324,22 @@ def build_baseline_report(
             "manual_review_p1_count": _to_int(p_counter.get("P1", 0)),
             "manual_review_p2_count": _to_int(p_counter.get("P2", 0)),
             "manual_review_p3_count": _to_int(p_counter.get("P3", 0)),
+            "total_assets_all": total_assets_all,
+            "total_assets_in_scope_8_metric_eval": total_assets_in_scope,
+            "total_assets_out_of_scope_non_target": total_assets_out_of_scope,
+            "total_assets_unknown_scope": total_assets_unknown_scope,
+            "in_scope_A_usable_count": in_scope_tier_counts["A_usable"],
+            "in_scope_B_partial_review_count": in_scope_tier_counts["B_partial_review"],
+            "in_scope_C_label_only_untrusted_count": in_scope_tier_counts["C_label_only_untrusted"],
+            "in_scope_D_insufficient_count": in_scope_tier_counts["D_insufficient"],
+            "in_scope_E_hard_sample_count": in_scope_tier_counts["E_hard_sample"],
+            "in_scope_total_label_hit_metrics": in_scope_total_label_hit_metrics,
+            "in_scope_total_value_valid_metrics": in_scope_total_value_valid_metrics,
+            "in_scope_overall_value_valid_ratio": in_scope_overall_value_valid_ratio,
         }
     ])
 
     # asset_quality_matrix
-    asset_matrix = s08.copy()
-    if "asset_package" not in asset_matrix.columns:
-        raise RuntimeError("08 summary missing asset_package.")
-
     value_issue_map = {}
     if not a19.empty and "asset_package" in a19.columns:
         for _, r in a19.iterrows():
@@ -287,7 +354,7 @@ def build_baseline_report(
             }
 
     asset_rows = []
-    for _, r in asset_matrix.iterrows():
+    for _, r in s08.iterrows():
         asset = _norm(r.get("asset_package"))
         rr = review_map.get(asset, {})
         asset_rows.append(
@@ -303,11 +370,15 @@ def build_baseline_report(
                 "primary_value_issue": value_issue_map.get(asset, ""),
                 "review_priority": rr.get("review_priority", ""),
                 "recommended_action": rr.get("recommended_action", ""),
+                "report_type": _norm(r.get("report_type")),
+                "target_applicability": _norm(r.get("target_applicability")),
+                "should_include_in_8_metric_eval": r.get("should_include_in_8_metric_eval", ""),
+                "eval_scope": _norm(r.get("eval_scope")),
             }
         )
     asset_quality_matrix_df = pd.DataFrame(asset_rows)
 
-    # metric_quality_matrix
+    # metric_quality_matrix (keep all assets baseline behavior)
     metric_rows = []
     if not c19.empty and "standard_metric" in c19.columns and "asset_package" in c19.columns:
         assets_in_scope = sorted(c19["asset_package"].astype(str).unique().tolist())
@@ -414,74 +485,17 @@ def build_baseline_report(
                     "next_action": _norm(r.get("next_action")),
                 }
             )
-    else:
-        # fallback from 08 tier
-        for _, r in s08.iterrows():
-            if _norm(r.get("data_usability_tier")) != "E_hard_sample":
-                continue
-            asset = _norm(r.get("asset_package"))
-            asset_dir = output_dir / asset
-            hard_rows.append(
-                {
-                    "asset_package": asset,
-                    "reason": "tier=E_hard_sample",
-                    "best_probe_result": _best_probe_for_asset(asset_dir) if asset_dir.exists() else "",
-                    "next_action": "consider stronger backend or manual review",
-                }
-            )
     hard_samples_df = pd.DataFrame(hard_rows)
 
-    # next_iteration_plan static
+    # next_iteration_plan
     next_iteration_plan_df = pd.DataFrame(
         [
-            {
-                "priority": "P0",
-                "task": "审计并隔离 hard sample",
-                "target_files": "22_manual_review_queue.xlsx, 21_column_group_binding_probe.xlsx",
-                "expected_gain": "避免困难样本误导整体迭代方向",
-                "risk_level": "low",
-                "should_do_next": True,
-            },
-            {
-                "priority": "P1",
-                "task": "优化 D_insufficient 样本抽取覆盖",
-                "target_files": "02A/06A 诊断报告, 08 summary",
-                "expected_gain": "提升 label_hit 覆盖与可回归样本质量",
-                "risk_level": "medium",
-                "should_do_next": True,
-            },
-            {
-                "priority": "P1",
-                "task": "增强列绑定/表头对齐诊断与策略",
-                "target_files": "financial_standardizer.py probes, 19 report",
-                "expected_gain": "提升 value_valid_ratio",
-                "risk_level": "medium",
-                "should_do_next": True,
-            },
-            {
-                "priority": "P2",
-                "task": "扩展到 30 份样本回归",
-                "target_files": "08/19/22 aggregate reports",
-                "expected_gain": "验证泛化，识别过拟合",
-                "risk_level": "low",
-                "should_do_next": True,
-            },
-            {
-                "priority": "P2",
-                "task": "接入更强后端 POC（隔离分支）",
-                "target_files": "extractor probes only",
-                "expected_gain": "改善 hard sample 与低覆盖样本",
-                "risk_level": "medium",
-                "should_do_next": False,
-            },
-            {
-                "priority": "P3",
-                "task": "加入人工复核 UI/API",
-                "target_files": "22/23 reports as backend data source",
-                "expected_gain": "缩短人工闭环时间",
-                "risk_level": "medium",
-                "should_do_next": False,
-            },
+            {"priority": "P0", "task": "审计并隔离 hard sample", "target_files": "22_manual_review_queue.xlsx, 21_column_group_binding_probe.xlsx", "expected_gain": "避免困难样本误导整体迭代方向", "risk_level": "low", "should_do_next": True},
+            {"priority": "P1", "task": "优化 D_insufficient 样本抽取覆盖", "target_files": "02A/06A 诊断报告, 08 summary", "expected_gain": "提升 label_hit 覆盖与可回归样本质量", "risk_level": "medium", "should_do_next": True},
+            {"priority": "P1", "task": "增强列绑定/表头对齐诊断与策略", "target_files": "financial_standardizer.py probes, 19 report", "expected_gain": "提升 value_valid_ratio", "risk_level": "medium", "should_do_next": True},
+            {"priority": "P2", "task": "扩展到 30 份样本回归", "target_files": "08/19/22 aggregate reports", "expected_gain": "验证泛化，识别过拟合", "risk_level": "low", "should_do_next": True},
+            {"priority": "P2", "task": "接入更强后端 POC（隔离分支）", "target_files": "extractor probes only", "expected_gain": "改善 hard sample 与低覆盖样本", "risk_level": "medium", "should_do_next": False},
+            {"priority": "P3", "task": "加入人工复核 UI/API", "target_files": "22/23 reports as backend data source", "expected_gain": "缩短人工闭环时间", "risk_level": "medium", "should_do_next": False},
         ]
     )
 
@@ -504,12 +518,17 @@ def build_baseline_report(
             top_issues.append(f"- `{_norm(r.get('issue_flag'))}`: {_to_int(r.get('occurrence_count'))}")
     top_issues_text = "\n".join(top_issues) if top_issues else "- 无明显 issue flag 记录"
 
+    non_target_list = asset_quality_matrix_df[
+        asset_quality_matrix_df["eval_scope"].astype(str) == EVAL_SCOPE_OUT
+    ]["asset_package"].astype(str).tolist() if not asset_quality_matrix_df.empty else []
+    non_target_text = "\n".join([f"- {x}" for x in non_target_list]) if non_target_list else "- 无"
+
     md_text = "\n".join(
         [
             "# Baseline Evaluation Summary",
             "",
-            "## 1. 一句话结论",
-            f"当前基线在标签命中上可用，但值有效性仍是主要瓶颈（overall_value_valid_ratio={overall_value_valid_ratio}）。",
+            "## 1. 当前基线一句话结论",
+            f"当前基线在标签命中上可用，但值有效性仍是主要瓶颈（full={overall_value_valid_ratio}, in_scope={in_scope_overall_value_valid_ratio}）。",
             "",
             "## 2. 样本覆盖情况",
             f"- total_pdf_count: {total_pdf_count}",
@@ -518,7 +537,7 @@ def build_baseline_report(
             f"- consistency_report_available: {not s12.empty}",
             f"- batch_status_available: {not s09.empty}",
             "",
-            "## 3. A/B/C/D/E 分层统计",
+            "## 3. A/B/C/D/E 分层统计（全量 eligible）",
             f"- A_usable: {tier_counts['A_usable']}",
             f"- B_partial_review: {tier_counts['B_partial_review']}",
             f"- C_label_only_untrusted: {tier_counts['C_label_only_untrusted']}",
@@ -526,20 +545,36 @@ def build_baseline_report(
             f"- E_hard_sample: {tier_counts['E_hard_sample']}",
             "",
             "## 4. 标签命中 vs 值有效统计",
-            f"- total_label_hit_metrics: {total_label_hit_metrics}",
-            f"- total_value_valid_metrics: {total_value_valid_metrics}",
-            f"- overall_value_valid_ratio: {overall_value_valid_ratio}",
+            f"- full_total_label_hit_metrics: {total_label_hit_metrics}",
+            f"- full_total_value_valid_metrics: {total_value_valid_metrics}",
+            f"- full_overall_value_valid_ratio: {overall_value_valid_ratio}",
+            f"- in_scope_total_label_hit_metrics: {in_scope_total_label_hit_metrics}",
+            f"- in_scope_total_value_valid_metrics: {in_scope_total_value_valid_metrics}",
+            f"- in_scope_overall_value_valid_ratio: {in_scope_overall_value_valid_ratio}",
             f"- invalid_blocked_count: {invalid_blocked_count}",
             "",
             "## 5. 主要问题分布",
             top_issues_text,
             "",
-            "## 6. 当前可上线能力边界",
+            "## 6. 报告类型过滤口径",
+            f"- total_assets_all: {total_assets_all}",
+            f"- total_assets_in_scope_8_metric_eval: {total_assets_in_scope}",
+            f"- total_assets_out_of_scope_non_target: {total_assets_out_of_scope}",
+            f"- total_assets_unknown_scope: {total_assets_unknown_scope}",
+            "",
+            "## 7. 全量口径 vs 目标报告口径对比",
+            f"- full_overall_value_valid_ratio: {overall_value_valid_ratio}",
+            f"- in_scope_overall_value_valid_ratio: {in_scope_overall_value_valid_ratio}",
+            "",
+            "## 8. 非目标报告列表",
+            non_target_text,
+            "",
+            "## 9. 当前可上线能力边界",
             "- A/B 层样本可用于半自动分析，需保留人工复核。",
             "- D/E 层样本不应直接进入自动结论链路。",
-            "- hard sample 需单独策略或更强后端支持。",
+            "- 非目标报告不参与8项核心指标主评估。",
             "",
-            "## 7. 下一轮建议",
+            "## 10. 下一轮建议",
             "- 先处理 P0/P1 人工复核队列并固化修复收益口径。",
             "- 对 D_insufficient 做抽取覆盖审计后再扩样本到 30 份。",
             "- 保持主流程稳定，优先在独立 probe 中验证高风险改动。",
@@ -561,17 +596,31 @@ def build_baseline_report(
         "manual_review_p1_count": _to_int(p_counter.get("P1", 0)),
         "manual_review_p2_count": _to_int(p_counter.get("P2", 0)),
         "manual_review_p3_count": _to_int(p_counter.get("P3", 0)),
+        "total_assets_all": total_assets_all,
+        "total_assets_in_scope": total_assets_in_scope,
+        "total_assets_out_of_scope": total_assets_out_of_scope,
+        "total_assets_unknown_scope": total_assets_unknown_scope,
+        "in_scope_A_usable_count": in_scope_tier_counts["A_usable"],
+        "in_scope_B_partial_review_count": in_scope_tier_counts["B_partial_review"],
+        "in_scope_C_label_only_untrusted_count": in_scope_tier_counts["C_label_only_untrusted"],
+        "in_scope_D_insufficient_count": in_scope_tier_counts["D_insufficient"],
+        "in_scope_E_hard_sample_count": in_scope_tier_counts["E_hard_sample"],
+        "in_scope_total_label_hit_metrics": in_scope_total_label_hit_metrics,
+        "in_scope_total_value_valid_metrics": in_scope_total_value_valid_metrics,
+        "in_scope_overall_value_valid_ratio": in_scope_overall_value_valid_ratio,
+        "has_report_type_report": int(has_report_type),
     }
     return excel_path, md_path, stats
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build baseline evaluation report from 08/19/22.")
+    parser = argparse.ArgumentParser(description="Build baseline evaluation report from 08/19/22/24.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--input-dir", default=str(DEFAULT_INPUT_DIR))
     parser.add_argument("--report-08", default=str(DEFAULT_REPORT_08))
     parser.add_argument("--report-19", default=str(DEFAULT_REPORT_19))
     parser.add_argument("--report-22", default=str(DEFAULT_REPORT_22))
+    parser.add_argument("--report-24", default=str(DEFAULT_REPORT_24))
     parser.add_argument("--report-12", default=str(DEFAULT_REPORT_12))
     parser.add_argument("--report-09", default=str(DEFAULT_REPORT_09))
     parser.add_argument("--output-xlsx", default=str(DEFAULT_OUTPUT_23_XLSX))
@@ -584,6 +633,7 @@ def main() -> None:
         report_08=Path(args.report_08),
         report_19=Path(args.report_19),
         report_22=Path(args.report_22),
+        report_24=Path(args.report_24),
         report_12=Path(args.report_12),
         report_09=Path(args.report_09),
         output_xlsx=Path(args.output_xlsx),
@@ -593,14 +643,24 @@ def main() -> None:
     print(f"Excel 路径: {excel_path}")
     print(f"Markdown 路径: {md_path}")
     print(
-        "A/B/C/D/E: "
+        "A/B/C/D/E(full): "
         f"{stats['A_usable_count']}/{stats['B_partial_review_count']}/"
         f"{stats['C_label_only_untrusted_count']}/{stats['D_insufficient_count']}/"
         f"{stats['E_hard_sample_count']}"
     )
-    print(f"total_label_hit_metrics: {stats['total_label_hit_metrics']}")
-    print(f"total_value_valid_metrics: {stats['total_value_valid_metrics']}")
-    print(f"overall_value_valid_ratio: {stats['overall_value_valid_ratio']}")
+    print(f"total_assets_all: {stats['total_assets_all']}")
+    print(f"total_assets_in_scope: {stats['total_assets_in_scope']}")
+    print(f"total_assets_out_of_scope: {stats['total_assets_out_of_scope']}")
+    print(f"total_assets_unknown_scope: {stats['total_assets_unknown_scope']}")
+    print(
+        "A/B/C/D/E(in_scope): "
+        f"{stats['in_scope_A_usable_count']}/{stats['in_scope_B_partial_review_count']}/"
+        f"{stats['in_scope_C_label_only_untrusted_count']}/{stats['in_scope_D_insufficient_count']}/"
+        f"{stats['in_scope_E_hard_sample_count']}"
+    )
+    print(f"in_scope_total_label_hit_metrics: {stats['in_scope_total_label_hit_metrics']}")
+    print(f"in_scope_total_value_valid_metrics: {stats['in_scope_total_value_valid_metrics']}")
+    print(f"in_scope_overall_value_valid_ratio: {stats['in_scope_overall_value_valid_ratio']}")
     print(
         "manual_review_priority: "
         f"P0={stats['manual_review_p0_count']}, "
@@ -612,4 +672,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
