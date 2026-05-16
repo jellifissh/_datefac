@@ -302,6 +302,79 @@ def _value_status_rank(status: str) -> int:
     return order.get(_normalize_text(status), 9)
 
 
+def _raw_column_priority(raw_col: str) -> Tuple[int, int, str]:
+    text = _normalize_text(raw_col)
+    if not text:
+        return (9, 9999, "")
+    m = re.match(r"^(.*?)(?:\.(\d+))?$", text)
+    if not m:
+        return (9, 9999, text)
+    suffix = m.group(2)
+    if suffix is None:
+        return (0, 0, text)
+    try:
+        return (1, int(suffix), text)
+    except Exception:
+        return (1, 9999, text)
+
+
+def _decouple_amount_percent_year_values(
+    year_values: Dict[str, str],
+) -> Tuple[Dict[str, str], List[str]]:
+    normalized_groups: Dict[str, List[Dict[str, object]]] = {}
+    selected_values: Dict[str, str] = {}
+    issue_flags: List[str] = []
+    did_decouple = False
+    ignored_percent = False
+
+    for raw_col, raw_val in (year_values or {}).items():
+        raw = _normalize_text(raw_val)
+        if not raw:
+            continue
+        normalized_year = _normalize_year_token(str(raw_col))
+        if not normalized_year:
+            selected_values[raw_col] = raw
+            continue
+        parsed, parse_type = _parse_numeric_value(raw)
+        normalized_groups.setdefault(normalized_year, []).append(
+            {
+                "raw_col": str(raw_col),
+                "raw_val": raw,
+                "parsed": parsed,
+                "parse_type": parse_type,
+                "has_percent": ("%" in raw or "％" in raw),
+            }
+        )
+
+    for _, items in normalized_groups.items():
+        if not items:
+            continue
+
+        sorted_items = sorted(items, key=lambda x: _raw_column_priority(str(x.get("raw_col", ""))))
+        non_percent_numeric = [
+            item
+            for item in sorted_items
+            if (item.get("parsed") is not None) and (not bool(item.get("has_percent", False)))
+        ]
+        percent_like = [item for item in sorted_items if bool(item.get("has_percent", False))]
+
+        if non_percent_numeric and percent_like:
+            chosen = non_percent_numeric[0]
+            selected_values[str(chosen["raw_col"])] = _normalize_text(chosen.get("raw_val", ""))
+            did_decouple = True
+            ignored_percent = True
+            continue
+
+        chosen = sorted_items[0]
+        selected_values[str(chosen["raw_col"])] = _normalize_text(chosen.get("raw_val", ""))
+
+    if did_decouple:
+        issue_flags.append("amount_percent_group_decoupled")
+    if ignored_percent:
+        issue_flags.append("ignored_percent_year_group")
+    return selected_values, issue_flags
+
+
 def _validate_metric_candidate_values(
     standard_metric: str,
     year_values: Dict[str, str],
@@ -316,7 +389,13 @@ def _validate_metric_candidate_values(
     row_label_compact = _compact_text(row_label)
     has_non_empty = False
 
-    for year_col, raw_val in (year_values or {}).items():
+    validation_year_values = {k: _normalize_text(v) for k, v in (year_values or {}).items()}
+    decouple_flags: List[str] = []
+    if standard_metric in AMOUNT_METRICS:
+        validation_year_values, decouple_flags = _decouple_amount_percent_year_values(validation_year_values)
+        issues.extend(decouple_flags)
+
+    for year_col, raw_val in validation_year_values.items():
         raw = _normalize_text(raw_val)
         if not raw:
             continue
@@ -416,6 +495,7 @@ def _validate_metric_candidate_values(
         "valid_year_count": int(valid_year_count),
         "invalid_year_count": int(invalid_year_count),
         "parsed_values": parsed_values,
+        "selected_year_values": validation_year_values,
     }
 
 
@@ -943,6 +1023,9 @@ def standardize_core_financials(df_list, classification_results=None, logger=Non
                 detail_row["value_issue_flags"] = value_validation["value_issue_flags"]
                 detail_row["valid_year_count"] = value_validation["valid_year_count"]
                 detail_row["invalid_year_count"] = value_validation["invalid_year_count"]
+                detail_row["_selected_year_values"] = (
+                    value_validation.get("selected_year_values", candidate_year_values) or candidate_year_values
+                )
                 detail_rows.append(detail_row)
                 if logger and config.get("log_detail", True):
                     logger.info(
