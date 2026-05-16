@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -16,6 +16,29 @@ TIER_PRIORITY = {
     "D_insufficient": 3,
     "E_hard_sample": 2,
     "": 1,
+}
+
+LOW_RISK_SUSPICIOUS_FLAGS = {
+    "amount_percent_group_decoupled",
+    "ignored_percent_year_group",
+    "value_repair_applied",
+    "repaired_from_label_value_glued",
+    "trailing_number_from_matching_label",
+    "numeric_tail_if_source_label_exact",
+}
+
+HIGH_RISK_FLAGS = {
+    "source_row_semantic_mismatch",
+    "forbidden_account_row_as_metric_source",
+    "multiple_mixed_text_source",
+    "mixed_text_values",
+    "likely_wrong_row",
+    "non_numeric_value",
+    "label_value_glued",
+    "amount_has_percent",
+    "invalid_ratio_too_large",
+    "invalid_eps_too_large",
+    "suspicious_pb_too_large",
 }
 
 
@@ -62,6 +85,76 @@ def _to_float(v, default: float = 0.0) -> float:
         return float(v)
     except Exception:
         return default
+
+
+def _split_flags(v) -> List[str]:
+    s = _norm(v)
+    if not s:
+        return []
+    return [x.strip() for x in s.split("|") if x.strip()]
+
+
+def _assess_delivery_acceptance(
+    value_validation_status: str,
+    value_issue_flags: str,
+    value_repair_applied,
+    value_repair_strategy: str,
+) -> Dict[str, str]:
+    status = _norm(value_validation_status).lower()
+    issue_flags = set(_split_flags(value_issue_flags))
+    indicators = set(issue_flags)
+    if _to_bool(value_repair_applied):
+        indicators.add("value_repair_applied")
+    strategy = _norm(value_repair_strategy)
+    if strategy:
+        indicators.add(strategy)
+    warning_flags = "|".join(sorted(indicators))
+
+    if status == "valid":
+        return {
+            "delivery_acceptance_level": "auto_trusted",
+            "delivery_warning_flags": warning_flags,
+            "delivery_acceptance_reason": "value_validation_status_valid",
+            "_accepted": "1",
+        }
+
+    if status == "suspicious":
+        if issue_flags & HIGH_RISK_FLAGS:
+            return {
+                "delivery_acceptance_level": "manual_review_required",
+                "delivery_warning_flags": warning_flags,
+                "delivery_acceptance_reason": "suspicious_with_high_risk_flags",
+                "_accepted": "0",
+            }
+        if indicators and indicators.issubset(LOW_RISK_SUSPICIOUS_FLAGS):
+            return {
+                "delivery_acceptance_level": "auto_usable_with_warning",
+                "delivery_warning_flags": warning_flags,
+                "delivery_acceptance_reason": "suspicious_with_low_risk_flags_only",
+                "_accepted": "1",
+            }
+        return {
+            "delivery_acceptance_level": "manual_review_required",
+            "delivery_warning_flags": warning_flags,
+            "delivery_acceptance_reason": "suspicious_with_unknown_or_unapproved_flags",
+            "_accepted": "0",
+        }
+
+    if status == "invalid":
+        has_hard = bool(issue_flags & HIGH_RISK_FLAGS)
+        return {
+            "delivery_acceptance_level": "blocked_invalid" if has_hard else "manual_review_required",
+            "delivery_warning_flags": warning_flags,
+            "delivery_acceptance_reason": "invalid_with_hard_flags" if has_hard else "invalid_without_hard_flags",
+            "_accepted": "0",
+        }
+
+    return {
+        "delivery_acceptance_level": "manual_review_required",
+        "delivery_warning_flags": warning_flags,
+        "delivery_acceptance_reason": "missing_or_unknown_validation_status",
+        "_accepted": "0",
+    }
 
 
 def _safe_read_excel(path: Optional[Path], sheet_name: str) -> pd.DataFrame:
@@ -199,7 +292,7 @@ def _build_trusted_metrics(
     df24_summary: pd.DataFrame,
     df26_regions: pd.DataFrame,
     pdf_map: Dict[str, str],
-) -> pd.DataFrame:
+) -> Tuple[pd.DataFrame, Dict[str, int]]:
     if df08_fin_metrics.empty:
         return pd.DataFrame(
             columns=[
@@ -219,8 +312,18 @@ def _build_trusted_metrics(
                 "source_column",
                 "evidence_crop_path",
                 "trace_note",
+                "delivery_acceptance_level",
+                "delivery_warning_flags",
+                "delivery_acceptance_reason",
             ]
-        )
+        ), {
+            "trusted_rows_before": 0,
+            "auto_trusted_count": 0,
+            "auto_usable_with_warning_count": 0,
+            "manual_review_required_count": 0,
+            "blocked_invalid_count": 0,
+        }
+
     year_cols = _resolve_year_columns(df08_fin_metrics)
     crop_lookup = _build_crop_lookup(df26_regions)
 
@@ -243,11 +346,31 @@ def _build_trusted_metrics(
             }
 
     out_rows: List[Dict[str, str]] = []
+    acceptance_stats = {
+        "trusted_rows_before": 0,
+        "auto_trusted_count": 0,
+        "auto_usable_with_warning_count": 0,
+        "manual_review_required_count": 0,
+        "blocked_invalid_count": 0,
+    }
+
     for source_order, (_, r) in enumerate(df08_fin_metrics.iterrows()):
-        if _norm(r.get("value_validation_status")).lower() != "valid":
-            continue
+        acceptance = _assess_delivery_acceptance(
+            value_validation_status=_norm(r.get("value_validation_status")),
+            value_issue_flags=_norm(r.get("value_issue_flags")),
+            value_repair_applied=r.get("value_repair_applied"),
+            value_repair_strategy=_norm(r.get("value_repair_strategy")),
+        )
+
         ap = _norm(r.get("asset_package"))
         metric = _norm(r.get("standard_metric")) or _norm(r.get("标准指标")) or _norm(r.get("鏍囧噯鎸囨爣"))
+        if not metric:
+            for c in r.index.tolist():
+                cs = _norm(c)
+                if cs.lower() == "standard_metric" or ("标准指标" in cs) or ("鏍囧噯鎸囨爣" in cs):
+                    metric = _norm(r.get(c))
+                    if metric:
+                        break
         source_table_index = _to_int(r.get("source_table_index"))
         source_row_index = _to_int(r.get("source_row_index"))
         source_col = _norm(r.get("source_column"))
@@ -257,14 +380,24 @@ def _build_trusted_metrics(
         valid_year_count = _to_int(r.get("valid_year_count"), 0)
         confidence = _to_float(r.get("confidence"), 0.0)
         match_method = _norm(r.get("match_method"))
+
         evidence_crop = ""
         if (ap, source_table_index) in crop_lookup:
             evidence_crop = _norm(crop_lookup[(ap, source_table_index)].get("crop_png_path"))
+
         for y in year_cols:
-            raw_val = r.get(y)
-            sval = _norm(raw_val)
+            sval = _norm(r.get(y))
             if not sval:
                 continue
+
+            level = acceptance["delivery_acceptance_level"]
+            counter_key = f"{level}_count"
+            if counter_key in acceptance_stats:
+                acceptance_stats[counter_key] += 1
+            if acceptance.get("_accepted") != "1":
+                continue
+
+            acceptance_stats["trusted_rows_before"] += 1
             out_rows.append(
                 {
                     "source_pdf": pdf_map.get(ap, ""),
@@ -287,11 +420,15 @@ def _build_trusted_metrics(
                     "confidence": confidence,
                     "match_method": match_method,
                     "evidence_crop_path": evidence_crop,
-                    "trace_note": "08.financial_metrics valid candidate",
+                    "trace_note": "08.financial_metrics accepted candidate",
+                    "delivery_acceptance_level": acceptance["delivery_acceptance_level"],
+                    "delivery_warning_flags": acceptance["delivery_warning_flags"],
+                    "delivery_acceptance_reason": acceptance["delivery_acceptance_reason"],
                     "_source_order": source_order,
                 }
             )
-    return pd.DataFrame(out_rows)
+
+    return pd.DataFrame(out_rows), acceptance_stats
 
 
 def _dedupe_trusted_metrics(trusted_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, int]]:
@@ -572,6 +709,7 @@ def _build_summary_markdown(
     trusted_rows: int,
     manual_rows: int,
     dedupe_stats: Optional[Dict[str, int]] = None,
+    acceptance_stats: Optional[Dict[str, int]] = None,
 ) -> str:
     total_pdf = 0
     target = partial = non_target = unknown = 0
@@ -591,11 +729,19 @@ def _build_summary_markdown(
 
     hard_sample_count = tier_counts["E_hard_sample"]
     dedupe_stats = dedupe_stats or {}
+    acceptance_stats = acceptance_stats or {}
+
     before_rows = int(dedupe_stats.get("trusted_metric_rows_before_dedupe", trusted_rows))
     after_rows = int(dedupe_stats.get("trusted_metric_rows_after_dedupe", trusted_rows))
     duplicate_groups = int(dedupe_stats.get("duplicate_key_count_before_dedupe", 0))
     conflict_detail_rows = int(dedupe_stats.get("conflict_detail_rows", 0))
     duplicate_after = int(dedupe_stats.get("duplicate_key_count_after_dedupe", 0))
+
+    auto_trusted_count = int(acceptance_stats.get("auto_trusted_count", 0))
+    auto_usable_with_warning_count = int(acceptance_stats.get("auto_usable_with_warning_count", 0))
+    manual_review_required_count = int(acceptance_stats.get("manual_review_required_count", 0))
+    blocked_invalid_count = int(acceptance_stats.get("blocked_invalid_count", 0))
+
     lines = [
         "# 处理摘要",
         "",
@@ -613,8 +759,13 @@ def _build_summary_markdown(
         f"- E_hard_sample：{tier_counts['E_hard_sample']}",
         "",
         f"- 自动可信指标数量：{trusted_rows}",
+        f"- auto_trusted 指标数量：{auto_trusted_count}",
+        f"- auto_usable_with_warning 指标数量：{auto_usable_with_warning_count}",
+        f"- manual_review_required 指标数量：{manual_review_required_count}",
+        f"- blocked_invalid 指标数量：{blocked_invalid_count}",
         f"- 需人工复核指标数量：{manual_rows}",
         f"- hard sample 数量：{hard_sample_count}",
+        "- auto_usable_with_warning 表示低风险自动解耦结果，可自动纳入但不等于人工确认。",
         "",
         "## 交付去重质量",
         f"- 自动可信指标原始行数：{before_rows}",
@@ -624,7 +775,7 @@ def _build_summary_markdown(
         f"- 是否存在阻断级重复：{'否' if duplicate_after == 0 else '是'}",
         "",
         "## 当前能力边界",
-        "- 当前交付包只纳入 value_validation_status=valid 的自动可信指标。",
+        "- 当前交付包纳入 valid 与低风险 suspicious 指标。",
         "- B/D/E 与非目标报告仍需人工复核或专用流程处理。",
         "- 当前不是全自动无人工复核系统。",
     ]
@@ -656,7 +807,7 @@ def build_delivery_package(output_dir: Path, delivery_dir: Path) -> Dict[str, ob
 
     pdf_map = _build_pdf_map(df24_summary, df26_regions, df08_raw_quality)
 
-    trusted_df_before = _build_trusted_metrics(df08_fin_metrics, df23_assets, df24_summary, df26_regions, pdf_map)
+    trusted_df_before, acceptance_stats = _build_trusted_metrics(df08_fin_metrics, df23_assets, df24_summary, df26_regions, pdf_map)
     trusted_df, trusted_conflict_df, dedupe_stats = _dedupe_trusted_metrics(trusted_df_before)
     manual_df = _build_manual_review(df22_metric_queue, df22_invalid, df26_regions)
     excluded_df = _build_excluded_or_failed(df23_assets, df24_summary, df08_summary, pdf_map)
@@ -676,6 +827,7 @@ def build_delivery_package(output_dir: Path, delivery_dir: Path) -> Dict[str, ob
         len(trusted_df),
         len(manual_df),
         dedupe_stats=dedupe_stats,
+        acceptance_stats=acceptance_stats,
     )
     p4 = _safe_write_text(summary_md, delivery_dir / "04_处理摘要.md")
 
@@ -690,6 +842,11 @@ def build_delivery_package(output_dir: Path, delivery_dir: Path) -> Dict[str, ob
         "manual_review_rows": int(len(manual_df)),
         "excluded_or_failed_rows": int(len(excluded_df)),
         "table_region_index_rows": int(len(region_idx_df)),
+        "trusted_rows_before": int(acceptance_stats.get("trusted_rows_before", 0)),
+        "auto_trusted_count": int(acceptance_stats.get("auto_trusted_count", 0)),
+        "auto_usable_with_warning_count": int(acceptance_stats.get("auto_usable_with_warning_count", 0)),
+        "manual_review_required_count": int(acceptance_stats.get("manual_review_required_count", 0)),
+        "blocked_invalid_count": int(acceptance_stats.get("blocked_invalid_count", 0)),
         "summary_md_path": str(p4),
         "conflict_detail_path": str(p1a),
         "output_files": [str(p1), str(p1a), str(p2), str(p3), str(p4), str(p5)],
@@ -705,6 +862,11 @@ def main() -> None:
     result = build_delivery_package(Path(args.output_dir), Path(args.delivery_dir))
     print(f"delivery_dir: {result['delivery_dir']}")
     print(f"trusted_metric_rows_before_dedupe: {result['trusted_metric_rows_before_dedupe']}")
+    print(f"trusted_rows_before: {result['trusted_rows_before']}")
+    print(f"auto_trusted_count: {result['auto_trusted_count']}")
+    print(f"auto_usable_with_warning_count: {result['auto_usable_with_warning_count']}")
+    print(f"manual_review_required_count: {result['manual_review_required_count']}")
+    print(f"blocked_invalid_count: {result['blocked_invalid_count']}")
     print(f"trusted_metric_rows_after_dedupe: {result['trusted_metric_rows_after_dedupe']}")
     print(f"duplicate_key_count_after_dedupe: {result['duplicate_key_count_after_dedupe']}")
     print(f"conflict_detail_rows: {result['conflict_detail_rows']}")
@@ -719,3 +881,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
