@@ -14,6 +14,11 @@ try:
 except Exception:  # pragma: no cover
     fitz = None
 
+try:
+    import pypdfium2 as pdfium  # type: ignore
+except Exception:  # pragma: no cover
+    pdfium = None
+
 
 DEFAULT_INPUT_DIR = Path(r"D:\_datefac\input")
 DEFAULT_OUTPUT_DIR = Path(r"D:\_datefac\output")
@@ -266,35 +271,72 @@ def _probe_pp_structure_backend() -> Tuple[Dict[str, str], Optional[object]]:
 
 
 def _render_page_png(pdf_path: Path, page_number: int, out_path: Path) -> bool:
-    if fitz is None:
-        return False
-    try:
-        doc = fitz.open(str(pdf_path))
-        page = doc[page_number - 1]
-        pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        pix.save(str(out_path))
-        doc.close()
-        return True
-    except Exception:
-        return False
+    if fitz is not None:
+        try:
+            doc = fitz.open(str(pdf_path))
+            page = doc[page_number - 1]
+            pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            pix.save(str(out_path))
+            doc.close()
+            return True
+        except Exception:
+            pass
+    if pdfium is not None:
+        try:
+            doc = pdfium.PdfDocument(str(pdf_path))
+            page_count = len(doc)
+            pidx = max(0, min(page_count - 1, page_number - 1))
+            page = doc[pidx]
+            bitmap = page.render(scale=1.5)
+            image = bitmap.to_pil()
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            image.save(str(out_path))
+            return True
+        except Exception:
+            return False
+    return False
 
 
 def _render_crop_png(pdf_path: Path, page_number: int, bbox: Tuple[float, float, float, float], out_path: Path) -> bool:
-    if fitz is None:
-        return False
-    try:
-        doc = fitz.open(str(pdf_path))
-        page = doc[page_number - 1]
-        x0, y0, x1, y1 = _clip_bbox(bbox, page.rect.width, page.rect.height, pad=10.0)
-        clip = fitz.Rect(x0, y0, x1, y1)
-        pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), clip=clip, alpha=False)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        pix.save(str(out_path))
-        doc.close()
-        return True
-    except Exception:
-        return False
+    if fitz is not None:
+        try:
+            doc = fitz.open(str(pdf_path))
+            page = doc[page_number - 1]
+            x0, y0, x1, y1 = _clip_bbox(bbox, page.rect.width, page.rect.height, pad=10.0)
+            clip = fitz.Rect(x0, y0, x1, y1)
+            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), clip=clip, alpha=False)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            pix.save(str(out_path))
+            doc.close()
+            return True
+        except Exception:
+            pass
+    if pdfium is not None:
+        try:
+            doc = pdfium.PdfDocument(str(pdf_path))
+            page_count = len(doc)
+            pidx = max(0, min(page_count - 1, page_number - 1))
+            page = doc[pidx]
+            bitmap = page.render(scale=2.0)
+            image = bitmap.to_pil()
+            img_w, img_h = image.size
+            page_w = float(page.get_width())
+            page_h = float(page.get_height())
+            cx0, cy0, cx1, cy1 = _clip_bbox(bbox, page_w, page_h, pad=10.0)
+            sx = (img_w / page_w) if page_w > 0 else 1.0
+            sy = (img_h / page_h) if page_h > 0 else 1.0
+            px0 = max(0, min(img_w - 1, int(math.floor(cx0 * sx))))
+            py0 = max(0, min(img_h - 1, int(math.floor(cy0 * sy))))
+            px1 = max(px0 + 1, min(img_w, int(math.ceil(cx1 * sx))))
+            py1 = max(py0 + 1, min(img_h, int(math.ceil(cy1 * sy))))
+            crop = image.crop((px0, py0, px1, py1))
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            crop.save(str(out_path))
+            return True
+        except Exception:
+            return False
+    return False
 
 
 def _detect_with_pp_structure(engine, img_path: Path) -> List[Dict[str, object]]:
