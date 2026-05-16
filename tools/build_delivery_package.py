@@ -9,6 +9,15 @@ import pandas as pd
 DEFAULT_OUTPUT_DIR = Path(r"D:\_datefac\output")
 DEFAULT_DELIVERY_DIR = Path(r"D:\_datefac\output\delivery_package")
 
+TIER_PRIORITY = {
+    "A_usable": 6,
+    "B_partial_review": 5,
+    "C_label_only_untrusted": 4,
+    "D_insufficient": 3,
+    "E_hard_sample": 2,
+    "": 1,
+}
+
 
 def _norm(v) -> str:
     if v is None:
@@ -27,6 +36,32 @@ def _to_int(v, default: int = -1) -> int:
 
 def _to_bool(v) -> bool:
     return _norm(v).lower() in {"1", "true", "yes", "y"}
+
+
+def _tier_priority(v: str) -> int:
+    return TIER_PRIORITY.get(_norm(v), 0)
+
+
+def _method_priority(v: str) -> int:
+    s = _norm(v).lower()
+    if s == "exact":
+        return 6
+    if s == "synonym":
+        return 5
+    if s == "ev_prefix_noise_guard":
+        return 4
+    if s == "metric_candidate_scan":
+        return 3
+    if "fallback" in s:
+        return 2
+    return 1
+
+
+def _to_float(v, default: float = 0.0) -> float:
+    try:
+        return float(v)
+    except Exception:
+        return default
 
 
 def _safe_read_excel(path: Optional[Path], sheet_name: str) -> pd.DataFrame:
@@ -208,15 +243,20 @@ def _build_trusted_metrics(
             }
 
     out_rows: List[Dict[str, str]] = []
-    for _, r in df08_fin_metrics.iterrows():
+    for source_order, (_, r) in enumerate(df08_fin_metrics.iterrows()):
         if _norm(r.get("value_validation_status")).lower() != "valid":
             continue
         ap = _norm(r.get("asset_package"))
-        metric = _norm(r.get("标准指标"))
+        metric = _norm(r.get("standard_metric")) or _norm(r.get("标准指标")) or _norm(r.get("鏍囧噯鎸囨爣"))
         source_table_index = _to_int(r.get("source_table_index"))
         source_row_index = _to_int(r.get("source_row_index"))
         source_col = _norm(r.get("source_column"))
         source_label = _norm(r.get("source_row_label"))
+        value_issue_flags = _norm(r.get("value_issue_flags"))
+        value_repair_strategy = _norm(r.get("value_repair_strategy"))
+        valid_year_count = _to_int(r.get("valid_year_count"), 0)
+        confidence = _to_float(r.get("confidence"), 0.0)
+        match_method = _norm(r.get("match_method"))
         evidence_crop = ""
         if (ap, source_table_index) in crop_lookup:
             evidence_crop = _norm(crop_lookup[(ap, source_table_index)].get("crop_png_path"))
@@ -236,16 +276,151 @@ def _build_trusted_metrics(
                     "value": sval,
                     "unit": _infer_unit(metric),
                     "value_validation_status": _norm(r.get("value_validation_status")),
+                    "value_issue_flags": value_issue_flags,
                     "value_repair_applied": _norm(r.get("value_repair_applied")),
+                    "value_repair_strategy": value_repair_strategy,
                     "source_row_label": source_label,
                     "source_table_index": source_table_index if source_table_index >= 0 else "",
                     "source_row_index": source_row_index if source_row_index >= 0 else "",
                     "source_column": source_col,
+                    "valid_year_count": valid_year_count,
+                    "confidence": confidence,
+                    "match_method": match_method,
                     "evidence_crop_path": evidence_crop,
                     "trace_note": "08.financial_metrics valid candidate",
+                    "_source_order": source_order,
                 }
             )
     return pd.DataFrame(out_rows)
+
+
+def _dedupe_trusted_metrics(trusted_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, int]]:
+    base_cols = [
+        "conflict_key",
+        "asset_package",
+        "standard_metric",
+        "year",
+        "kept",
+        "dedupe_rank",
+        "dedupe_reason",
+        "value",
+        "value_validation_status",
+        "value_issue_flags",
+        "value_repair_applied",
+        "value_repair_strategy",
+        "source_row_label",
+        "source_table_index",
+        "source_row_index",
+        "source_column",
+        "evidence_crop_path",
+        "report_type",
+        "data_usability_tier",
+    ]
+    if trusted_df.empty:
+        return trusted_df, pd.DataFrame(columns=base_cols), {
+            "trusted_metric_rows_before_dedupe": 0,
+            "trusted_metric_rows_after_dedupe": 0,
+            "duplicate_key_count_before_dedupe": 0,
+            "duplicate_key_count_after_dedupe": 0,
+            "conflict_group_count": 0,
+            "conflict_detail_rows": 0,
+        }
+
+    df = trusted_df.copy().reset_index(drop=True)
+    if "_source_order" not in df.columns:
+        df["_source_order"] = list(range(len(df)))
+
+    # Sorting priority for deterministic best-record selection.
+    df["_pri_valid"] = df["value_validation_status"].map(lambda x: 1 if _norm(x).lower() == "valid" else 0)
+    df["_pri_tier"] = df["data_usability_tier"].map(_tier_priority)
+    df["_pri_issue_empty"] = df["value_issue_flags"].map(lambda x: 1 if not _norm(x) else 0)
+    df["_pri_valid_year"] = df.get("valid_year_count", 0).map(lambda x: _to_int(x, 0))
+    df["_pri_conf"] = df.get("confidence", 0).map(lambda x: _to_float(x, 0.0))
+    df["_pri_method"] = df.get("match_method", "").map(_method_priority)
+    df["_pri_not_repair"] = df.get("value_repair_applied", "").map(lambda x: 1 if not _to_bool(x) else 0)
+    df["_pri_evidence"] = df["evidence_crop_path"].map(lambda x: 1 if _norm(x) else 0)
+    df["_pri_source_table"] = df["source_table_index"].map(lambda x: _to_int(x, 999999))
+    df["_pri_source_row"] = df["source_row_index"].map(lambda x: _to_int(x, 999999))
+    df["_pri_source_order"] = df["_source_order"].map(lambda x: _to_int(x, 999999))
+
+    sort_cols = [
+        "_pri_valid",
+        "_pri_tier",
+        "_pri_issue_empty",
+        "_pri_valid_year",
+        "_pri_conf",
+        "_pri_method",
+        "_pri_not_repair",
+        "_pri_evidence",
+    ]
+    asc_flags = [False, False, False, False, False, False, False, False]
+
+    key_cols = ["asset_package", "standard_metric", "year"]
+    conflict_rows: List[Dict[str, object]] = []
+    kept_rows: List[pd.Series] = []
+    duplicate_key_count_before = 0
+    conflict_group_count = 0
+
+    grouped = df.groupby(key_cols, dropna=False, sort=False)
+    for key_vals, grp in grouped:
+        g = grp.copy()
+        if len(g) > 1:
+            duplicate_key_count_before += 1
+            conflict_group_count += 1
+        g = g.sort_values(
+            by=sort_cols + ["_pri_source_table", "_pri_source_row", "_pri_source_order"],
+            ascending=asc_flags + [True, True, True],
+            kind="mergesort",
+        ).reset_index(drop=True)
+        g["_rank"] = g.index + 1
+        best_idx = 0
+        kept_rows.append(g.iloc[best_idx])
+        conflict_key = f"{_norm(key_vals[0])}|{_norm(key_vals[1])}|{_norm(key_vals[2])}"
+        for _, row in g.iterrows():
+            kept = int(row["_rank"]) == 1
+            conflict_rows.append(
+                {
+                    "conflict_key": conflict_key,
+                    "asset_package": _norm(row.get("asset_package")),
+                    "standard_metric": _norm(row.get("standard_metric")),
+                    "year": _norm(row.get("year")),
+                    "kept": bool(kept),
+                    "dedupe_rank": int(row.get("_rank", 0)),
+                    "dedupe_reason": "best_by_valid_status_tier_confidence_evidence"
+                    if kept
+                    else "duplicate_lower_rank",
+                    "value": _norm(row.get("value")),
+                    "value_validation_status": _norm(row.get("value_validation_status")),
+                    "value_issue_flags": _norm(row.get("value_issue_flags")),
+                    "value_repair_applied": _norm(row.get("value_repair_applied")),
+                    "value_repair_strategy": _norm(row.get("value_repair_strategy")),
+                    "source_row_label": _norm(row.get("source_row_label")),
+                    "source_table_index": _norm(row.get("source_table_index")),
+                    "source_row_index": _norm(row.get("source_row_index")),
+                    "source_column": _norm(row.get("source_column")),
+                    "evidence_crop_path": _norm(row.get("evidence_crop_path")),
+                    "report_type": _norm(row.get("report_type")),
+                    "data_usability_tier": _norm(row.get("data_usability_tier")),
+                }
+            )
+
+    deduped_df = pd.DataFrame(kept_rows).reset_index(drop=True)
+    drop_cols = [c for c in deduped_df.columns if c.startswith("_pri_") or c in {"_rank", "_source_order"}]
+    deduped_df = deduped_df.drop(columns=drop_cols, errors="ignore")
+    conflict_df = pd.DataFrame(conflict_rows)
+    duplicate_key_count_after = int(deduped_df.duplicated(subset=key_cols, keep=False).sum() / 2) if not deduped_df.empty else 0
+
+    stats = {
+        "trusted_metric_rows_before_dedupe": int(len(df)),
+        "trusted_metric_rows_after_dedupe": int(len(deduped_df)),
+        "duplicate_key_count_before_dedupe": int(duplicate_key_count_before),
+        "duplicate_key_count_after_dedupe": int(
+            deduped_df.groupby(key_cols, dropna=False).size().gt(1).sum() if not deduped_df.empty else 0
+        ),
+        "conflict_group_count": int(conflict_group_count),
+        "conflict_detail_rows": int(len(conflict_df)),
+    }
+    return deduped_df, conflict_df, stats
 
 
 def _build_manual_review(
@@ -396,6 +571,7 @@ def _build_summary_markdown(
     df23_assets: pd.DataFrame,
     trusted_rows: int,
     manual_rows: int,
+    dedupe_stats: Optional[Dict[str, int]] = None,
 ) -> str:
     total_pdf = 0
     target = partial = non_target = unknown = 0
@@ -414,6 +590,12 @@ def _build_summary_markdown(
             tier_counts[k] = int(vc.get(k, 0))
 
     hard_sample_count = tier_counts["E_hard_sample"]
+    dedupe_stats = dedupe_stats or {}
+    before_rows = int(dedupe_stats.get("trusted_metric_rows_before_dedupe", trusted_rows))
+    after_rows = int(dedupe_stats.get("trusted_metric_rows_after_dedupe", trusted_rows))
+    duplicate_groups = int(dedupe_stats.get("duplicate_key_count_before_dedupe", 0))
+    conflict_detail_rows = int(dedupe_stats.get("conflict_detail_rows", 0))
+    duplicate_after = int(dedupe_stats.get("duplicate_key_count_after_dedupe", 0))
     lines = [
         "# 处理摘要",
         "",
@@ -433,6 +615,13 @@ def _build_summary_markdown(
         f"- 自动可信指标数量：{trusted_rows}",
         f"- 需人工复核指标数量：{manual_rows}",
         f"- hard sample 数量：{hard_sample_count}",
+        "",
+        "## 交付去重质量",
+        f"- 自动可信指标原始行数：{before_rows}",
+        f"- 自动可信指标去重后行数：{after_rows}",
+        f"- 重复键组数：{duplicate_groups}",
+        f"- 冲突候选行数：{conflict_detail_rows}",
+        f"- 是否存在阻断级重复：{'否' if duplicate_after == 0 else '是'}",
         "",
         "## 当前能力边界",
         "- 当前交付包只纳入 value_validation_status=valid 的自动可信指标。",
@@ -467,28 +656,43 @@ def build_delivery_package(output_dir: Path, delivery_dir: Path) -> Dict[str, ob
 
     pdf_map = _build_pdf_map(df24_summary, df26_regions, df08_raw_quality)
 
-    trusted_df = _build_trusted_metrics(df08_fin_metrics, df23_assets, df24_summary, df26_regions, pdf_map)
+    trusted_df_before = _build_trusted_metrics(df08_fin_metrics, df23_assets, df24_summary, df26_regions, pdf_map)
+    trusted_df, trusted_conflict_df, dedupe_stats = _dedupe_trusted_metrics(trusted_df_before)
     manual_df = _build_manual_review(df22_metric_queue, df22_invalid, df26_regions)
     excluded_df = _build_excluded_or_failed(df23_assets, df24_summary, df08_summary, pdf_map)
     region_idx_df = _build_region_index(df26_regions)
 
     delivery_dir.mkdir(parents=True, exist_ok=True)
     p1 = _safe_write_excel(trusted_df, delivery_dir / "01_自动可信核心指标.xlsx")
+    p1a = _safe_write_excel(trusted_conflict_df, delivery_dir / "01A_自动可信核心指标冲突明细.xlsx")
     p2 = _safe_write_excel(manual_df, delivery_dir / "02_人工复核指标队列.xlsx")
     p3 = _safe_write_excel(excluded_df, delivery_dir / "03_非目标报告与失败说明.xlsx")
     p5 = _safe_write_excel(region_idx_df, delivery_dir / "05_表格区域截图索引.xlsx")
 
-    summary_md = _build_summary_markdown(df24_scope, df23_summary, df23_assets, len(trusted_df), len(manual_df))
+    summary_md = _build_summary_markdown(
+        df24_scope,
+        df23_summary,
+        df23_assets,
+        len(trusted_df),
+        len(manual_df),
+        dedupe_stats=dedupe_stats,
+    )
     p4 = _safe_write_text(summary_md, delivery_dir / "04_处理摘要.md")
 
     return {
         "delivery_dir": str(delivery_dir),
+        "trusted_metric_rows_before_dedupe": int(dedupe_stats.get("trusted_metric_rows_before_dedupe", len(trusted_df_before))),
+        "trusted_metric_rows_after_dedupe": int(dedupe_stats.get("trusted_metric_rows_after_dedupe", len(trusted_df))),
+        "duplicate_key_count_after_dedupe": int(dedupe_stats.get("duplicate_key_count_after_dedupe", 0)),
+        "conflict_detail_rows": int(dedupe_stats.get("conflict_detail_rows", 0)),
+        "conflict_group_count": int(dedupe_stats.get("conflict_group_count", 0)),
         "trusted_metric_rows": int(len(trusted_df)),
         "manual_review_rows": int(len(manual_df)),
         "excluded_or_failed_rows": int(len(excluded_df)),
         "table_region_index_rows": int(len(region_idx_df)),
         "summary_md_path": str(p4),
-        "output_files": [str(p1), str(p2), str(p3), str(p4), str(p5)],
+        "conflict_detail_path": str(p1a),
+        "output_files": [str(p1), str(p1a), str(p2), str(p3), str(p4), str(p5)],
     }
 
 
@@ -500,10 +704,16 @@ def main() -> None:
 
     result = build_delivery_package(Path(args.output_dir), Path(args.delivery_dir))
     print(f"delivery_dir: {result['delivery_dir']}")
+    print(f"trusted_metric_rows_before_dedupe: {result['trusted_metric_rows_before_dedupe']}")
+    print(f"trusted_metric_rows_after_dedupe: {result['trusted_metric_rows_after_dedupe']}")
+    print(f"duplicate_key_count_after_dedupe: {result['duplicate_key_count_after_dedupe']}")
+    print(f"conflict_detail_rows: {result['conflict_detail_rows']}")
+    print(f"conflict_group_count: {result['conflict_group_count']}")
     print(f"trusted_metric_rows: {result['trusted_metric_rows']}")
     print(f"manual_review_rows: {result['manual_review_rows']}")
     print(f"excluded_or_failed_rows: {result['excluded_or_failed_rows']}")
     print(f"table_region_index_rows: {result['table_region_index_rows']}")
+    print(f"conflict_detail_path: {result['conflict_detail_path']}")
     print(f"summary_md_path: {result['summary_md_path']}")
 
 
