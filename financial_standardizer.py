@@ -115,6 +115,27 @@ VALUE_REPAIR_FORBID_TOKENS = (
     "减值",
     "费用",
 )
+FORBIDDEN_ACCOUNT_ROW_TERMS = (
+    "管理费用",
+    "财务费用",
+    "销售费用",
+    "研发费用",
+    "应收票据",
+    "应收账款",
+    "预付款项",
+    "存货",
+    "固定资产",
+    "无形资产",
+    "资产总计",
+    "负债合计",
+    "短期借款",
+    "应付账款",
+    "现金流量",
+    "经营性现金流",
+    "投资收益",
+    "税金及附加",
+)
+SEMANTIC_GUARD_METRICS = {"毛利率", "ROE", "每股收益", "P/E", "P/B", "EV/EBITDA"}
 
 
 def _resolve_config(config=None) -> Dict[str, object]:
@@ -395,6 +416,8 @@ def _validate_metric_candidate_values(
         validation_year_values, decouple_flags = _decouple_amount_percent_year_values(validation_year_values)
         issues.extend(decouple_flags)
 
+    semantic_mismatch_detected = False
+
     for year_col, raw_val in validation_year_values.items():
         raw = _normalize_text(raw_val)
         if not raw:
@@ -414,6 +437,17 @@ def _validate_metric_candidate_values(
         if parse_type == "mixed_text_numeric":
             issues.append("mixed_text_values")
             local_suspicious = True
+            if standard_metric in MULTIPLE_METRICS:
+                issues.append("multiple_mixed_text_source")
+                local_invalid = True
+
+        if standard_metric in SEMANTIC_GUARD_METRICS:
+            raw_compact = _compact_text(raw)
+            if any(_compact_text(term) in raw_compact for term in FORBIDDEN_ACCOUNT_ROW_TERMS):
+                issues.append("source_row_semantic_mismatch")
+                issues.append("forbidden_account_row_as_metric_source")
+                semantic_mismatch_detected = True
+                local_invalid = True
 
         if parsed is None:
             issues.append("non_numeric_value")
@@ -475,7 +509,19 @@ def _validate_metric_candidate_values(
         "amount_has_percent",
         "invalid_ratio_too_large",
         "invalid_eps_too_large",
+        "multiple_mixed_text_source",
+        "source_row_semantic_mismatch",
+        "forbidden_account_row_as_metric_source",
     }
+    if standard_metric in SEMANTIC_GUARD_METRICS and semantic_mismatch_detected:
+        issue_set = set(uniq_issues)
+        issue_set.add("source_row_semantic_mismatch")
+        issue_set.add("forbidden_account_row_as_metric_source")
+        uniq_issues = [x for x in uniq_issues if x]
+        if "source_row_semantic_mismatch" not in uniq_issues:
+            uniq_issues.append("source_row_semantic_mismatch")
+        if "forbidden_account_row_as_metric_source" not in uniq_issues:
+            uniq_issues.append("forbidden_account_row_as_metric_source")
     issue_set = set(uniq_issues)
     if not has_non_empty:
         status = "empty"
