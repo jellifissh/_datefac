@@ -1,5 +1,6 @@
 import argparse
 import math
+import sys
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -25,6 +26,25 @@ TARGET_STEMS = [
     "H3_AP202605141822318060_1",
 ]
 MAX_PAGES_PER_ASSET = 5
+
+
+def _ensure_openpyxl_available() -> None:
+    try:
+        import openpyxl  # type: ignore  # noqa: F401
+        return
+    except Exception:
+        pass
+    fallback_site = Path(r"D:\anaconda\envs\factory_v4\Lib\site-packages")
+    if fallback_site.exists():
+        sys.path.append(str(fallback_site))
+        try:
+            import openpyxl  # type: ignore  # noqa: F401
+            return
+        except Exception:
+            pass
+    raise ModuleNotFoundError(
+        "openpyxl is unavailable in current environment; install openpyxl or make factory_v4 site-packages accessible."
+    )
 
 
 def _norm(v) -> str:
@@ -63,6 +83,7 @@ def _safe_sheet_name(name: str, used: set) -> str:
 
 
 def _save_excel_robust(sheet_map: Dict[str, pd.DataFrame], output_path: Path) -> str:
+    _ensure_openpyxl_available()
     final_path = output_path
     if output_path.exists():
         try:
@@ -88,6 +109,7 @@ def _find_asset_dir(output_dir: Path, stem: str) -> Optional[Path]:
 
 
 def _load_02b_index(asset_dir: Path) -> pd.DataFrame:
+    _ensure_openpyxl_available()
     p = asset_dir / "02B_table_region_assets" / "table_region_index.xlsx"
     if not p.exists():
         return pd.DataFrame()
@@ -205,10 +227,13 @@ def _probe_pp_doclayout_backend() -> Dict[str, str]:
     try:
         import paddlex as pdx  # type: ignore
         status["version"] = _norm(getattr(pdx, "__version__", ""))
-        # do not instantiate heavy pipeline here; mark potentially available.
+        # Real probe: importable != callable. Try lightweight construction once.
+        from paddleocr import LayoutDetection  # type: ignore
+
+        _ = LayoutDetection(model_name="PP-DocLayout-L")
         status["available"] = True
     except Exception as exc:
-        status["error_message"] = _norm(exc)
+        status["error_message"] = f"{type(exc).__name__}: {_norm(exc)}"
     return status
 
 
@@ -223,12 +248,20 @@ def _probe_pp_structure_backend() -> Tuple[Dict[str, str], Optional[object]]:
     engine = None
     try:
         import paddleocr  # type: ignore
-        from paddleocr import PPStructure  # type: ignore
         status["version"] = _norm(getattr(paddleocr, "__version__", ""))
-        engine = PPStructure(show_log=False)
+        if hasattr(paddleocr, "PPStructure"):
+            from paddleocr import PPStructure  # type: ignore
+
+            engine = PPStructure(show_log=False)
+        elif hasattr(paddleocr, "PPStructureV3"):
+            from paddleocr import PPStructureV3  # type: ignore
+
+            engine = PPStructureV3()
+        else:
+            raise RuntimeError("Neither PPStructure nor PPStructureV3 is available in paddleocr.")
         status["available"] = True
     except Exception as exc:
-        status["error_message"] = _norm(exc)
+        status["error_message"] = f"{type(exc).__name__}: {_norm(exc)}"
     return status, engine
 
 
@@ -296,8 +329,7 @@ def _detect_with_pp_structure(engine, img_path: Path) -> List[Dict[str, object]]
 
 
 def _detect_with_pp_doclayout_stub(img_path: Path) -> List[Dict[str, object]]:
-    # Placeholder: if backend reported available but no stable API used in POC env, return empty.
-    # This keeps script graceful and deterministic.
+    # Placeholder: doclayout path is only used if PPStructure path is unavailable.
     _ = img_path
     return []
 
@@ -591,4 +623,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
