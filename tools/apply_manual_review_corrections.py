@@ -100,6 +100,104 @@ def _read_required_inputs(delivery_dir: Path) -> Tuple[pd.DataFrame, pd.DataFram
     return df01, df02, p01, p02
 
 
+def _normalized_col_key(name: str) -> str:
+    s = _norm(name).lower()
+    s = s.replace("_", "").replace("-", "").replace(" ", "")
+    return s
+
+
+def _match_candidate_columns(columns: List[str], canonical: str) -> List[str]:
+    canon = _normalized_col_key(canonical)
+    cands: List[str] = []
+    for c in columns:
+        key = _normalized_col_key(c)
+        if not key:
+            continue
+        if key == canon:
+            cands.append(c)
+            continue
+        # pandas duplicate columns: corrected_value.1 / .2 ...
+        if key.startswith(canon + "."):
+            cands.append(c)
+            continue
+        # loose aliases
+        if canonical == "corrected_value":
+            if key.startswith("usecorrected"):
+                continue
+            if key in {"correctedvalue", "correctedval", "corrected"} or ("corrected" in key and "value" in key):
+                cands.append(c)
+                continue
+        if canonical == "corrected_unit":
+            if key in {"correctedunit", "unitcorrected"} or ("corrected" in key and "unit" in key):
+                cands.append(c)
+                continue
+        if canonical == "review_status":
+            if key in {"reviewstatus", "status", "审核状态"} or ("review" in key and "status" in key):
+                cands.append(c)
+                continue
+        if canonical == "use_corrected_value":
+            if key in {"usecorrectedvalue", "usecorrected", "usecorrectedval"} or (
+                "use" in key and "corrected" in key
+            ):
+                cands.append(c)
+                continue
+        if canonical == "reviewer_note":
+            if key in {"reviewernote", "note", "comment"} or ("reviewer" in key and "note" in key):
+                cands.append(c)
+                continue
+        if canonical == "reviewer":
+            if key in {"reviewer", "reviewedby", "operator"}:
+                cands.append(c)
+                continue
+        if canonical == "reviewed_at":
+            if key in {"reviewedat", "reviewtime", "reviewdate"} or ("reviewed" in key and "at" in key):
+                cands.append(c)
+                continue
+        if canonical == "year":
+            if key in {"year", "valueyear", "targetyear"}:
+                cands.append(c)
+                continue
+    # keep order and dedupe
+    out: List[str] = []
+    seen = set()
+    for c in cands:
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def _build_review_field_candidates(df02: pd.DataFrame) -> Dict[str, List[str]]:
+    cols = [str(c) for c in df02.columns]
+    targets = ["review_status", "corrected_value", "corrected_unit", "use_corrected_value", "reviewer_note", "reviewer", "reviewed_at", "year"]
+    cand_map: Dict[str, List[str]] = {}
+    for t in targets:
+        cand_map[t] = _match_candidate_columns(cols, t)
+    return cand_map
+
+
+def _coalesce_value_from_candidates(row: pd.Series, candidates: List[str]) -> Tuple[str, str, str, str]:
+    """
+    Returns: (selected_value, selected_column, candidate_values_text, conflict_flags)
+    """
+    pairs: List[Tuple[str, str]] = []
+    for c in candidates:
+        v = _norm(row.get(c))
+        pairs.append((c, v))
+    non_empty = [(c, v) for c, v in pairs if v != ""]
+    selected_value = non_empty[0][1] if non_empty else ""
+    selected_col = non_empty[0][0] if non_empty else ""
+    candidate_values_text = "|".join([f"{c}={v}" for c, v in pairs])
+    conflict_flags = ""
+    if len(non_empty) > 1:
+        uniq_vals = list(dict.fromkeys([v for _, v in non_empty]))
+        if len(uniq_vals) > 1:
+            conflict_flags = "multi_candidate_conflict"
+        else:
+            conflict_flags = "multi_candidate_same_value"
+    return selected_value, selected_col, candidate_values_text, conflict_flags
+
+
 def _ensure_review_columns(df02: pd.DataFrame) -> pd.DataFrame:
     out = df02.copy()
     for c in REQUIRED_REVIEW_COLS + ["year", "value_year", "target_year", "source_column", "raw_value_examples"]:
@@ -252,10 +350,17 @@ def _build_template_md() -> str:
 def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
     df01, df02_raw, p01, p02 = _read_required_inputs(delivery_dir)
     df02 = _ensure_review_columns(df02_raw)
+    field_cand_map = _build_review_field_candidates(df02)
 
     trusted_input_rows = len(df01)
     manual_review_rows = len(df02)
-    corrected_value_non_empty_rows = int((df02["corrected_value"].map(_norm) != "").sum())
+    corrected_value_non_empty_rows = 0
+    corrected_candidates = field_cand_map.get("corrected_value", [])
+    if corrected_candidates:
+        non_empty_mask = pd.Series(False, index=df02.index)
+        for c in corrected_candidates:
+            non_empty_mask = non_empty_mask | (df02[c].map(_norm) != "")
+        corrected_value_non_empty_rows = int(non_empty_mask.sum())
 
     base = df01.copy()
     base_defaults = {
@@ -310,13 +415,43 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
     for _, r in df02.iterrows():
         ap = _norm(r.get("asset_package"))
         sm = _norm(r.get("standard_metric"))
-        corrected_value = _norm(r.get("corrected_value"))
-        corrected_unit = _norm(r.get("corrected_unit"))
-        raw_use = _norm(r.get("use_corrected_value"))
-        raw_status = _norm(r.get("review_status"))
-        reviewer = _norm(r.get("reviewer"))
-        reviewed_at = _norm(r.get("reviewed_at"))
-        reviewer_note = _norm(r.get("reviewer_note"))
+        corrected_value, corrected_value_col, corrected_value_candidate_values, corrected_value_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("corrected_value", [])
+        )
+        corrected_unit, corrected_unit_col, _, corrected_unit_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("corrected_unit", [])
+        )
+        raw_use, use_col, _, use_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("use_corrected_value", [])
+        )
+        raw_status, status_col, _, status_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("review_status", [])
+        )
+        reviewer, reviewer_col, _, reviewer_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("reviewer", [])
+        )
+        reviewed_at, reviewed_at_col, _, reviewed_at_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("reviewed_at", [])
+        )
+        reviewer_note, reviewer_note_col, _, reviewer_note_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("reviewer_note", [])
+        )
+        year_val, year_col, _, year_conflict = _coalesce_value_from_candidates(r, field_cand_map.get("year", []))
+        field_conflicts = [
+            x
+            for x in [
+                corrected_value_conflict,
+                corrected_unit_conflict,
+                use_conflict,
+                status_conflict,
+                reviewer_conflict,
+                reviewed_at_conflict,
+                reviewer_note_conflict,
+                year_conflict,
+            ]
+            if x
+        ]
+        field_conflict_flags = "|".join(dict.fromkeys(field_conflicts))
         source_row_label = _norm(r.get("source_row_label"))
         source_table_index = _norm(r.get("source_table_index"))
         source_row_index = _norm(r.get("source_row_index"))
@@ -328,7 +463,9 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
         status_norm, status_reason = _normalize_review_status(raw_status)
         use_norm, use_reason = _normalize_use_corrected(raw_use)
 
-        yinfo = _collect_year_candidates(r)
+        row_for_year = r.copy()
+        row_for_year["year"] = year_val
+        yinfo = _collect_year_candidates(row_for_year)
         parsed_year = _norm(yinfo["selected_year"])
         parse_status = _norm(yinfo["parse_status"])
         correction_key = f"{ap}|{sm}|{parsed_year}" if ap and sm and parsed_year else ""
@@ -426,6 +563,11 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
                 "action_reason": action_reason,
                 "enters_final_06": False,
                 "how_to_fix": how_to_fix,
+                "corrected_value_candidate_columns": "|".join(field_cand_map.get("corrected_value", [])),
+                "corrected_value_candidate_values": corrected_value_candidate_values,
+                "selected_corrected_value_column": corrected_value_col,
+                "selected_corrected_value": corrected_value,
+                "field_conflict_flags": field_conflict_flags,
             }
         )
 
