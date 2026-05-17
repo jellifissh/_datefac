@@ -334,8 +334,9 @@ def _build_template_md() -> str:
         "- True: TRUE/true/1/yes/y/是/对/使用/采用/√\n"
         "- False: FALSE/false/0/no/n/否/不用/不采用/空值\n\n"
         "## 4. corrected_value / corrected_unit 示例\n"
-        "- corrected_value: 987654.321\n"
-        "- corrected_unit: TEST 或 亿元 / % / 元\n\n"
+        "- corrected_value: 204.59\n"
+        "- corrected_unit: 亿元\n"
+        "- reviewer_note: 根据 PDF 原表复核，归母净利润保留两位小数\n\n"
         "## 5. 最终表覆盖规则\n"
         "- 唯一键：asset_package + standard_metric + year。\n"
         "- 命中同键：manual_corrected 覆盖 auto_trusted。\n"
@@ -892,7 +893,7 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
                 "field_name": "corrected_value",
                 "accepted_values": "non-empty numeric/text agreed by reviewer",
                 "bad_examples": "empty while use_corrected_value=TRUE",
-                "good_examples": "987654.321",
+                "good_examples": "204.59",
             },
         ]
     )
