@@ -19,15 +19,50 @@ REQUIRED_REVIEW_COLS = [
     "reviewed_at",
 ]
 
-TRUE_VALUES = {"true", "1", "yes", "y", "是", "对", "使用", "采用", "√"}
-FALSE_VALUES = {"false", "0", "no", "n", "否", "不用", "不采用", ""}
+YEAR_TOKEN_PATTERN = re.compile(r"(20\d{2}[AE]?)", flags=re.IGNORECASE)
+NUMBER_PATTERN = re.compile(r"^[+-]?\d+(?:\.\d+)?$")
 
-STATUS_CORRECTED = {"corrected", "accepted", "修正", "已修正", "已确认", "确认", "通过", "accept", "ok"}
+TRUE_VALUES = {
+    "true",
+    "1",
+    "yes",
+    "y",
+    "是",
+    "对",
+    "使用",
+    "采用",
+    "√",
+}
+FALSE_VALUES = {
+    "false",
+    "0",
+    "no",
+    "n",
+    "否",
+    "不用",
+    "不采用",
+    "",
+}
+
+STATUS_CORRECTED = {
+    "corrected",
+    "accepted",
+    "修正",
+    "已修正",
+    "已确认",
+    "确认",
+    "通过",
+    "accept",
+    "ok",
+}
 STATUS_REJECTED = {"rejected", "reject", "拒绝", "不采用", "错误"}
 STATUS_NOT_APPLICABLE = {"not_applicable", "不适用", "非目标", "无需处理"}
 
-YEAR_FIELDS = ["year", "value_year", "target_year", "source_column", "raw_value_examples"]
-YEAR_TOKEN_PATTERN = re.compile(r"(20\d{2}[AE]?)", flags=re.IGNORECASE)
+SOURCE_PRIORITY = {
+    "manual_year_override": 3,
+    "manual_corrected": 2,
+    "manual_added": 2,
+}
 
 
 def _norm(v) -> str:
@@ -38,8 +73,20 @@ def _norm(v) -> str:
     return str(v).strip()
 
 
-def _to_bool(v) -> bool:
-    return _norm(v).lower() in TRUE_VALUES
+def _norm_key(v) -> str:
+    return _norm(v).lower()
+
+
+def _parse_number(v: str) -> Optional[float]:
+    s = _norm(v).replace(",", "")
+    if not s:
+        return None
+    if not NUMBER_PATTERN.match(s):
+        return None
+    try:
+        return float(s)
+    except Exception:
+        return None
 
 
 def _safe_write_excel(df: pd.DataFrame, path: Path) -> Path:
@@ -86,18 +133,23 @@ def _safe_write_text(text: str, path: Path) -> Path:
     return final_path
 
 
-def _read_required_inputs(delivery_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame, Path, Path]:
+def _read_required_inputs(
+    delivery_dir: Path,
+) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], Path, Path, Optional[Path]]:
     p01_list = sorted(delivery_dir.glob("01_*.xlsx"))
     p02_list = sorted(delivery_dir.glob("02_*.xlsx"))
+    p02a_list = sorted(delivery_dir.glob("02A_*.xlsx"))
     if not p01_list:
         raise FileNotFoundError(f"Required file missing: {delivery_dir}\\01_*.xlsx")
     if not p02_list:
         raise FileNotFoundError(f"Required file missing: {delivery_dir}\\02_*.xlsx")
     p01 = p01_list[0]
     p02 = p02_list[0]
+    p02a = p02a_list[0] if p02a_list else None
     df01 = pd.read_excel(p01, engine="openpyxl").fillna("")
     df02 = pd.read_excel(p02, engine="openpyxl").fillna("")
-    return df01, df02, p01, p02
+    df02a = pd.read_excel(p02a, engine="openpyxl").fillna("") if p02a else None
+    return df01, df02, df02a, p01, p02, p02a
 
 
 def _normalized_col_key(name: str) -> str:
@@ -116,11 +168,10 @@ def _match_candidate_columns(columns: List[str], canonical: str) -> List[str]:
         if key == canon:
             cands.append(c)
             continue
-        # pandas duplicate columns: corrected_value.1 / .2 ...
         if key.startswith(canon + "."):
             cands.append(c)
             continue
-        # loose aliases
+
         if canonical == "corrected_value":
             if key.startswith("usecorrected"):
                 continue
@@ -132,7 +183,7 @@ def _match_candidate_columns(columns: List[str], canonical: str) -> List[str]:
                 cands.append(c)
                 continue
         if canonical == "review_status":
-            if key in {"reviewstatus", "status", "审核状态"} or ("review" in key and "status" in key):
+            if key in {"reviewstatus", "status"} or ("review" in key and "status" in key):
                 cands.append(c)
                 continue
         if canonical == "use_corrected_value":
@@ -157,7 +208,15 @@ def _match_candidate_columns(columns: List[str], canonical: str) -> List[str]:
             if key in {"year", "valueyear", "targetyear"}:
                 cands.append(c)
                 continue
-    # keep order and dedupe
+        if canonical == "asset_package":
+            if key in {"assetpackage", "asset"}:
+                cands.append(c)
+                continue
+        if canonical == "standard_metric":
+            if key in {"standardmetric", "metric", "metricname"}:
+                cands.append(c)
+                continue
+
     out: List[str] = []
     seen = set()
     for c in cands:
@@ -167,19 +226,24 @@ def _match_candidate_columns(columns: List[str], canonical: str) -> List[str]:
     return out
 
 
-def _build_review_field_candidates(df02: pd.DataFrame) -> Dict[str, List[str]]:
-    cols = [str(c) for c in df02.columns]
-    targets = ["review_status", "corrected_value", "corrected_unit", "use_corrected_value", "reviewer_note", "reviewer", "reviewed_at", "year"]
-    cand_map: Dict[str, List[str]] = {}
-    for t in targets:
-        cand_map[t] = _match_candidate_columns(cols, t)
-    return cand_map
+def _build_review_field_candidates(df: pd.DataFrame) -> Dict[str, List[str]]:
+    cols = [str(c) for c in df.columns]
+    targets = [
+        "asset_package",
+        "standard_metric",
+        "review_status",
+        "corrected_value",
+        "corrected_unit",
+        "use_corrected_value",
+        "reviewer_note",
+        "reviewer",
+        "reviewed_at",
+        "year",
+    ]
+    return {t: _match_candidate_columns(cols, t) for t in targets}
 
 
 def _coalesce_value_from_candidates(row: pd.Series, candidates: List[str]) -> Tuple[str, str, str, str]:
-    """
-    Returns: (selected_value, selected_column, candidate_values_text, conflict_flags)
-    """
     pairs: List[Tuple[str, str]] = []
     for c in candidates:
         v = _norm(row.get(c))
@@ -191,16 +255,28 @@ def _coalesce_value_from_candidates(row: pd.Series, candidates: List[str]) -> Tu
     conflict_flags = ""
     if len(non_empty) > 1:
         uniq_vals = list(dict.fromkeys([v for _, v in non_empty]))
-        if len(uniq_vals) > 1:
-            conflict_flags = "multi_candidate_conflict"
-        else:
-            conflict_flags = "multi_candidate_same_value"
+        conflict_flags = "multi_candidate_conflict" if len(uniq_vals) > 1 else "multi_candidate_same_value"
     return selected_value, selected_col, candidate_values_text, conflict_flags
 
 
-def _ensure_review_columns(df02: pd.DataFrame) -> pd.DataFrame:
-    out = df02.copy()
-    for c in REQUIRED_REVIEW_COLS + ["year", "value_year", "target_year", "source_column", "raw_value_examples"]:
+def _ensure_review_columns(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    for c in REQUIRED_REVIEW_COLS + [
+        "asset_package",
+        "standard_metric",
+        "year",
+        "value_year",
+        "target_year",
+        "source_column",
+        "raw_value_examples",
+        "source_row_label",
+        "source_table_index",
+        "source_row_index",
+        "value_issue_flags",
+        "evidence_crop_path",
+        "recommendation",
+        "source_note",
+    ]:
         if c not in out.columns:
             out[c] = ""
     return out
@@ -230,27 +306,27 @@ def _normalize_use_corrected(v) -> Tuple[bool, str]:
     return False, "unrecognized_as_false"
 
 
-def _collect_year_candidates(row: pd.Series) -> Dict[str, object]:
+def _collect_year_candidates(row: pd.Series, strict_from_year_column: bool = False) -> Dict[str, object]:
     explicit = _norm(row.get("year"))
     explicit_tokens = [x.upper() for x in YEAR_TOKEN_PATTERN.findall(explicit)]
-    if explicit_tokens:
-        explicit_tokens = list(dict.fromkeys(explicit_tokens))
+    explicit_tokens = list(dict.fromkeys(explicit_tokens))
+
     source_column = _norm(row.get("source_column"))
     raw_values = _norm(row.get("raw_value_examples"))
     value_year = _norm(row.get("value_year"))
     target_year = _norm(row.get("target_year"))
 
     inferred_tokens: List[str] = []
-    for c in [value_year, target_year, source_column, raw_values]:
-        for t in YEAR_TOKEN_PATTERN.findall(c):
-            tu = t.upper()
-            if tu not in inferred_tokens:
-                inferred_tokens.append(tu)
+    for text in [value_year, target_year, source_column, raw_values]:
+        for token in YEAR_TOKEN_PATTERN.findall(text):
+            token_u = token.upper()
+            if token_u not in inferred_tokens:
+                inferred_tokens.append(token_u)
 
-    all_tokens = explicit_tokens[:] if explicit_tokens else inferred_tokens[:]
     selected = ""
     parse_status = ""
     parse_reason = ""
+    parsed_candidates = explicit_tokens[:]
 
     if explicit_tokens:
         if len(explicit_tokens) == 1:
@@ -261,22 +337,30 @@ def _collect_year_candidates(row: pd.Series) -> Dict[str, object]:
             parse_status = "multi_year"
             parse_reason = "explicit_year_contains_multiple_tokens"
     else:
-        if len(inferred_tokens) == 1:
+        if strict_from_year_column:
+            parse_status = "missing_year"
+            parse_reason = "year_column_empty"
+        elif len(inferred_tokens) == 1:
             selected = inferred_tokens[0]
             parse_status = "ok"
             parse_reason = "inferred_single_year_from_context"
+            parsed_candidates = inferred_tokens[:]
         elif len(inferred_tokens) > 1:
             parse_status = "multi_year"
             parse_reason = "multiple_year_candidates_in_context"
+            parsed_candidates = inferred_tokens[:]
         else:
             parse_status = "missing_year"
             parse_reason = "no_year_token_found"
+
+    if not parsed_candidates:
+        parsed_candidates = inferred_tokens[:]
 
     return {
         "original_year": explicit,
         "source_column": source_column,
         "raw_value_examples": raw_values,
-        "parsed_year_candidates": "|".join(all_tokens),
+        "parsed_year_candidates": "|".join(parsed_candidates),
         "selected_year": selected,
         "parse_status": parse_status,
         "parse_reason": parse_reason,
@@ -293,29 +377,298 @@ def _parse_reviewed_at(v) -> pd.Timestamp:
     return t
 
 
-def _dedupe_manual_candidates(cands: List[Dict[str, object]]) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+def _extract_candidates(
+    df: pd.DataFrame,
+    source_code: str,
+    strict_year: bool,
+    strict_numeric: bool,
+) -> Dict[str, object]:
+    field_cand_map = _build_review_field_candidates(df)
+    diagnosis_rows: List[Dict[str, object]] = []
+    app_rows: List[Dict[str, object]] = []
+    unresolved_rows: List[Dict[str, object]] = []
+    key_parse_rows: List[Dict[str, object]] = []
+    manual_candidates: List[Dict[str, object]] = []
+
+    invalid_missing_key_count = 0
+    invalid_missing_year_count = 0
+    invalid_multi_year_count = 0
+
+    for row_index, r in df.iterrows():
+        ap, _, _, _ = _coalesce_value_from_candidates(r, field_cand_map.get("asset_package", []))
+        if not ap:
+            ap = _norm(r.get("asset_package"))
+        sm, _, _, _ = _coalesce_value_from_candidates(r, field_cand_map.get("standard_metric", []))
+        if not sm:
+            sm = _norm(r.get("standard_metric"))
+
+        corrected_value, corrected_value_col, corrected_value_candidate_values, corrected_value_conflict = (
+            _coalesce_value_from_candidates(r, field_cand_map.get("corrected_value", []))
+        )
+        corrected_unit, corrected_unit_col, _, corrected_unit_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("corrected_unit", [])
+        )
+        raw_use, _, _, use_conflict = _coalesce_value_from_candidates(r, field_cand_map.get("use_corrected_value", []))
+        raw_status, _, _, status_conflict = _coalesce_value_from_candidates(r, field_cand_map.get("review_status", []))
+        reviewer, _, _, reviewer_conflict = _coalesce_value_from_candidates(r, field_cand_map.get("reviewer", []))
+        reviewed_at, _, _, reviewed_at_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("reviewed_at", [])
+        )
+        reviewer_note, _, _, reviewer_note_conflict = _coalesce_value_from_candidates(
+            r, field_cand_map.get("reviewer_note", [])
+        )
+        year_val, year_col, _, year_conflict = _coalesce_value_from_candidates(r, field_cand_map.get("year", []))
+
+        row_for_year = r.copy()
+        row_for_year["year"] = year_val
+        yinfo = _collect_year_candidates(row_for_year, strict_from_year_column=strict_year)
+        parsed_year = _norm(yinfo["selected_year"])
+        parse_status = _norm(yinfo["parse_status"])
+        correction_key = f"{ap}|{sm}|{parsed_year}" if ap and sm and parsed_year else ""
+
+        status_norm, status_reason = _normalize_review_status(raw_status)
+        use_norm, use_reason = _normalize_use_corrected(raw_use)
+
+        source_row_label = _norm(r.get("source_row_label"))
+        source_table_index = _norm(r.get("source_table_index"))
+        source_row_index = _norm(r.get("source_row_index"))
+        evidence_crop_path = _norm(r.get("evidence_crop_path"))
+        issue_flags = _norm(r.get("value_issue_flags"))
+        raw_value_examples = _norm(r.get("raw_value_examples"))
+        recommendation = _norm(r.get("recommendation"))
+        source_note = _norm(r.get("source_note"))
+
+        field_conflicts = [
+            x
+            for x in [
+                corrected_value_conflict,
+                corrected_unit_conflict,
+                use_conflict,
+                status_conflict,
+                reviewer_conflict,
+                reviewed_at_conflict,
+                reviewer_note_conflict,
+                year_conflict,
+            ]
+            if x
+        ]
+        field_conflict_flags = "|".join(dict.fromkeys(field_conflicts))
+
+        missing_fields = []
+        if not ap:
+            missing_fields.append("asset_package")
+        if not sm:
+            missing_fields.append("standard_metric")
+        if not parsed_year:
+            missing_fields.append("year")
+
+        action = ""
+        action_reason = ""
+        how_to_fix = ""
+
+        if status_norm == "pending":
+            action = "ignored_pending"
+            action_reason = "review_status_pending_or_empty"
+            how_to_fix = "将 review_status 设为 corrected/accepted，并填写 corrected_value 和 year。"
+        elif status_norm in {"rejected", "not_applicable"}:
+            action = "rejected_or_not_applicable"
+            action_reason = f"review_status_{status_norm}"
+            how_to_fix = "如需写入最终表，请改为 corrected 并设置 use_corrected_value=True。"
+        else:
+            if parse_status == "multi_year":
+                action = "invalid_multi_year"
+                action_reason = "multiple_year_candidates"
+                invalid_multi_year_count += 1
+                how_to_fix = "该复核行包含多个年份，请在 year 列明确填写目标年份，例如 2026E。"
+            elif parse_status == "missing_year":
+                action = "invalid_missing_year"
+                action_reason = "cannot_parse_year"
+                invalid_missing_year_count += 1
+                how_to_fix = "缺少 year，无法构造唯一键 asset_package + standard_metric + year。"
+            elif not ap or not sm:
+                action = "invalid_missing_key"
+                action_reason = "asset_or_metric_missing"
+                invalid_missing_key_count += 1
+                how_to_fix = "请补齐 asset_package 和 standard_metric。"
+            elif not use_norm:
+                action = "invalid_missing_corrected_value"
+                action_reason = f"use_corrected_value_not_true({use_reason})"
+                how_to_fix = "将 use_corrected_value 设置为 TRUE/是/1/√。"
+            elif not corrected_value:
+                action = "invalid_missing_corrected_value"
+                action_reason = "corrected_value_empty"
+                how_to_fix = "请填写 corrected_value。"
+            elif strict_numeric and _parse_number(corrected_value) is None:
+                action = "invalid_non_numeric_corrected_value"
+                action_reason = "corrected_value_not_numeric"
+                how_to_fix = "02A 的 corrected_value 必须可数值化，例如 204.59。"
+            else:
+                action = "candidate_effective"
+                action_reason = "ready_for_apply"
+                how_to_fix = ""
+                manual_candidates.append(
+                    {
+                        "asset_package": ap,
+                        "standard_metric": sm,
+                        "parsed_year": parsed_year,
+                        "review_status": status_norm,
+                        "use_corrected_value": raw_use,
+                        "corrected_value": corrected_value,
+                        "corrected_unit": corrected_unit,
+                        "reviewer": reviewer,
+                        "reviewed_at": reviewed_at,
+                        "reviewer_note": reviewer_note,
+                        "source_row_label": source_row_label,
+                        "source_table_index": source_table_index,
+                        "source_row_index": source_row_index,
+                        "evidence_crop_path": evidence_crop_path,
+                        "raw_value_examples": raw_value_examples,
+                        "value_issue_flags": issue_flags,
+                        "recommendation": recommendation,
+                        "source_note": source_note,
+                        "source_code": source_code,
+                        "_row_index": int(row_index),
+                    }
+                )
+
+        yinfo["source_code"] = source_code
+        yinfo["row_index"] = int(row_index)
+        key_parse_rows.append(yinfo)
+
+        diagnosis_rows.append(
+            {
+                "source_code": source_code,
+                "source_row_index_input": int(row_index),
+                "asset_package": ap,
+                "standard_metric": sm,
+                "year": _norm(r.get("year")),
+                "parsed_year": parsed_year,
+                "correction_key": correction_key,
+                "corrected_value": corrected_value,
+                "corrected_unit": corrected_unit,
+                "review_status": raw_status,
+                "review_status_normalized": status_norm,
+                "use_corrected_value": raw_use,
+                "use_corrected_value_normalized": str(use_norm),
+                "key_complete": len(missing_fields) == 0,
+                "missing_key_fields": "|".join(missing_fields),
+                "action": action,
+                "action_reason": action_reason,
+                "enters_final_06": False,
+                "how_to_fix": how_to_fix,
+                "corrected_value_candidate_columns": "|".join(field_cand_map.get("corrected_value", [])),
+                "corrected_value_candidate_values": corrected_value_candidate_values,
+                "selected_corrected_value_column": corrected_value_col,
+                "selected_corrected_value": corrected_value,
+                "selected_corrected_unit_column": corrected_unit_col,
+                "selected_year_column": year_col,
+                "field_conflict_flags": field_conflict_flags,
+            }
+        )
+
+        if action != "candidate_effective":
+            app_rows.append(
+                {
+                    "asset_package": ap,
+                    "standard_metric": sm,
+                    "year": parsed_year,
+                    "review_status": raw_status,
+                    "use_corrected_value": raw_use,
+                    "corrected_value": corrected_value,
+                    "corrected_unit": corrected_unit,
+                    "action": action,
+                    "action_reason": action_reason,
+                    "original_auto_value": "",
+                    "final_value": "",
+                    "reviewer": reviewer,
+                    "reviewed_at": reviewed_at,
+                    "reviewer_note": reviewer_note,
+                    "source_row_label": source_row_label,
+                    "source_table_index": source_table_index,
+                    "source_row_index": source_row_index,
+                    "evidence_crop_path": evidence_crop_path,
+                    "correction_source": source_code,
+                    "source_priority": "",
+                }
+            )
+            unresolved_rows.append(
+                {
+                    "asset_package": ap,
+                    "standard_metric": sm,
+                    "year": parsed_year,
+                    "problem_type": action,
+                    "value_issue_flags": issue_flags,
+                    "raw_value_examples": raw_value_examples,
+                    "recommendation": recommendation or how_to_fix,
+                    "source_row_label": source_row_label,
+                    "source_table_index": source_table_index,
+                    "source_row_index": source_row_index,
+                    "evidence_crop_path": evidence_crop_path,
+                }
+            )
+
+    return {
+        "manual_candidates": manual_candidates,
+        "diagnosis_rows": diagnosis_rows,
+        "app_rows": app_rows,
+        "unresolved_rows": unresolved_rows,
+        "key_parse_rows": key_parse_rows,
+        "invalid_missing_key_count": invalid_missing_key_count,
+        "invalid_missing_year_count": invalid_missing_year_count,
+        "invalid_multi_year_count": invalid_multi_year_count,
+        "field_cand_map": field_cand_map,
+    }
+
+
+def _dedupe_and_prioritize_candidates(
+    candidates: List[Dict[str, object]],
+) -> Tuple[List[Dict[str, object]], List[Dict[str, object]], Dict[str, int]]:
     grouped: Dict[Tuple[str, str, str], List[Dict[str, object]]] = {}
-    for c in cands:
-        k = (_norm(c.get("asset_package")), _norm(c.get("standard_metric")), _norm(c.get("parsed_year")))
-        grouped.setdefault(k, []).append(c)
+    for c in candidates:
+        key = (_norm(c.get("asset_package")), _norm(c.get("standard_metric")), _norm(c.get("parsed_year")))
+        grouped.setdefault(key, []).append(c)
+
     kept: List[Dict[str, object]] = []
     ignored: List[Dict[str, object]] = []
+    conflict_key_count = 0
+    conflict_02a_over_02_count = 0
+
     for _, arr in grouped.items():
+        if len(arr) > 1:
+            conflict_key_count += 1
         arr_sorted = sorted(
             arr,
             key=lambda x: (
+                1 if _norm(x.get("source_code")) == "02A_manual_year_override" else 0,
                 _parse_reviewed_at(x.get("reviewed_at")),
                 1 if _norm(x.get("corrected_value")) else 0,
+                -int(x.get("_row_index", 0)),
             ),
             reverse=True,
         )
-        kept.append(arr_sorted[0])
-        for x in arr_sorted[1:]:
-            y = x.copy()
-            y["action"] = "conflict_ignored"
-            y["action_reason"] = "same_key_multiple_manual_rows_keep_latest_reviewed_at"
-            ignored.append(y)
-    return kept, ignored
+        winner = arr_sorted[0]
+        kept.append(winner)
+
+        for loser in arr_sorted[1:]:
+            reason = "same_key_multiple_manual_rows_keep_priority_and_latest"
+            source_priority = ""
+            if _norm(winner.get("source_code")) == "02A_manual_year_override" and _norm(
+                loser.get("source_code")
+            ) != "02A_manual_year_override":
+                reason = "source_priority_02A_over_02"
+                source_priority = "02A_over_02"
+                conflict_02a_over_02_count += 1
+            x = loser.copy()
+            x["action"] = "conflict_ignored"
+            x["action_reason"] = reason
+            x["source_priority"] = source_priority
+            ignored.append(x)
+
+    stats = {
+        "conflict_key_count": conflict_key_count,
+        "conflict_02a_over_02_count": conflict_02a_over_02_count,
+    }
+    return kept, ignored, stats
 
 
 def _build_template_md() -> str:
@@ -324,7 +677,7 @@ def _build_template_md() -> str:
         "## 1. 如何填写 02_人工复核指标队列.xlsx\n"
         "- 在每条需修正记录中填写：`review_status`, `use_corrected_value`, `corrected_value`, `corrected_unit`。\n"
         "- 建议同时填写：`reviewer`, `reviewed_at`, `reviewer_note`。\n"
-        "- 强烈建议明确填写 `year` 列（例如 `2026E`），避免多年份歧义。\n\n"
+        "- 强烈建议明确填写 `year`（例如 `2026E`），避免多年份歧义。\n\n"
         "## 2. review_status 可选值\n"
         "- corrected / accepted / 修正 / 已修正 / 已确认 / 确认 / 通过 / accept / ok\n"
         "- rejected / reject / 拒绝 / 不采用 / 错误\n"
@@ -335,31 +688,33 @@ def _build_template_md() -> str:
         "- False: FALSE/false/0/no/n/否/不用/不采用/空值\n\n"
         "## 4. corrected_value / corrected_unit 示例\n"
         "- corrected_value: 204.59\n"
-        "- corrected_unit: 亿元\n"
-        "- reviewer_note: 根据 PDF 原表复核，归母净利润保留两位小数\n\n"
+        "- corrected_unit: 百万元\n"
+        "- reviewer_note: 根据原始证据截图复核，保留两位小数\n\n"
         "## 5. 最终表覆盖规则\n"
-        "- 唯一键：asset_package + standard_metric + year。\n"
-        "- 命中同键：manual_corrected 覆盖 auto_trusted。\n"
-        "- 无同键：manual_added 新增行。\n"
-        "- 同键多条人工修正：优先 reviewed_at 最新。\n\n"
+        "- 唯一键：asset_package + standard_metric + year\n"
+        "- 优先级：02A 人工年份覆盖 > 02 人工复核 > 01 自动可信\n"
+        "- 同键多条时优先 reviewed_at 最新，且 02A 覆盖优先于 02\n\n"
         "## 6. 注意\n"
-        "- 不要直接改 01_自动可信核心指标.xlsx。\n"
-        "- 必须通过 02 回写并运行本工具。\n"
+        "- 不要直接修改 01_自动可信核心指标.xlsx。\n"
+        "- 通过 02/02A 回写后运行本工具生成 06。\n"
     )
 
 
 def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
-    df01, df02_raw, p01, p02 = _read_required_inputs(delivery_dir)
+    df01, df02_raw, df02a_raw, p01, p02, p02a = _read_required_inputs(delivery_dir)
     df02 = _ensure_review_columns(df02_raw)
-    field_cand_map = _build_review_field_candidates(df02)
+    df02a = _ensure_review_columns(df02a_raw) if df02a_raw is not None else pd.DataFrame()
 
     trusted_input_rows = len(df01)
     manual_review_rows = len(df02)
+    manual_year_override_file_status = "missing" if p02a is None else "ok"
+    manual_year_override_rows = len(df02a) if not df02a.empty else 0
+
+    corrected_candidates_02 = _build_review_field_candidates(df02).get("corrected_value", [])
     corrected_value_non_empty_rows = 0
-    corrected_candidates = field_cand_map.get("corrected_value", [])
-    if corrected_candidates:
+    if corrected_candidates_02:
         non_empty_mask = pd.Series(False, index=df02.index)
-        for c in corrected_candidates:
+        for c in corrected_candidates_02:
             non_empty_mask = non_empty_mask | (df02[c].map(_norm) != "")
         corrected_value_non_empty_rows = int(non_empty_mask.sum())
 
@@ -403,222 +758,35 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
         axis=1,
     )
 
-    diagnosis_rows: List[Dict[str, object]] = []
-    app_rows: List[Dict[str, object]] = []
-    unresolved_rows: List[Dict[str, object]] = []
-    key_parse_rows: List[Dict[str, object]] = []
-    manual_candidates: List[Dict[str, object]] = []
+    result_02 = _extract_candidates(
+        df02,
+        source_code="02_manual_queue",
+        strict_year=False,
+        strict_numeric=False,
+    )
+    result_02a = _extract_candidates(
+        df02a,
+        source_code="02A_manual_year_override",
+        strict_year=True,
+        strict_numeric=True,
+    ) if not df02a.empty else {
+        "manual_candidates": [],
+        "diagnosis_rows": [],
+        "app_rows": [],
+        "unresolved_rows": [],
+        "key_parse_rows": [],
+        "invalid_missing_key_count": 0,
+        "invalid_missing_year_count": 0,
+        "invalid_multi_year_count": 0,
+    }
 
-    invalid_missing_key_count = 0
-    invalid_missing_year_count = 0
-    invalid_multi_year_count = 0
+    diagnosis_rows: List[Dict[str, object]] = result_02["diagnosis_rows"] + result_02a["diagnosis_rows"]
+    app_rows: List[Dict[str, object]] = result_02["app_rows"] + result_02a["app_rows"]
+    unresolved_rows: List[Dict[str, object]] = result_02["unresolved_rows"] + result_02a["unresolved_rows"]
+    key_parse_rows: List[Dict[str, object]] = result_02["key_parse_rows"] + result_02a["key_parse_rows"]
+    all_candidates = result_02["manual_candidates"] + result_02a["manual_candidates"]
 
-    for _, r in df02.iterrows():
-        ap = _norm(r.get("asset_package"))
-        sm = _norm(r.get("standard_metric"))
-        corrected_value, corrected_value_col, corrected_value_candidate_values, corrected_value_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("corrected_value", [])
-        )
-        corrected_unit, corrected_unit_col, _, corrected_unit_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("corrected_unit", [])
-        )
-        raw_use, use_col, _, use_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("use_corrected_value", [])
-        )
-        raw_status, status_col, _, status_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("review_status", [])
-        )
-        reviewer, reviewer_col, _, reviewer_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("reviewer", [])
-        )
-        reviewed_at, reviewed_at_col, _, reviewed_at_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("reviewed_at", [])
-        )
-        reviewer_note, reviewer_note_col, _, reviewer_note_conflict = _coalesce_value_from_candidates(
-            r, field_cand_map.get("reviewer_note", [])
-        )
-        year_val, year_col, _, year_conflict = _coalesce_value_from_candidates(r, field_cand_map.get("year", []))
-        field_conflicts = [
-            x
-            for x in [
-                corrected_value_conflict,
-                corrected_unit_conflict,
-                use_conflict,
-                status_conflict,
-                reviewer_conflict,
-                reviewed_at_conflict,
-                reviewer_note_conflict,
-                year_conflict,
-            ]
-            if x
-        ]
-        field_conflict_flags = "|".join(dict.fromkeys(field_conflicts))
-        source_row_label = _norm(r.get("source_row_label"))
-        source_table_index = _norm(r.get("source_table_index"))
-        source_row_index = _norm(r.get("source_row_index"))
-        evidence_crop_path = _norm(r.get("evidence_crop_path"))
-        issue_flags = _norm(r.get("value_issue_flags"))
-        raw_value_examples = _norm(r.get("raw_value_examples"))
-        recommendation = _norm(r.get("recommendation"))
-
-        status_norm, status_reason = _normalize_review_status(raw_status)
-        use_norm, use_reason = _normalize_use_corrected(raw_use)
-
-        row_for_year = r.copy()
-        row_for_year["year"] = year_val
-        yinfo = _collect_year_candidates(row_for_year)
-        parsed_year = _norm(yinfo["selected_year"])
-        parse_status = _norm(yinfo["parse_status"])
-        correction_key = f"{ap}|{sm}|{parsed_year}" if ap and sm and parsed_year else ""
-
-        missing_fields = []
-        if not ap:
-            missing_fields.append("asset_package")
-        if not sm:
-            missing_fields.append("standard_metric")
-        if not parsed_year:
-            missing_fields.append("year")
-        key_complete = len(missing_fields) == 0
-
-        action = ""
-        action_reason = ""
-        how_to_fix = ""
-
-        if status_norm == "pending":
-            action = "ignored_pending"
-            action_reason = "review_status_pending_or_empty"
-            how_to_fix = "将 review_status 设为 corrected/accepted，并填写 corrected_value、year。"
-        elif status_norm in {"rejected", "not_applicable"}:
-            action = "rejected_or_not_applicable"
-            action_reason = f"review_status_{status_norm}"
-            how_to_fix = "如需写入最终表，请改为 corrected 并设置 use_corrected_value=True。"
-        else:
-            # corrected path
-            if parse_status == "multi_year":
-                action = "invalid_multi_year"
-                action_reason = "multiple_year_candidates"
-                invalid_multi_year_count += 1
-                how_to_fix = "该复核行包含多个年份，请在 year 列明确填写目标年份，例如 2026E。"
-            elif parse_status == "missing_year":
-                action = "invalid_missing_year"
-                action_reason = "cannot_parse_year"
-                invalid_missing_year_count += 1
-                how_to_fix = "缺少 year，无法构造唯一键 asset_package + standard_metric + year。"
-            elif not ap or not sm:
-                action = "invalid_missing_key"
-                action_reason = "asset_or_metric_missing"
-                invalid_missing_key_count += 1
-                how_to_fix = "请补齐 asset_package 与 standard_metric。"
-            elif not use_norm:
-                action = "invalid_missing_corrected_value"
-                action_reason = f"use_corrected_value_not_true({use_reason})"
-                how_to_fix = "将 use_corrected_value 设置为 TRUE/是/1/√。"
-            elif not corrected_value:
-                action = "invalid_missing_corrected_value"
-                action_reason = "corrected_value_empty"
-                how_to_fix = "请填写 corrected_value。"
-            else:
-                action = "candidate_effective"
-                action_reason = "ready_for_apply"
-                how_to_fix = "无"
-                manual_candidates.append(
-                    {
-                        "asset_package": ap,
-                        "standard_metric": sm,
-                        "parsed_year": parsed_year,
-                        "review_status": status_norm,
-                        "use_corrected_value": raw_use,
-                        "corrected_value": corrected_value,
-                        "corrected_unit": corrected_unit,
-                        "reviewer": reviewer,
-                        "reviewed_at": reviewed_at,
-                        "reviewer_note": reviewer_note,
-                        "source_row_label": source_row_label,
-                        "source_table_index": source_table_index,
-                        "source_row_index": source_row_index,
-                        "evidence_crop_path": evidence_crop_path,
-                        "raw_value_examples": raw_value_examples,
-                        "value_issue_flags": issue_flags,
-                        "recommendation": recommendation,
-                    }
-                )
-
-        key_parse_rows.append(yinfo)
-
-        diagnosis_rows.append(
-            {
-                "asset_package": ap,
-                "standard_metric": sm,
-                "year": _norm(r.get("year")),
-                "parsed_year": parsed_year,
-                "correction_key": correction_key,
-                "corrected_value": corrected_value,
-                "corrected_unit": corrected_unit,
-                "review_status": raw_status,
-                "review_status_normalized": status_norm,
-                "use_corrected_value": raw_use,
-                "use_corrected_value_normalized": str(use_norm),
-                "key_complete": key_complete,
-                "missing_key_fields": "|".join(missing_fields),
-                "action": action,
-                "action_reason": action_reason,
-                "enters_final_06": False,
-                "how_to_fix": how_to_fix,
-                "corrected_value_candidate_columns": "|".join(field_cand_map.get("corrected_value", [])),
-                "corrected_value_candidate_values": corrected_value_candidate_values,
-                "selected_corrected_value_column": corrected_value_col,
-                "selected_corrected_value": corrected_value,
-                "field_conflict_flags": field_conflict_flags,
-            }
-        )
-
-        if action in {
-            "ignored_pending",
-            "rejected_or_not_applicable",
-            "invalid_missing_key",
-            "invalid_missing_year",
-            "invalid_multi_year",
-            "invalid_missing_corrected_value",
-        }:
-            app_rows.append(
-                {
-                    "asset_package": ap,
-                    "standard_metric": sm,
-                    "year": parsed_year,
-                    "review_status": raw_status,
-                    "use_corrected_value": raw_use,
-                    "corrected_value": corrected_value,
-                    "corrected_unit": corrected_unit,
-                    "action": action,
-                    "action_reason": action_reason,
-                    "original_auto_value": "",
-                    "final_value": "",
-                    "reviewer": reviewer,
-                    "reviewed_at": reviewed_at,
-                    "reviewer_note": reviewer_note,
-                    "source_row_label": source_row_label,
-                    "source_table_index": source_table_index,
-                    "source_row_index": source_row_index,
-                    "evidence_crop_path": evidence_crop_path,
-                }
-            )
-            unresolved_rows.append(
-                {
-                    "asset_package": ap,
-                    "standard_metric": sm,
-                    "year": parsed_year,
-                    "problem_type": action,
-                    "value_issue_flags": issue_flags,
-                    "raw_value_examples": raw_value_examples,
-                    "recommendation": recommendation or how_to_fix,
-                    "source_row_label": source_row_label,
-                    "source_table_index": source_table_index,
-                    "source_row_index": source_row_index,
-                    "evidence_crop_path": evidence_crop_path,
-                }
-            )
-
-    kept_manual, ignored_conflicts = _dedupe_manual_candidates(manual_candidates)
+    kept_manual, ignored_conflicts, dedupe_stats = _dedupe_and_prioritize_candidates(all_candidates)
     for x in ignored_conflicts:
         app_rows.append(
             {
@@ -640,24 +808,37 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
                 "source_table_index": _norm(x.get("source_table_index")),
                 "source_row_index": _norm(x.get("source_row_index")),
                 "evidence_crop_path": _norm(x.get("evidence_crop_path")),
+                "correction_source": _norm(x.get("source_code")),
+                "source_priority": _norm(x.get("source_priority")),
             }
         )
 
     effective_correction_rows = len(kept_manual)
     applied_override_count = 0
     applied_new_manual_count = 0
+    applied_02a_rows = 0
 
     idx_map = {k: i for i, k in enumerate(base["_key"].tolist())}
+    applied_action_by_key_source: Dict[Tuple[str, str], str] = {}
+
     for m in kept_manual:
         key = f"{_norm(m['asset_package'])}|{_norm(m['standard_metric'])}|{_norm(m['parsed_year'])}"
+        source_code = _norm_key(m.get("source_code"))
+        is_02a = source_code == "02a_manual_year_override"
+
         if key in idx_map:
             i = idx_map[key]
             original_auto = _norm(base.at[i, "value"])
-            base.at[i, "final_value_source"] = "manual_corrected"
+            if is_02a:
+                base.at[i, "final_value_source"] = "manual_year_override"
+                base.at[i, "final_note"] = "manual year override applied"
+                applied_02a_rows += 1
+            else:
+                base.at[i, "final_value_source"] = "manual_corrected"
+                base.at[i, "final_note"] = "manual override applied"
             base.at[i, "final_review_status"] = "corrected"
             base.at[i, "final_value"] = _norm(m["corrected_value"])
             base.at[i, "final_unit"] = _norm(m["corrected_unit"]) or _norm(base.at[i, "unit"])
-            base.at[i, "final_note"] = "manual override applied"
             base.at[i, "corrected_value"] = _norm(m["corrected_value"])
             base.at[i, "corrected_unit"] = _norm(m["corrected_unit"])
             base.at[i, "reviewer"] = _norm(m["reviewer"])
@@ -667,6 +848,15 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
             action = "applied_override"
             action_reason = "matched_existing_auto_key"
         else:
+            if is_02a:
+                final_source = "manual_year_override"
+                note = "manual year override added new key"
+                trace_note = "manual year override from 02A"
+                applied_02a_rows += 1
+            else:
+                final_source = "manual_added"
+                note = "manual added new key"
+                trace_note = "manual addition from review queue"
             new_row = {
                 "source_pdf": "",
                 "asset_package": _norm(m["asset_package"]),
@@ -683,12 +873,12 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
                 "source_row_index": _norm(m["source_row_index"]),
                 "source_column": "",
                 "evidence_crop_path": _norm(m["evidence_crop_path"]),
-                "trace_note": "manual addition from review queue",
-                "final_value_source": "manual_added",
+                "trace_note": trace_note,
+                "final_value_source": final_source,
                 "final_review_status": "corrected",
                 "final_value": _norm(m["corrected_value"]),
                 "final_unit": _norm(m["corrected_unit"]),
-                "final_note": "manual added new key",
+                "final_note": note,
                 "original_auto_value": "",
                 "original_auto_unit": "",
                 "corrected_value": _norm(m["corrected_value"]),
@@ -724,16 +914,20 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
                 "source_table_index": _norm(m["source_table_index"]),
                 "source_row_index": _norm(m["source_row_index"]),
                 "evidence_crop_path": _norm(m["evidence_crop_path"]),
+                "correction_source": _norm(m.get("source_code")),
+                "source_priority": "02A_over_02" if is_02a else "",
             }
         )
+        applied_action_by_key_source[(key, source_code)] = action
 
-    # Final de-dup safety
     base["_key"] = base.apply(
         lambda r: f"{_norm(r['asset_package'])}|{_norm(r['standard_metric'])}|{_norm(r['year'])}",
         axis=1,
     )
     base["_pri_source"] = base["final_value_source"].map(
-        lambda s: 3 if _norm(s) == "manual_corrected" else (2 if _norm(s) == "manual_added" else 1)
+        lambda s: 4
+        if _norm(s) == "manual_year_override"
+        else (3 if _norm(s) == "manual_corrected" else (2 if _norm(s) == "manual_added" else 1))
     )
     base["_pri_reviewed_at"] = base["reviewed_at"].map(_parse_reviewed_at)
     base = (
@@ -801,6 +995,8 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
         "source_table_index",
         "source_row_index",
         "evidence_crop_path",
+        "correction_source",
+        "source_priority",
     ]
     app_df = pd.DataFrame(app_rows)
     for c in app_cols:
@@ -827,7 +1023,6 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
             unresolved_df[c] = ""
     unresolved_df = unresolved_df[unresolved_cols].copy()
 
-    # Update diagnosis with final enter status
     enter_map = set(
         final_df.apply(
             lambda r: f"{_norm(r['asset_package'])}|{_norm(r['standard_metric'])}|{_norm(r['year'])}",
@@ -836,10 +1031,14 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
     )
     for r in diagnosis_rows:
         k = _norm(r.get("correction_key"))
-        r["enters_final_06"] = bool(k and k in enter_map and _norm(r.get("action")) in {"candidate_effective"})
-        if _norm(r.get("action")) == "candidate_effective":
-            r["action"] = "applied_override_or_new_manual"
-            r["action_reason"] = "applied_after_key_match_or_add"
+        source_code = _norm_key(r.get("source_code"))
+        action = _norm(r.get("action"))
+        if action == "candidate_effective":
+            applied_action = applied_action_by_key_source.get((k, source_code), "")
+            if applied_action:
+                r["action"] = applied_action
+                r["action_reason"] = "applied_after_key_match_or_add"
+        r["enters_final_06"] = bool(k and k in enter_map and _norm(r.get("action")).startswith("applied_"))
 
     diagnosis_df = pd.DataFrame(diagnosis_rows)
     parse_df = pd.DataFrame(key_parse_rows)
@@ -873,28 +1072,52 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
         [
             {
                 "field_name": "review_status",
-                "accepted_values": "corrected/accepted/修正/已修正/已确认/确认/通过/accept/ok; rejected/reject/拒绝/不采用/错误; not_applicable/不适用/非目标/无需处理; empty->pending",
+                "accepted_values": "corrected/accepted/修正/已修正/已确认/确认/通过/accept/ok",
                 "bad_examples": "done, pass1, ???",
                 "good_examples": "corrected, 已修正, accepted",
             },
             {
                 "field_name": "use_corrected_value",
-                "accepted_values": "TRUE/true/1/yes/y/是/对/使用/采用/√; FALSE/false/0/no/n/否/不用/不采用/empty",
+                "accepted_values": "TRUE/true/1/yes/y/是/对/使用/采用/√; FALSE/false/0/no/n/否/不用/不采用/空值",
                 "bad_examples": "apply, maybe",
                 "good_examples": "TRUE, 是, 1, √",
             },
             {
                 "field_name": "year",
-                "accepted_values": "2024, 2024A, 2025A, 2026E, 2027E, 2028E (single year only)",
-                "bad_examples": "2025A/2026E (multi-year), empty",
+                "accepted_values": "2024/2024A/2025A/2026E/2027E/2028E (single year only)",
+                "bad_examples": "2025A/2026E, empty",
                 "good_examples": "2026E",
             },
             {
                 "field_name": "corrected_value",
-                "accepted_values": "non-empty numeric/text agreed by reviewer",
+                "accepted_values": "non-empty numeric value",
                 "bad_examples": "empty while use_corrected_value=TRUE",
                 "good_examples": "204.59",
             },
+        ]
+    )
+
+    override_duplicate_key_count = 0
+    if not df02a.empty:
+        work_02a = df02a.copy()
+        for c in ["asset_package", "standard_metric", "year"]:
+            if c not in work_02a.columns:
+                work_02a[c] = ""
+            work_02a[c] = work_02a[c].map(_norm)
+        override_duplicate_key_count = int(work_02a.groupby(["asset_package", "standard_metric", "year"]).size().gt(1).sum())
+
+    override_summary_df = pd.DataFrame(
+        [
+            {
+                "manual_year_override_file_status": manual_year_override_file_status,
+                "manual_year_override_file_path": str(p02a) if p02a else "",
+                "manual_year_override_total_rows": manual_year_override_rows,
+                "manual_year_override_effective_rows": len(result_02a["manual_candidates"]),
+                "manual_year_override_invalid_rows": manual_year_override_rows - len(result_02a["manual_candidates"]),
+                "manual_year_override_applied_rows": applied_02a_rows,
+                "manual_year_override_duplicate_key_count": override_duplicate_key_count,
+                "manual_year_override_conflict_with_02_key_count": dedupe_stats["conflict_02a_over_02_count"],
+            }
         ]
     )
 
@@ -915,6 +1138,7 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
             "non_applied_reasons": grouped,
             "key_parse_details": parse_df,
             "fill_examples": fill_examples_df,
+            "manual_year_override_status": override_summary_df,
         },
         delivery_dir / "06D_人工复核回写诊断.xlsx",
     )
@@ -928,12 +1152,17 @@ def apply_manual_review(delivery_dir: Path) -> Dict[str, object]:
         "applied_new_manual_count": applied_new_manual_count,
         "ignored_pending_count": ignored_pending_count,
         "rejected_or_not_applicable_count": rejected_or_not_applicable_count,
-        "invalid_missing_key_count": invalid_missing_key_count,
-        "invalid_missing_year_count": invalid_missing_year_count,
-        "invalid_multi_year_count": invalid_multi_year_count,
+        "invalid_missing_key_count": result_02["invalid_missing_key_count"] + result_02a["invalid_missing_key_count"],
+        "invalid_missing_year_count": result_02["invalid_missing_year_count"] + result_02a["invalid_missing_year_count"],
+        "invalid_multi_year_count": result_02["invalid_multi_year_count"] + result_02a["invalid_multi_year_count"],
         "unresolved_count": unresolved_count,
         "final_rows": final_rows,
         "duplicate_key_count_final": duplicate_key_count_final,
+        "manual_year_override_file_status": manual_year_override_file_status,
+        "manual_year_override_rows": manual_year_override_rows,
+        "manual_year_override_effective_rows": len(result_02a["manual_candidates"]),
+        "manual_year_override_applied_rows": applied_02a_rows,
+        "manual_year_override_conflict_with_02_key_count": dedupe_stats["conflict_02a_over_02_count"],
         "diagnosis_report_path": str(p06d),
         "output_paths": {
             "06": str(p06),
@@ -963,6 +1192,11 @@ def main() -> None:
     print(f"invalid_missing_year_count: {result['invalid_missing_year_count']}")
     print(f"invalid_multi_year_count: {result['invalid_multi_year_count']}")
     print(f"unresolved_count: {result['unresolved_count']}")
+    print(f"manual_year_override_file_status: {result['manual_year_override_file_status']}")
+    print(f"manual_year_override_rows: {result['manual_year_override_rows']}")
+    print(f"manual_year_override_effective_rows: {result['manual_year_override_effective_rows']}")
+    print(f"manual_year_override_applied_rows: {result['manual_year_override_applied_rows']}")
+    print(f"manual_year_override_conflict_with_02_key_count: {result['manual_year_override_conflict_with_02_key_count']}")
     print(f"final_rows: {result['final_rows']}")
     print(f"duplicate_key_count_final: {result['duplicate_key_count_final']}")
     print(f"diagnosis_report_path: {result['diagnosis_report_path']}")
