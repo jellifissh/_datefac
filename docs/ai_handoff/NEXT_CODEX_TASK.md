@@ -1,64 +1,63 @@
 # NEXT CODEX TASK
 
 ## task_title
-验收 02A 人工年份修正覆盖表实现并修复 worklog 乱码
+Prepare manual review guide and pre-expansion checklist
 
 ## project
 D:\_datefac
 
 ## current_status
-上一轮 Codex 已提交代码：
-- commit: 96b633a add manual year override support
-- 修改文件：
-  - tools/apply_manual_review_corrections.py
-  - tools/check_delivery_state.py
+The 02A manual year override support has been implemented and revalidated.
 
-上一轮 worklog 显示：
-- 已创建/更新 02A_人工年份修正覆盖表.xlsx
-- 已运行 apply_manual_review_corrections.py
-- 已运行 check_delivery_state.py --json
-- 06 中已验证：
-  - 归属母公司净利润 2025A = 204.59
-  - 归属母公司净利润 2027E = 398.83
-  - 归属母公司净利润 2028E = 536.53
-  - 归属母公司净利润 2026E = 288.52 仍保留
+Known validated results from the latest revalidation:
+- manual_year_override_file_status = ok
+- manual_year_override_rows = 3
+- manual_year_override_effective_rows = 3
+- manual_year_override_applied_rows = 3
 - duplicate_key_count_final = 0
 - overall_status = PASS
-- fail_count = 0
 - warn_count = 0
+- fail_count = 0
 
-但上一轮 worklog 中文再次出现乱码，因此需要重新用 UTF-8 写入一份干净验收报告和干净 worklog。
+Final values validated in 06:
+- NET_PROFIT_ATTRIB / 2025A = 204.59, source = manual_year_override
+- NET_PROFIT_ATTRIB / 2026E = 288.52, source = manual_corrected
+- NET_PROFIT_ATTRIB / 2027E = 398.83, source = manual_year_override
+- NET_PROFIT_ATTRIB / 2028E = 536.53, source = manual_year_override
+
+Important issue:
+- Previous worklog files still contain Chinese garbled text.
+- From this task onward, write Codex worklogs in English only to avoid encoding damage.
 
 ## goal
-本轮只做验收和报告，不改业务数据，不再实现新功能。
+Create user-facing operational documentation for the current delivery package workflow and a pre-expansion checklist before increasing the sample size.
 
-目标：
-1. 只读验证 02A 实现是否真实生效。
-2. 生成本地验收报告：
-   - D:\_datefac\output\delivery_package\11_02A_year_override_validation.md
-   - D:\_datefac\output\delivery_package\11_02A_year_override_validation.xlsx
-3. 更新 docs/codex_worklog/LATEST.md，确保中文不乱码。
-4. 新增 docs/codex_worklog/history/YYYYMMDD_HHMMSS_validate_02A_year_overrides.md。
-5. 不修改 01/02/02A/06 正式数据。
-6. 不运行 factory_core.py。
+Generate local output files:
+- D:\_datefac\output\delivery_package\12_manual_review_user_guide.md
+- D:\_datefac\output\delivery_package\12_manual_review_user_guide.xlsx
+- D:\_datefac\output\delivery_package\13_pre_expansion_checklist.md
+- D:\_datefac\output\delivery_package\13_pre_expansion_checklist.xlsx
+
+This task must not change production data.
 
 ## hard_constraints
-1. 不要运行 factory_core.py
-2. 不要触发 marker / surya / vision / PaddleOCR
-3. 不要下载 model.safetensors 或任何视觉模型
-4. 不要修改 01_自动可信核心指标.xlsx
-5. 不要修改 02_人工复核指标队列.xlsx
-6. 不要修改 02A_人工年份修正覆盖表.xlsx
-7. 不要修改 06_最终核心财务指标.xlsx
-8. 不要扩样本
-9. 不要重新处理 PDF
-10. 不要提交 output 下 Excel/Markdown/PDF/截图产物到 Git
-11. 只允许提交 worklog 文档
+1. Do not run factory_core.py.
+2. Do not trigger marker / surya / vision / PaddleOCR.
+3. Do not download model.safetensors or any vision model.
+4. Do not modify 01_自动可信核心指标.xlsx.
+5. Do not modify 02_人工复核指标队列.xlsx.
+6. Do not modify 02A_人工年份修正覆盖表.xlsx.
+7. Do not modify 06_最终核心财务指标.xlsx.
+8. Do not rerun apply_manual_review_corrections.py unless only a read-only report requires it; prefer not to rerun it in this task.
+9. Do not expand samples.
+10. Do not process PDFs again.
+11. Do not commit output artifacts under output/delivery_package.
+12. Only commit docs/codex_worklog updates.
 
 ## required_steps
 
-### 1. 同步 Git 并确认任务
-执行：
+### 1. Sync Git and confirm task
+Run:
 
 ```bat
 cd /d D:\_datefac
@@ -68,198 +67,285 @@ git status --short
 git log --oneline --decorate -8
 ```
 
-读取 NEXT_CODEX_TASK.md，确认 task_title 是：
-“验收 02A 人工年份修正覆盖表实现并修复 worklog 乱码”
+Read NEXT_CODEX_TASK.md and confirm task_title is:
+Prepare manual review guide and pre-expansion checklist
 
-如果 task_title 不匹配，停止，不要执行旧任务。
+If task_title does not match, stop immediately.
 
-### 2. UTF-8 写入要求
-本轮所有 Markdown / worklog 必须用 Python UTF-8 写入，禁止 PowerShell 默认重定向。
+### 2. Encoding rule
+All newly generated Markdown and worklog files must be written in UTF-8.
 
-建议：
+For Codex worklog files, use English only.
+
+Use Python writing style:
 
 ```python
 from pathlib import Path
 Path(path).write_text(content, encoding="utf-8")
 ```
 
-生成后必须读取验证：
-- 不包含 `????`
-- 不包含连续 `??` 作为乱码
-- 不包含 `�`
-- 中文段落正常显示
+After writing, read files back and verify:
+- no `????`
+- no Unicode replacement character `�`
+- no broken headings
 
-### 3. 运行状态检查
-执行：
+### 3. Read current delivery state, read-only
+Run:
 
 ```bat
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
 
-记录：
-- overall_status
-- pass_count
-- warn_count
-- fail_count
-- report_path
-
-### 4. 只读读取关键产物
-读取以下文件：
+Read these files without modifying them:
+- D:\_datefac\output\delivery_package\01_自动可信核心指标.xlsx
+- D:\_datefac\output\delivery_package\02_人工复核指标队列.xlsx
 - D:\_datefac\output\delivery_package\02A_人工年份修正覆盖表.xlsx
 - D:\_datefac\output\delivery_package\06_最终核心财务指标.xlsx
 - D:\_datefac\output\delivery_package\06A_人工修正应用明细.xlsx
 - D:\_datefac\output\delivery_package\06D_人工复核回写诊断.xlsx
 - D:\_datefac\output\delivery_package\07_delivery_state_check.xlsx
 
-验证以下内容：
+Collect key facts:
+- final delivery status
+- current trusted rows count
+- manual queue rows count
+- 02A override rows count
+- final rows count
+- duplicate key status
+- high risk flags status
+- test token status
+- current manual correction sources in 06/06A
 
-#### 02A 验证
-02A 必须存在并可读。
-必须有以下 3 条：
-- 归属母公司净利润 2025A = 204.59，单位百万元
-- 归属母公司净利润 2027E = 398.83，单位百万元
-- 归属母公司净利润 2028E = 536.53，单位百万元
+### 4. Generate 12 manual review user guide
+Create:
+- D:\_datefac\output\delivery_package\12_manual_review_user_guide.md
+- D:\_datefac\output\delivery_package\12_manual_review_user_guide.xlsx
 
-字段检查：
-- asset_package 非空
-- standard_metric = 归属母公司净利润
-- year 为单一年份
-- corrected_value 可数值化
-- corrected_unit 非空
-- review_status 有效
-- use_corrected_value 为真值
+The guide must explain the current manual review workflow clearly.
 
-#### 06 验证
-06 必须包含：
-- 归属母公司净利润 2025A = 204.59，来源 manual_year_override 或等价
-- 归属母公司净利润 2026E = 288.52，来源 manual_corrected 或等价
-- 归属母公司净利润 2027E = 398.83，来源 manual_year_override 或等价
-- 归属母公司净利润 2028E = 536.53，来源 manual_year_override 或等价
+Markdown structure:
 
-同时确认：
-- duplicate_key_count_final = 0 或 07 中 duplicate_keys 为空
-- test_token_hits 为空
-- high_risk_flags 为空
+# Manual Review User Guide
 
-#### 06A 验证
-06A 应能看到 02A 应用明细：
-- 至少 3 条 correction_source / final_value_source / source 字段能体现 manual_year_override 或 02A 来源。
+## 1. Purpose
+Explain that the delivery package now supports automatic trusted metrics, manual review queue corrections, and manual year override facts.
 
-#### 06D 验证
-06D 应能看到 02A 诊断信息：
-- 02A 文件存在
-- 02A 总行数
-- 02A 有效行数
-- 02A 应用行数
-- 02A 重复 key 数
-- 02A 与 02 冲突 key 数，如有
+## 2. File Roles
+Explain:
+- 01_自动可信核心指标.xlsx = trusted automatic metric output; do not edit directly
+- 02_人工复核指标队列.xlsx = manual review queue; use for suspicious or missing candidate metrics, one row should carry one year
+- 02A_人工年份修正覆盖表.xlsx = confirmed year-level manual override fact table; use for multi-year manual corrections
+- 06_最终核心财务指标.xlsx = final merged metric table; generated output, do not edit directly
+- 06A_人工修正应用明细.xlsx = application detail log
+- 06B_未解决问题清单.xlsx = unresolved issues
+- 06D_人工复核回写诊断.xlsx = diagnostics
+- 07_delivery_state_check.xlsx = delivery health check
 
-### 5. 生成 11 验收报告
-生成：
-- D:\_datefac\output\delivery_package\11_02A_year_override_validation.md
-- D:\_datefac\output\delivery_package\11_02A_year_override_validation.xlsx
+## 3. When to Use 02
+Use 02 when correcting one suspicious candidate row with one specific year.
+Include required fields:
+- review_status
+- use_corrected_value
+- corrected_value
+- corrected_unit
+- year
+- reviewer
+- reviewed_at
+- reviewer_note
 
-Markdown 必须包含：
+## 4. When to Use 02A
+Use 02A when adding or overriding multiple confirmed metric-year facts, especially when one original candidate row cannot carry several years.
+Explain one row = one metric + one year.
 
-# 02A Manual Year Override Validation
+Required 02A fields:
+- asset_package
+- standard_metric
+- year
+- corrected_value
+- corrected_unit
+- review_status
+- use_corrected_value
+- reviewer
+- reviewed_at
+- reviewer_note
+- evidence_crop_path
+- source_note
 
-## Summary
-- generated_at
-- overall_status
-- pass_count
-- warn_count
-- fail_count
-- validation_result: PASS / WARN / FAIL
+## 5. Merge Priority
+Explain priority:
+1. 02A manual_year_override
+2. 02 manual correction
+3. 01 trusted automatic value
 
-## 02A Input Validation
-列出 3 条 02A 输入记录及字段检查结果。
+Explain duplicate/conflict principle.
 
-## 06 Final Validation
-列出 2025A/2026E/2027E/2028E 归母净利润最终值、来源和是否匹配期望。
+## 6. Safe Operating Procedure
+Step-by-step:
+1. Open screenshots/PDF evidence.
+2. Fill 02 or 02A depending on case.
+3. Run apply_manual_review_corrections.py.
+4. Run check_delivery_state.py --json.
+5. Open 06/06A/06D/07 for verification.
 
-## 06A Application Detail Validation
-说明 02A 应用明细是否存在。
+## 7. Do Not Do
+Include:
+- Do not edit 01 directly.
+- Do not edit 06 directly.
+- Do not put multiple years into one 02 row.
+- Do not use TEST / 20266 / 987654.321.
+- Do not run factory_core.py during manual review validation.
+- Do not trigger OCR/vision backends.
 
-## 06D Diagnosis Validation
-说明 02A 诊断是否存在，是否有重复 key / 冲突 / 无效行。
+## 8. Current Accepted Sample
+Summarize current accepted sample values:
+- NET_PROFIT_ATTRIB 2025A = 204.59
+- NET_PROFIT_ATTRIB 2026E = 288.52
+- NET_PROFIT_ATTRIB 2027E = 398.83
+- NET_PROFIT_ATTRIB 2028E = 536.53
+- EPS 2026E = 1.65
+- PE 2026E = 29.97
+- EV_EBITDA 2026E = 22.76
 
-## Risk Assessment
-说明是否存在交付阻断风险。
+## 9. Troubleshooting
+Explain likely problems:
+- file locked by WPS/Excel
+- duplicated corrected_value columns
+- year blank or multi-year
+- corrected_value non-numeric
+- check_delivery_state FAIL
+- worklog encoding issue
 
-## Decision
-如果全部通过，写：
-02A manual year override support is accepted for current sample.
+Excel guide should include sheets:
+- file_roles
+- field_reference_02
+- field_reference_02A
+- safe_procedure
+- accepted_sample
+- troubleshooting
 
-## Next Step
-建议：
-- 整理 delivery_package 人工复核使用说明
-- 准备扩样本前的验收清单
+### 5. Generate 13 pre-expansion checklist
+Create:
+- D:\_datefac\output\delivery_package\13_pre_expansion_checklist.md
+- D:\_datefac\output\delivery_package\13_pre_expansion_checklist.xlsx
 
-Excel 至少包含 sheet：
-- summary
-- input_02A_validation
-- final_06_validation
-- application_06A_validation
-- diagnosis_06D_validation
-- risks
+Markdown structure:
 
-### 6. 更新 worklog
-必须更新：
+# Pre-Expansion Checklist
+
+## 1. Current Gate Status
+State current delivery check result.
+
+## 2. Must Pass Before Expanding to 30 Reports
+Checklist items:
+- delivery check PASS
+- fail_count = 0
+- warn_count = 0 or only accepted non-blocking warnings
+- duplicate_key_count_final = 0
+- high_risk_flags empty in 01/06
+- test_token_hits empty
+- 02A override diagnostics clean
+- 06A has application details
+- 06D diagnostics readable
+- worklog readable enough for tracking
+
+## 3. Suggested Expansion Plan
+Recommend staged expansion:
+- Stage 1: 3 reports
+- Stage 2: 10 reports
+- Stage 3: 30 reports
+
+For each stage, list checks and stop conditions.
+
+## 4. Stop Conditions
+Stop expansion if:
+- factory_core wants to download model.safetensors
+- OCR/vision backends are triggered unexpectedly
+- duplicate keys appear
+- high-risk flags enter 01/06
+- 02A conflicts unresolved
+- final rows explode unexpectedly
+- evidence crop paths missing in many records
+
+## 5. Metrics to Track
+Track:
+- reports processed
+- target reports count
+- failed/non-target reports count
+- 01 trusted rows
+- 02 manual queue rows
+- 02A override rows
+- 06 final rows
+- duplicate keys
+- high risk rows
+- test token hits
+- manual applied rows
+- unresolved rows
+
+## 6. Recommended Next Technical Work
+List:
+- stabilize worklog encoding by using English-only Codex logs
+- add a small script to summarize delivery state in Markdown
+- improve 02A template generation
+- add conflict tests for 02 vs 02A
+- later expand samples
+
+Excel checklist should include sheets:
+- gate_status
+- checklist
+- expansion_plan
+- stop_conditions
+- metrics_to_track
+- next_technical_work
+
+### 6. Validation
+After generating 12/13 files:
+- Check that all Markdown files are UTF-8 readable.
+- Check they do not contain `????` or `�`.
+- Run check_delivery_state.py --json and confirm delivery remains PASS.
+- Confirm 01/02/02A/06 were not modified by this task.
+
+### 7. Update worklog
+Update:
 - docs/codex_worklog/LATEST.md
 
-必须新增：
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_validate_02A_year_overrides.md
+Create:
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_manual_review_guide_and_expansion_checklist.md
 
-worklog 必须中文正常，不允许乱码。
+Worklog must be English only.
 
-result_summary 必须说明：
-- 是否生成 11 验收 md/xlsx
-- 02A 是否存在并有效
-- 06 是否验证到 2025A/2026E/2027E/2028E
-- 06A 是否有 02A 应用明细
-- 06D 是否有 02A 诊断
-- delivery check 是否 PASS
-- 是否未修改 01/02/02A/06
+result_summary must include:
+- generated 12 guide md/xlsx
+- generated 13 checklist md/xlsx
+- delivery status
+- whether output docs are free of garbled text
+- whether production data files were untouched
 
-next_step_suggestion：
-- 如果验收通过，下一步整理 delivery_package 人工复核使用说明和扩样本前检查清单。
+next_step_suggestion:
+- User should review 12/13 docs.
+- If accepted, proceed to staged expansion starting from 3 reports, not 30 immediately.
 
 ## git_commit
-允许提交：
-- docs/codex_worklog/LATEST.md
-- docs/codex_worklog/history/
-
-不要提交：
-- output/delivery_package/11_02A_year_override_validation.md
-- output/delivery_package/11_02A_year_override_validation.xlsx
-- output 下任何 Excel/PDF/截图产物
-
-执行：
+Only commit worklog docs:
 
 ```bat
 git add docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "validate manual year override support"
+git commit -m "prepare manual review guide and expansion checklist"
 git push origin main
 ```
 
+Do not commit output artifacts.
+
 ## expected_final_state
-- 本地生成 11_02A_year_override_validation.md
-- 本地生成 11_02A_year_override_validation.xlsx
-- delivery check PASS
-- 02A 输入有效
-- 06 最终表多年份归母净利润正确
-- 06A/06D 有 02A 应用和诊断痕迹
-- worklog 中文无乱码
-- 未修改 01/02/02A/06
-- 未提交 output 产物到 Git
+- Local 12 guide md/xlsx exists.
+- Local 13 checklist md/xlsx exists.
+- No garbled text in newly generated docs or worklog.
+- delivery check remains PASS.
+- 01/02/02A/06 are not modified.
+- Only worklog files committed to Git.
 
 ## safety_notes
-- 未运行 factory_core.py
-- 未触发 marker/surya/vision/PaddleOCR
-- 未下载 model.safetensors
-- 未修改 01_自动可信核心指标.xlsx
-- 未修改 02_人工复核指标队列.xlsx
-- 未修改 02A_人工年份修正覆盖表.xlsx
-- 未修改 06_最终核心财务指标.xlsx
-- 未提交 PDF 原文
-- 未提交完整 Excel 产物
+- Do not run factory_core.py.
+- Do not trigger marker/surya/vision/PaddleOCR.
+- Do not download model.safetensors.
+- Do not modify 01/02/02A/06.
+- Do not commit output artifacts.
