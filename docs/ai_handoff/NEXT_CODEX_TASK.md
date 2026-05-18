@@ -1,39 +1,44 @@
 # NEXT CODEX TASK
 
 ## task_title
-Prepare Stage 1 manual inspection packet from probe outputs
+Prepare Stage 1 visual confirmation packet
 
 ## project
 D:\_datefac
 
 ## current_status
-Stage 1 probe quality review has been completed.
+The Stage 1 manual inspection packet has been reviewed.
 
-Latest review result:
-- delivery_status = PASS / pass_count=17 / warn_count=0 / fail_count=0
-- ready_count = 0
-- manual_inspection_count = 3
-- blocked_count = 0
-- non_target_count = 0
-
-Per-sample gate decisions:
-- H3_AP202605141822317484_1 = NEEDS_MANUAL_INSPECTION
-- H3_AP202605121822223662_1 = NEEDS_MANUAL_INSPECTION
-- H3_AP202605141822318060_1 = NEEDS_MANUAL_INSPECTION
-
-Important clarification:
-The probe stage only proved safe table detection did not break anything. It did not integrate the three samples into 01/02/06. The next step is to inspect the probe outputs and decide whether there is enough table evidence to run the full safe non-vision pipeline later.
-
-## goal
-Create a human-readable Stage 1 manual inspection packet from existing probe outputs.
-
-Generate local reports:
-- D:\_datefac\output\delivery_package\19_stage1_manual_inspection_packet.md
+Uploaded/reviewed file:
 - D:\_datefac\output\delivery_package\19_stage1_manual_inspection_packet.xlsx
 
-The packet should help the user decide whether each sample can proceed to the full safe non-vision pipeline.
+Latest 19 packet summary:
+- delivery_status = PASS / pass_count=17 / warn_count=0 / fail_count=0
+- selected_samples_count = 3
+- high_confidence_candidate_count = 0
+- medium_confidence_candidate_count = 14
+- low_confidence_candidate_count = 40
+- proposed gates:
+  - H3_AP202605141822317484_1 = NEEDS_VISUAL_CONFIRMATION
+  - H3_AP202605121822223662_1 = NEEDS_VISUAL_CONFIRMATION
+  - H3_AP202605141822318060_1 = NEEDS_VISUAL_CONFIRMATION
 
-This is a review/inspection task only. Do not run full processing.
+Important interpretation:
+The samples are not blocked and not non-target. They have medium-confidence candidate tables, but probe text/keyword evidence is not strong enough to directly promote them to the full safe pipeline. The next step is to generate a visual confirmation packet from existing PDFs/probe candidate pages, without using OCR or vision models.
+
+## goal
+Generate a Stage 1 visual confirmation packet for human review.
+
+Local outputs:
+- D:\_datefac\output\delivery_package\20_stage1_visual_confirmation_index.md
+- D:\_datefac\output\delivery_package\20_stage1_visual_confirmation_index.xlsx
+
+Also create per-sample preview folders:
+- D:\_datefac\output\H3_AP202605141822317484_1_资产包\_stage1_visual_confirmation\
+- D:\_datefac\output\H3_AP202605121822223662_1_资产包\_stage1_visual_confirmation\
+- D:\_datefac\output\H3_AP202605141822318060_1_资产包\_stage1_visual_confirmation\
+
+This task must generate static page/table crop previews using local rendering only, such as PyMuPDF or pdfplumber page rendering. This is not OCR and not model vision.
 
 ## hard_constraints
 1. Do not run factory_core.py.
@@ -47,27 +52,34 @@ This is a review/inspection task only. Do not run full processing.
 9. Do not modify 06_最终核心财务指标.xlsx.
 10. Do not commit output artifacts.
 11. Worklog must be English only and UTF-8.
-12. Prefer reading existing _stage1_probe outputs. Do not rerun probe_pdf_tables.py unless a selected sample has missing or unreadable probe output.
-13. If rerunning probe is absolutely required, use only probe_pdf_tables.py with the same safe non-vision constraints.
+12. Use local static PDF rendering only. No OCR. No AI vision. No external downloads.
+13. If crop bbox is unavailable, render the full relevant page instead of failing.
 
 ## selected_samples
-Inspect exactly these asset folders:
+Use exactly these samples:
 
-1. D:\_datefac\output\H3_AP202605141822317484_1_资产包
-   - company: 三鑫医疗
-   - expected target evidence: page 1 core metric table, page 4 business forecast table, page 5 full financial forecast table
+1. H3_AP202605141822317484_1.pdf
+   company: 三鑫医疗
+   candidate pages from 19:
+   - page 1: core metric table / Table_MainProfit candidate
+   - page 4: business forecast table candidate
+   - page 5: full financial forecast table candidate
 
-2. D:\_datefac\output\H3_AP202605121822223662_1_资产包
-   - company: 冠豪高新
-   - expected target evidence: financial summary / forecast tables with negative or abnormal values
+2. H3_AP202605121822223662_1.pdf
+   company: 冠豪高新
+   candidate pages from 19:
+   - page 2: core indicators table candidate
+   - page 3: full financial forecast / income statement / ratio / cash flow candidates
 
-3. D:\_datefac\output\H3_AP202605141822318060_1_资产包
-   - company: 科锐国际
-   - expected target evidence: core forecast / valuation tables, possible years like 2024/2025/2026E/2027E/2028E without A suffix
+3. H3_AP202605141822318060_1.pdf
+   company: 科锐国际
+   candidate pages from 19:
+   - page 5: full financial forecast / valuation table candidate
+   - page 6: likely rating table only, include only as negative/ignore evidence if already present in probe outputs
 
 Baseline sample remains regression guard only:
 - H3_AP202605091822098939_1.pdf
-Do not inspect it as a Stage 1 selected sample unless only checking that it remains untouched.
+Do not render it unless only checking it remains untouched.
 
 ## required_steps
 
@@ -82,7 +94,7 @@ git log --oneline --decorate -8
 ```
 
 Read NEXT_CODEX_TASK.md and confirm task_title is:
-Prepare Stage 1 manual inspection packet from probe outputs
+Prepare Stage 1 visual confirmation packet
 
 If not matched, stop.
 
@@ -93,147 +105,120 @@ D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py
 ```
 Record current delivery status.
 
-### 3. Read existing Stage 1 probe outputs
-For each selected asset folder, inspect:
-- 16_stage1_execution_log.md/xlsx
-- 17_stage1_result_evaluation.md/xlsx
-- _stage1_probe directory
-- any CSV / XLSX / JSON / TXT / MD / HTML outputs created by probe_pdf_tables.py
+### 3. Locate PDFs
+Locate selected PDFs under D:\_datefac by exact filename:
+- H3_AP202605141822317484_1.pdf
+- H3_AP202605121822223662_1.pdf
+- H3_AP202605141822318060_1.pdf
 
-Do not assume file names. Recursively list _stage1_probe and summarize relevant files.
+If any PDF is missing, mark that sample BLOCKED_FOR_VISUAL_CONFIRMATION and continue with other samples.
 
-### 4. Extract candidate table previews
-For each sample, find likely target tables using keyword and year-column heuristics.
+### 4. Generate static page previews
+For each candidate page listed above:
+- Render a readable full-page PNG at sufficient zoom, e.g. 180-220 DPI or PyMuPDF matrix scale 2.0.
+- If table bboxes are discoverable from existing _stage1_probe outputs, also render table crop PNGs.
+- If bbox is unavailable, full-page PNG is acceptable.
 
-Year-like columns / cells:
-- 2024A, 2025A, 2026E, 2027E, 2028E
-- 2024, 2025, 2026, 2027, 2028
-- 2024/2025/2026E/2027E/2028E style variants
+Save previews under each sample folder:
+D:\_datefac\output\<asset_package>\_stage1_visual_confirmation\
 
-Core metric keywords:
-- 营业收入
-- 收入
-- 归属母公司净利润
-- 归母净利润
-- 净利润
-- 每股收益
-- EPS
-- P/E
-- PE
-- P/B
-- PB
-- EV/EBITDA
-- ROE
-- EBITDA
-- 毛利率
-- 净利率
+Recommended naming:
+- page_001_full.png
+- page_004_full.png
+- page_005_full.png
+- table_candidate_page_005_table_001.png
 
-For each candidate table, record:
+Do not use OCR. Do not call any vision model.
+
+### 5. Generate confirmation index
+Create:
+- D:\_datefac\output\delivery_package\20_stage1_visual_confirmation_index.md
+- D:\_datefac\output\delivery_package\20_stage1_visual_confirmation_index.xlsx
+
+The index must contain, for each preview:
 - sample_id
 - company
-- source_file
-- page number if available
-- table index if available
-- row_count
-- column_count
-- detected_year_cells
-- metric_keyword_hits
-- raw_text_preview
-- top 15 rows or readable compact preview
-- confidence: high / medium / low
-- candidate_type: core_metrics / full_financial_forecast / business_forecast / other_year_table
-- recommended_action: inspect_visual / ready_for_full_safe_pipeline_candidate / ignore
+- candidate_page
+- candidate_role
+- preview_type: full_page / table_crop
+- preview_path
+- expected_table_type
+- expected_years
+- expected_core_metrics
+- visual_check_instruction
+- proposed_decision_after_visual_check: approve_for_full_safe_pipeline / hold / ignore
 
-### 5. Optional safe visual support
-If existing probe outputs include table bbox/page references and local PDF files are available, it is allowed to generate non-vision static table/page crop previews for human inspection using pdfplumber/PyMuPDF/local rendering only.
+Expected core metric checks:
+- 三鑫医疗 page 1 should show a core metric table with 营业收入、归属母公司净利润、EPS、ROE、PE、PB style metrics.
+- 三鑫医疗 page 5 should show full financial forecast / valuation data.
+- 冠豪高新 page 2/3 should show financial forecast tables with negative or abnormal value cases.
+- 科锐国际 page 5 should show financial forecast and valuation table, including years without A suffix or mixed 2024/2025/2026E/2027E/2028E.
+- 科锐国际 page 6 should be marked as likely rating/disclaimer table and usually ignored.
 
-Rules:
-- This is not OCR and not vision model inference.
-- Do not use marker/surya/PaddleOCR/vision.
-- Save any previews under the related asset folder, for example:
-  D:\_datefac\output\<asset_package>\_stage1_manual_inspection\
-- If safe crop generation is not straightforward, skip it and rely on table text previews.
-- Do not fail the task just because crops are unavailable.
+Markdown structure:
 
-### 6. Gate recommendation after manual inspection packet
-For each sample, assign a proposed next gate:
-- READY_FOR_FULL_SAFE_PIPELINE_CANDIDATE if there is at least one high/medium confidence table that has both year cells and multiple core metric keyword hits.
-- NEEDS_VISUAL_CONFIRMATION if table text exists but metric semantics are incomplete/fragmented.
-- HOLD if no usable target table is found but sample is still a company report.
-- NON_TARGET if clearly not a target company financial forecast report.
-
-Important: do not mark a sample as fully ready merely because it has year-like rows. It must have metric keyword evidence.
-
-### 7. Generate 19 manual inspection packet
-Create:
-- D:\_datefac\output\delivery_package\19_stage1_manual_inspection_packet.md
-- D:\_datefac\output\delivery_package\19_stage1_manual_inspection_packet.xlsx
-
-Markdown must contain:
-
-# Stage 1 Manual Inspection Packet
+# Stage 1 Visual Confirmation Index
 
 ## Summary
 - generated_at
 - delivery_status
 - selected_samples_count
-- high_confidence_candidate_count
-- medium_confidence_candidate_count
-- low_confidence_candidate_count
-- proposed_next_gate_summary
+- preview_count
+- missing_pdf_count
+- overall_recommendation
 
 ## Important Clarification
-Explain that this packet is based on probe outputs and table previews, not full delivery integration.
+Explain this is static visual confirmation only, not OCR, not vision, not full pipeline.
 
-## Per-Sample Candidate Tables
+## Per-Sample Visual Checks
 For each sample:
-- sample_id
-- company
-- candidate tables found
-- year evidence
-- metric keyword evidence
-- compact table previews
-- confidence
-- proposed next gate
+- candidate pages
+- preview paths
+- what user should check
+- likely decision
 
-## Manual Inspection Checklist
-For each sample, list exactly what the user should visually confirm before full pipeline:
-- Does the candidate table contain core financial metrics?
-- Are year columns correctly recognized?
-- Are units clear?
-- Are negative values valid rather than parsing errors?
-- Are metrics split across multiple pages/tables?
+## Decision Rules
+Approve sample for full safe pipeline only if:
+1. At least one preview clearly contains a core financial forecast or valuation table.
+2. Year columns are visible.
+3. Core metrics are visible.
+4. Units are visible or inferable from table title.
+5. No sign that the table is only a rating/disclaimer/legal table.
 
-## Recommended Next Action
-Choose one:
-- Run full safe non-vision pipeline for candidates that pass inspection
-- Ask user to upload/inspect specific table screenshots first
-- Hold blocked samples
+Hold sample if:
+- table is fragmented beyond readable structure
+- only years are visible but no metric rows
+- page is mostly rating/disclaimer/legal content
 
-Excel must include sheets:
+## Recommended Next Step
+If all three have usable previews, recommend:
+Run full safe non-vision pipeline for Stage 1 visually approved samples
+
+If only some are usable, recommend running only those approved samples.
+
+Excel sheets required:
 - summary
-- file_inventory
-- candidate_tables
-- keyword_hits
-- table_previews
-- proposed_gates
-- manual_checklist
+- visual_index
+- per_sample_checks
+- decision_rules
+- ignored_candidates
+- missing_files
 
-### 8. Validate generated docs
+### 6. Validate generated outputs
 Verify:
-- 19 md/xlsx exist
+- 20 md/xlsx exist
+- preview PNG files exist for each relevant sample/page
 - no `????`
 - no Unicode replacement char `�`
-- output docs are readable
-- 01/02/02A/06 production files unchanged
 - current delivery state remains PASS
+- 01/02/02A/06 production files unchanged
 
-### 9. Update worklog
+### 7. Update worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_stage1_manual_inspection_packet.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_stage1_visual_confirmation_packet.md
 
 Worklog must be English only and UTF-8.
 
@@ -246,9 +231,8 @@ Worklog must include:
 - commands_run
 - files_read
 - files_generated
-- selected_samples
-- candidate_table_summary
-- proposed_gates
+- preview_count_by_sample
+- missing_pdf_count
 - delivery_status
 - result_summary
 - remaining_issues
@@ -259,13 +243,14 @@ Worklog must include:
 Only commit worklog:
 ```bat
 git add docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "prepare stage1 manual inspection packet"
+git commit -m "prepare stage1 visual confirmation packet"
 git push origin main
 ```
 
 Do not commit:
-- output/delivery_package/19_stage1_manual_inspection_packet.md
-- output/delivery_package/19_stage1_manual_inspection_packet.xlsx
+- output/delivery_package/20_stage1_visual_confirmation_index.md
+- output/delivery_package/20_stage1_visual_confirmation_index.xlsx
+- PNG previews
 - any output artifacts
 
 ## expected_final_response
@@ -273,15 +258,15 @@ After completion, output:
 1. task_title
 2. delivery_status
 3. generated_reports
-4. candidate_table_counts_by_sample
-5. proposed_gates_by_sample
+4. preview_count_by_sample
+5. missing_pdf_count
 6. whether production data was untouched
 7. whether output docs contain garbled text
 8. next_step_suggestion
 9. commit sha
 
 ## safety_notes
-- This is manual inspection packet generation only.
+- This is static visual confirmation packet generation only.
 - Do not run factory_core.py.
 - Do not run full delivery pipeline.
 - Do not modify production delivery data.
