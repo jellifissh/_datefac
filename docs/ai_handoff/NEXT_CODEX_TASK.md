@@ -1,72 +1,79 @@
 # NEXT CODEX TASK
 
 ## task_title
-Run Stage 1 controlled three-sample expansion
+Review Stage 1 probe results and decide next execution gate
 
 ## project
 D:\_datefac
 
 ## current_status
-Stage 1 sample manifest and execution plan have been generated and reviewed.
+The previous task ran Stage 1 controlled three-sample probe execution using:
+- D:\_datefac\tools\probe_pdf_tables.py
 
-Generated planning docs:
-- D:\_datefac\output\delivery_package\14_stage1_sample_manifest.md
-- D:\_datefac\output\delivery_package\14_stage1_sample_manifest.xlsx
-- D:\_datefac\output\delivery_package\15_stage1_execution_plan.md
-- D:\_datefac\output\delivery_package\15_stage1_execution_plan.xlsx
+Latest worklog says:
+- task_title = Run Stage 1 controlled three-sample expansion
+- selected samples processed:
+  - H3_AP202605141822317484_1.pdf
+  - H3_AP202605121822223662_1.pdf
+  - H3_AP202605141822318060_1.pdf
+- baseline sample H3_AP202605091822098939_1.pdf was not reprocessed
+- entrypoint used = probe_pdf_tables.py
+- factory_core.py was not run
+- marker/surya/vision/PaddleOCR were not triggered
+- model.safetensors download was not triggered
+- final_delivery_status = PASS / warn_count=0 / fail_count=0
 
-Latest known delivery state before Stage 1 execution:
-- overall_status = PASS
-- pass_count = 17
-- warn_count = 0
-- fail_count = 0
-- production delivery data 01/02/02A/06 were untouched during planning
-
-Stage 1 selected samples:
-1. H3_AP202605141822317484_1.pdf - 三鑫医疗 - stable expansion sample
-2. H3_AP202605121822223662_1.pdf - 冠豪高新 - negative/abnormal value sample
-3. H3_AP202605141822318060_1.pdf - 科锐国际 - broker layout/year normalization sample
-
-Baseline regression guard only:
-- H3_AP202605091822098939_1.pdf - 炬芯科技
-
-Important: 091 is not a new Stage 1 sample. It is only a regression guard/reference.
+Important clarification:
+The previous run was a safe probe/table-detection stage, not a full delivery-package integration stage.
+Since 01/02/02A/06 production delivery files were not modified, the current PASS only proves that the probe stage was safe and that existing delivery state stayed clean. It does not prove that the three new samples have been fully standardized into 01/02/06.
 
 ## goal
-Run Stage 1 controlled expansion for exactly the three selected PDFs, one sample at a time, using only the current safe non-vision pipeline already available in the repo.
+Review the per-sample Stage 1 probe reports and produce a consolidated quality review.
 
 Generate local reports:
-- D:\_datefac\output\delivery_package\16_stage1_execution_log.md
-- D:\_datefac\output\delivery_package\16_stage1_execution_log.xlsx
-- D:\_datefac\output\delivery_package\17_stage1_result_evaluation.md
-- D:\_datefac\output\delivery_package\17_stage1_result_evaluation.xlsx
+- D:\_datefac\output\delivery_package\18_stage1_probe_quality_review.md
+- D:\_datefac\output\delivery_package\18_stage1_probe_quality_review.xlsx
 
-The goal is not full automatic extraction accuracy. The goal is controlled pipeline stability, artifact generation, delivery health, and safe routing of uncertain metrics into manual review rather than unsafe trusted output.
+This task must decide whether each sample is ready for the next gate:
+- READY_FOR_FULL_SAFE_PIPELINE
+- NEEDS_MANUAL_INSPECTION
+- BLOCKED
+- NON_TARGET
 
-## absolute_hard_constraints
+This task must not run full PDF processing and must not modify production delivery data.
+
+## hard_constraints
 1. Do not run factory_core.py.
 2. Do not trigger marker / surya / vision / PaddleOCR.
 3. Do not download model.safetensors or any vision model.
-4. Do not process more than the three selected Stage 1 PDFs.
-5. Do not treat baseline 091 as a new sample.
-6. Do not overwrite or delete the existing accepted 091 delivery results without backup.
-7. Do not commit output artifacts under output/delivery_package.
-8. Worklog must be English only and UTF-8.
-9. If any stop condition is triggered, stop immediately and produce a partial failure report.
+4. Do not rerun probe_pdf_tables.py unless an existing 16/17 report is missing and rerun is strictly needed.
+5. Do not run full extraction/standardization/delivery rebuild.
+6. Do not run apply_manual_review_corrections.py.
+7. Do not modify 01_自动可信核心指标.xlsx.
+8. Do not modify 02_人工复核指标队列.xlsx.
+9. Do not modify 02A_人工年份修正覆盖表.xlsx.
+10. Do not modify 06_最终核心财务指标.xlsx.
+11. Do not commit output artifacts.
+12. Worklog must be English only and UTF-8.
 
 ## selected_samples
-Use exactly these local PDF files if they exist in the project input location. If their local location differs, locate them under D:\_datefac by filename only. Do not download anything.
+Review exactly these sample asset folders:
 
-| sample_id | company | role | expected_risk |
-|---|---|---|---|
-| H3_AP202605141822317484_1.pdf | 三鑫医疗 | stable expansion sample | low_to_medium |
-| H3_AP202605121822223662_1.pdf | 冠豪高新 | negative/abnormal value sample | high |
-| H3_AP202605141822318060_1.pdf | 科锐国际 | broker layout/year normalization sample | medium_to_high |
+1. D:\_datefac\output\H3_AP202605141822317484_1_资产包
+2. D:\_datefac\output\H3_AP202605121822223662_1_资产包
+3. D:\_datefac\output\H3_AP202605141822318060_1_资产包
 
-## mandatory_preflight
-Before running anything that touches PDFs, perform a preflight:
+For each folder, read if present:
+- 16_stage1_execution_log.md
+- 16_stage1_execution_log.xlsx
+- 17_stage1_result_evaluation.md
+- 17_stage1_result_evaluation.xlsx
+- _stage1_probe outputs under that asset folder
 
-1. Sync Git:
+## required_steps
+
+### 1. Sync Git and confirm task
+Run:
 ```bat
 cd /d D:\_datefac
 git fetch origin
@@ -75,172 +82,139 @@ git status --short
 git log --oneline --decorate -8
 ```
 
-2. Confirm task title:
-Read D:\_datefac\docs\ai_handoff\NEXT_CODEX_TASK.md.
-The task_title must be:
-Run Stage 1 controlled three-sample expansion
+Read NEXT_CODEX_TASK.md and confirm task_title is:
+Review Stage 1 probe results and decide next execution gate
 
 If not matched, stop.
 
-3. Locate selected PDFs:
-Find exact paths for the three selected PDFs under D:\_datefac.
-If any selected PDF is missing, stop and report missing_files.
-
-4. Inspect available safe entrypoints:
-List relevant tools/scripts under:
-- D:\_datefac\tools
-- D:\_datefac\scripts if present
-- D:\_datefac root-level runner scripts if present
-
-Identify the existing non-vision/pdfplumber-based pipeline entrypoints.
-Do not guess blindly.
-Do not run factory_core.py.
-Do not run any command that imports or launches marker, surya, PaddleOCR, or vision backends.
-
-5. Create backups before any runtime execution:
-Create:
-D:\_datefac\output\delivery_package\_backup_before_stage1_YYYYMMDD_HHMMSS
-
-Backup existing delivery-package files if present:
-- 01_自动可信核心指标.xlsx
-- 01A_自动可信核心指标冲突明细.xlsx
-- 02_人工复核指标队列.xlsx
-- 02A_人工年份修正覆盖表.xlsx
-- 03_非目标报告与失败说明.xlsx
-- 04_处理摘要.md
-- 05_表格区域截图索引.xlsx
-- 06_最终核心财务指标.xlsx
-- 06A_人工修正应用明细.xlsx
-- 06B_未解决问题清单.xlsx
-- 06C_复核模板说明.md
-- 06D_人工复核回写诊断.xlsx
-- 07_delivery_state_check.xlsx
-
-6. Record pre-run state:
+### 2. Read delivery state, read-only
 Run:
 ```bat
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
-Record output as pre_stage1_delivery_state.
+Record current delivery status.
 
-## execution_strategy
-Run the three selected samples one by one.
+### 3. Read per-sample 16/17 reports
+For each selected sample, collect:
+- sample_id
+- company
+- probe command used
+- probe status
+- pages scanned
+- tables detected count
+- candidate target tables count
+- whether Table_MainProfit / core financial metrics table was detected
+- whether full financial forecast table was detected
+- whether screenshots/crops were generated
+- dependency_missing warnings
+- errors or exceptions
+- stop conditions
+- recommended next gate
 
+If 16/17 reports are too sparse, inspect _stage1_probe files to extract the above details.
+
+### 4. Gate decision logic
+Apply these rules:
+
+READY_FOR_FULL_SAFE_PIPELINE if:
+- probe completed without fatal error
+- at least one likely core financial metric table or main profit table was detected
+- no stop condition triggered
+- no vision/OCR/model dependency required
+
+NEEDS_MANUAL_INSPECTION if:
+- probe completed but target table confidence is unclear
+- target tables are present but table structure looks fragmented or ambiguous
+- dependency_missing warnings may reduce coverage but do not block safety
+
+BLOCKED if:
+- selected PDF missing
+- probe failed fatally
+- output folder missing or corrupt
+- any stop condition triggered
+
+NON_TARGET if:
+- probe indicates report is not a company financial forecast / target report
+
+### 5. Generate 18 consolidated review
+Create:
+- D:\_datefac\output\delivery_package\18_stage1_probe_quality_review.md
+- D:\_datefac\output\delivery_package\18_stage1_probe_quality_review.xlsx
+
+Markdown must contain:
+
+# Stage 1 Probe Quality Review
+
+## Summary
+- generated_at
+- delivery_status
+- selected_samples_count
+- ready_count
+- manual_inspection_count
+- blocked_count
+- non_target_count
+- overall_recommendation
+
+## Important Clarification
+Explain clearly that the previous Stage 1 run used probe_pdf_tables.py only and did not integrate the three samples into 01/02/06. Therefore PASS means safe probe PASS, not full extraction PASS.
+
+## Per-Sample Review
 For each sample:
-1. Confirm isolated asset output path before execution.
-2. Run only the safe non-vision entrypoint identified during preflight.
-3. After each sample, run delivery/package rebuild if the existing workflow requires it.
-4. Run:
-```bat
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\apply_manual_review_corrections.py
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
-```
-Only run apply_manual_review_corrections.py after the sample's delivery artifacts are generated or updated. Do not use it as a substitute for PDF processing.
-5. Record per-sample status, artifacts generated, failures, and stop-condition checks.
+- sample_id
+- company
+- role
+- probe_status
+- tables_detected_count
+- target_table_evidence
+- warnings
+- errors
+- gate_decision
+- reason
 
-If the project currently has no safe non-vision entrypoint for adding a single new PDF without factory_core.py, stop and report this clearly. Do not fall back to factory_core.py.
+## Dependency and Safety Review
+Summarize:
+- factory_core.py not run
+- marker/surya/vision/PaddleOCR not triggered
+- model.safetensors not downloaded
+- dependency_missing warnings if any
 
-## required_outputs_to_check
-For each Stage 1 sample, evaluate whether the pipeline produced or updated:
-- raw table assets / 02A equivalent original table assets if available
-- table-region screenshot/crop index if available
-- standardized core metrics stage output if available
-- delivery package files
-- manual review queue entries or failure/non-target explanation
+## Next Gate Recommendation
+Recommend exactly one of:
+- Proceed to full safe non-vision pipeline for READY samples only
+- Manual inspect selected sample crops before full pipeline
+- Fix probe/report quality first
 
-At minimum, final delivery package should include updated or validated:
-- 01_自动可信核心指标.xlsx
-- 02_人工复核指标队列.xlsx
-- 03_非目标报告与失败说明.xlsx
-- 04_处理摘要.md
-- 05_表格区域截图索引.xlsx
-- 06_最终核心财务指标.xlsx
-- 06A_人工修正应用明细.xlsx
-- 06B_未解决问题清单.xlsx
-- 06D_人工复核回写诊断.xlsx
-- 07_delivery_state_check.xlsx
+Do not recommend direct 30-sample expansion.
 
-## acceptance_criteria
-Stage 1 passes only if:
-1. No model.safetensors download was triggered.
-2. No marker/surya/PaddleOCR/vision backend was triggered.
-3. factory_core.py was not run.
-4. The three selected samples were handled one by one.
-5. Each selected sample either generated expected artifacts or produced explicit failure/non-target explanation.
-6. check_delivery_state.py reports fail_count = 0.
-7. warn_count = 0 or only clearly documented non-blocking warnings.
-8. duplicate_key_count_final = 0.
-9. high_risk_flags do not enter 01/06.
-10. test_token_hits = 0.
-11. uncertain metrics route to 02 manual review queue rather than forced 01/06 trust.
-12. baseline 091 accepted values are not broken.
+## Proposed Next Task
+If at least one sample is READY_FOR_FULL_SAFE_PIPELINE, draft a recommended next task title:
+Run full safe non-vision pipeline for Stage 1 ready samples
 
-## stop_conditions
-Stop immediately if any of these occur:
-1. model.safetensors download sign.
-2. marker / surya / PaddleOCR / vision backend trigger.
-3. factory_core.py is required to proceed.
-4. output path would overwrite baseline 091 without backup.
-5. duplicate_key_count_final becomes non-zero.
-6. high_risk_flags enter 01/06.
-7. test token hits become non-zero.
-8. Excel/WPS file lock blocks write or causes partial corruption.
-9. selected PDF missing.
-10. no safe non-vision entrypoint exists.
+If none are ready, draft:
+Manual inspect Stage 1 probe outputs before full pipeline
 
-## generated_reports
-Generate local report:
-D:\_datefac\output\delivery_package\16_stage1_execution_log.md
-D:\_datefac\output\delivery_package\16_stage1_execution_log.xlsx
+Excel must include sheets:
+- summary
+- per_sample_review
+- table_detection_summary
+- safety_review
+- gate_decisions
+- next_recommendation
 
-16 report must contain:
-- task_title
-- started_at / finished_at
-- git_commit_before
-- pre_stage1_delivery_state
-- selected sample paths
-- entrypoints discovered
-- exact commands run
-- per_sample_execution_log
-- per_sample_artifacts
-- per_sample_delivery_status
-- stop_condition_checks
-- files_modified
-- safety_notes
+### 6. Validate generated docs
+Verify:
+- 18 md/xlsx exist
+- no `????`
+- no Unicode replacement char `�`
+- no output artifacts committed
+- 01/02/02A/06 unchanged
 
-Generate local report:
-D:\_datefac\output\delivery_package\17_stage1_result_evaluation.md
-D:\_datefac\output\delivery_package\17_stage1_result_evaluation.xlsx
-
-17 report must contain:
-- final_stage1_status: PASS / WARN / FAIL
-- final_delivery_status
-- sample_result_summary
-- trusted_output_summary
-- manual_review_queue_summary
-- non_target_or_failure_summary
-- duplicate_key_status
-- high_risk_flag_status
-- test_token_status
-- baseline_regression_status
-- recommended_next_step
-
-## validation_commands
-At the end, run:
-```bat
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
-```
-
-Also inspect 07_delivery_state_check.xlsx and summarize all FAIL/WARN sheets.
-
-If possible, inspect 06_最终核心财务指标.xlsx and summarize rows by sample/company/source.
-
-## update_worklog
+### 7. Update worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_run_stage1_controlled_expansion.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_review_stage1_probe_quality.md
 
 Worklog must be English only and UTF-8.
 
@@ -251,56 +225,43 @@ Worklog must include:
 - git_commit_before
 - git_commit_after
 - commands_run
-- selected_samples
-- baseline_sample
-- entrypoints_used
+- files_read
 - files_generated
-- files_modified
-- final_delivery_status
-- final_stage1_status
-- stop_condition_checks
+- per_sample_gate_decisions
+- delivery_status
 - result_summary
 - remaining_issues
 - next_step_suggestion
 - safety_notes
 
 ## git_commit
-Allowed to commit only:
-- docs/codex_worklog/LATEST.md
-- docs/codex_worklog/history/
-
-Do not commit:
-- output/delivery_package/16_stage1_execution_log.md
-- output/delivery_package/16_stage1_execution_log.xlsx
-- output/delivery_package/17_stage1_result_evaluation.md
-- output/delivery_package/17_stage1_result_evaluation.xlsx
-- any output Excel/PDF/PNG assets
-
-Commit:
+Only commit worklog:
 ```bat
 git add docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "run stage1 controlled expansion"
+git commit -m "review stage1 probe quality"
 git push origin main
 ```
+
+Do not commit:
+- output/delivery_package/18_stage1_probe_quality_review.md
+- output/delivery_package/18_stage1_probe_quality_review.xlsx
+- any output artifacts
 
 ## expected_final_response
 After completion, output:
 1. task_title
-2. selected_samples_processed
-3. entrypoints_used
-4. generated_reports
-5. final_stage1_status
-6. final_delivery_status: overall_status/pass_count/warn_count/fail_count
-7. duplicate_key_count_final
-8. high_risk_flags status
-9. test_token_hits status
-10. baseline_regression_status
-11. stop_conditions_triggered
-12. commit sha
+2. delivery_status
+3. per_sample_gate_decisions
+4. ready_count / manual_inspection_count / blocked_count / non_target_count
+5. generated_reports
+6. whether production data was untouched
+7. whether output docs contain garbled text
+8. next_step_suggestion
+9. commit sha
 
 ## safety_notes
+- This is a review-only task.
 - Do not run factory_core.py.
-- Do not trigger marker/surya/vision/PaddleOCR.
-- Do not download model.safetensors.
-- Stop if safe non-vision entrypoint is not available.
+- Do not run full delivery pipeline.
+- Do not modify production delivery data.
 - Do not commit output artifacts.
