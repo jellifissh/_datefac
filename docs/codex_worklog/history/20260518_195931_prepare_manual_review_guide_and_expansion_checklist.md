@@ -1,4 +1,4 @@
-# Codex Worklog - Latest
+# Codex Worklog - History
 
 ## task_title
 Prepare manual review guide and pre-expansion checklist
