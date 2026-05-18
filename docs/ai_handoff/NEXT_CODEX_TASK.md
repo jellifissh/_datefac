@@ -1,27 +1,52 @@
 # NEXT CODEX TASK
 
 ## task_title
-准备正式人工复核 3-5 条真实指标候选清单
+重新生成增强版人工复核候选清单，修复 year 为空和中文乱码问题
 
 ## project
 D:\_datefac
 
 ## current_status
-上一阶段已完成 delivery_package 清洁验收：
+上一轮已生成：
+- D:\_datefac\output\delivery_package\08_manual_review_shortlist.md
+- D:\_datefac\output\delivery_package\08_manual_review_shortlist.xlsx
+
+但用户上传后检查发现该 shortlist 质量不足，不能直接用于正式人工复核。
+
+已发现问题：
+1. 5 条候选的 year 全部为空
+2. Markdown 与 Excel 中 suggested_fill / reviewer_instruction 出现大量 ?????，疑似编码或模板字符串问题
+3. 部分 current_value 是混合文本，例如：
+   - 归属母公司净利润: 328.75|现金流量净额|198.73
+   - 每股收益: 2.75|每股收益|0.56
+   - P/E: 应收票据及应收账款 74|58.0|75.0
+   - P/B: 预付款项 4|11.0|16.0
+   - EV/EBITDA: 9.15|每股经营现金|0.66
+4. 这说明候选能定位截图，但不能直接指导用户填写 02
+5. 不能把 mixed_text 里的数字直接当 corrected_value
+
+当前 delivery_package 已是干净状态：
 - overall_status = PASS
-- pass_count = 12
-- warn_count = 0
 - fail_count = 0
-- test_token_hits 行数 = 0
+- warn_count = 0
+- test_token_hits = 0
 - duplicate_keys 为空
 - high_risk_flags 为空
-- 06_final 中不再存在 20266
-- 06C 模板中的 TEST / 987654.321 已清理
-
-当前阶段目标不是修改数据，而是为用户准备正式人工复核候选清单。
 
 ## goal
-从 delivery_package 的人工复核队列中，挑选 3-5 条最适合人工复核的真实指标，生成一个可读的复核候选清单，方便用户打开截图/PDF 核对后填写 02_人工复核指标队列.xlsx。
+生成增强版人工复核候选清单：
+
+- D:\_datefac\output\delivery_package\08A_manual_review_shortlist_enhanced.md
+- D:\_datefac\output\delivery_package\08A_manual_review_shortlist_enhanced.xlsx
+
+该清单要比 08 更适合用户实际操作：
+1. year 不能空
+2. 如果不能自动确定 year，必须写 `year_needs_manual`，并解释原因
+3. 中文说明必须正常显示，不允许出现 ????? 乱码
+4. 每条候选必须有 can_write_to_02 字段
+5. 若 year 不明确或 value 是混合文本，can_write_to_02 必须为 no
+6. 每条候选必须明确用户下一步应该看哪张截图、该核对什么
+7. 不得直接修改 02，只生成候选清单
 
 ## hard_constraints
 1. 不要运行 factory_core.py
@@ -32,133 +57,159 @@ D:\_datefac
 6. 不要修改 06_最终核心财务指标.xlsx
 7. 不要扩样本
 8. 不要重构主流程
-9. 不要提交 output 下 Excel/PDF/截图产物到 Git
-10. 本任务只读 delivery_package，并生成候选清单文件到本地 output/delivery_package，同时更新 worklog
+9. 不要重新处理 PDF
+10. 不要提交 output 下 Excel/Markdown/PDF/截图产物到 Git
+11. 本任务只读 delivery_package，并生成本地 08A shortlist，同时更新 worklog
 
 ## input_files
-读取以下本地产物：
+读取：
 - D:\_datefac\output\delivery_package\02_人工复核指标队列.xlsx
 - D:\_datefac\output\delivery_package\05_表格区域截图索引.xlsx
 - D:\_datefac\output\delivery_package\06_最终核心财务指标.xlsx
 - D:\_datefac\output\delivery_package\07_delivery_state_check.xlsx
+- D:\_datefac\output\delivery_package\08_manual_review_shortlist.xlsx
+- D:\_datefac\output\delivery_package\08_manual_review_shortlist.md
 
 如果存在，也可辅助读取：
 - D:\_datefac\output\delivery_package\06B_未解决问题清单.xlsx
 - D:\_datefac\output\delivery_package\06D_人工复核回写诊断.xlsx
+- 相关资产包下 05_核心财务指标标准化.xlsx
+- 相关资产包下 02A_研报原始表格资产.xlsx
+- 相关资产包下 02_研报全量结构化数据.xlsx
 
-## candidate_selection_rules
-优先选择符合以下条件的候选项：
-1. 来自 02_人工复核指标队列.xlsx
-2. 不是 TEST / 20266 / 987654.321 测试值
-3. 有明确 asset_package
-4. 有明确 standard_metric
-5. 有明确 year 或可从 raw_value_examples/source_column 推断单一年份
-6. 有 evidence_crop_path 或可通过 source_table_index 在 05_表格区域截图索引.xlsx 找到截图证据
-7. 更优先选择当前业务上最关键的指标：
-   - 归属母公司净利润
-   - 每股收益
-   - P/E
-   - P/B
-   - EV/EBITDA
-8. 优先覆盖不同指标，不要 5 条全是同一个指标
-9. 如果同一个指标有多个年份，优先选择 2025A、2026E、2027E 中最容易核对的 1-2 条
-10. 不要选择已经在 06 中自动可信且没有问题的营业收入，除非它仍在 02 中需要验证
+## selection_and_enhancement_rules
+从 02 人工复核队列或 08 shortlist 中重新挑选 3-5 条候选。
 
-## output_files
-在本地生成：
+优先指标：
+1. 归属母公司净利润
+2. 每股收益
+3. P/E
+4. P/B
+5. EV/EBITDA
 
-1. Markdown 清单：
-D:\_datefac\output\delivery_package\08_manual_review_shortlist.md
+增强规则：
+1. 不要输出空 year。
+2. 如果能从 source_column、raw_value_examples、value_year、target_year、year 等字段确定单一年份，则填具体年份，如 2025A / 2026E / 2027E。
+3. 如果无法确定单一年份，填 `year_needs_manual`，并在 year_reason 中说明为什么。
+4. 如果 current_value/raw_value_examples 是混合文本，不能把其中任意数字直接当 corrected_value。
+5. 如果 evidence_crop_path 存在，保留完整路径。
+6. 如果 evidence_crop_path 缺失，尝试根据 asset_package + source_table_index 从 05_表格区域截图索引.xlsx 补充。
+7. 如果仍找不到截图，写 evidence_missing。
+8. 如果候选指向明显错行，例如 P/E 值混入“应收票据及应收账款”，P/B 值混入“预付款项”，必须标记：suspected_row_mismatch。
+9. 对 suspected_row_mismatch 的候选，can_write_to_02 必须为 no，用户只能用它定位问题，不能直接照填。
+10. 如果候选可以人工核对后填写 02，can_write_to_02 可以为 yes_after_manual_check。
 
-2. Excel 清单：
-D:\_datefac\output\delivery_package\08_manual_review_shortlist.xlsx
-
-注意：这两个 output 文件不要加入 Git。
-
-## output_content_requirements
-每条候选至少包含：
+## output_columns
+Excel 至少包含以下列：
 - rank
 - asset_package
 - source_pdf
 - standard_metric
 - year
-- current_value 或 raw_value_examples
-- current_status / recommendation / issue_flags
+- year_reason
+- current_value
+- raw_value_examples
+- current_status
+- issue_flags
+- suspected_problem_type
+- can_write_to_02
 - source_row_label
 - source_table_index
 - source_row_index
 - evidence_crop_path
-- suggested_review_action
-- suggested_fields_to_fill
+- what_to_check_in_crop
+- suggested_review_status
+- suggested_use_corrected_value
+- suggested_corrected_value
+- suggested_corrected_unit
+- suggested_reviewer_note
 - reviewer_instruction
 
-`suggested_fields_to_fill` 应明确告诉用户如果核对通过，应该在 02 中填写哪些字段，例如：
-- review_status = corrected 或 accepted
-- use_corrected_value = 是
-- corrected_value = 需要用户从 PDF/截图确认后的值
-- corrected_unit = 亿元 / 元 / 倍 / %
-- year = 单一年份，例如 2026E
-- reviewer = 用户自定
-- reviewed_at = 当前日期
-- reviewer_note = 简短说明
+## output_content_rules
+### suggested_corrected_value
+- 如果值不能从当前数据中可靠确定，写：`manual_from_pdf`
+- 不要写 ?????
+- 不要写 TEST
+- 不要写 987654.321
+- 不要写 20266
+
+### suggested_corrected_unit
+根据指标给出默认建议：
+- 归属母公司净利润：亿元 或 百万元，必须提示用户按 PDF 表头单位确认
+- 每股收益：元/股
+- P/E：倍
+- P/B：倍
+- EV/EBITDA：倍
+
+### reviewer_instruction
+必须是清楚中文，不允许乱码。例如：
+- 打开 evidence_crop_path 对应截图，定位 source_row_label 所在行，核对目标年份列的数值；确认后在 02 中填写 corrected_value、corrected_unit、year、review_status 和 reviewer_note。
 
 ## markdown_format
-Markdown 文件应包含：
+生成：
+D:\_datefac\output\delivery_package\08A_manual_review_shortlist_enhanced.md
 
-# Manual Review Shortlist
+格式：
+
+# Enhanced Manual Review Shortlist
 
 ## Summary
 - generated_at
-- source_file
 - candidate_count
-- selection_scope
-- warnings
+- delivery_check_status
+- main_improvements
 
-## Candidates
-每条候选用二级标题：
+## Candidate Table
+用 Markdown 表格列出 3-5 条核心字段：
+- rank
+- metric
+- year
+- can_write_to_02
+- suspected_problem_type
+- evidence_crop_path
 
-### 1. 归属母公司净利润 - 2026E
-- asset_package:
-- source_pdf:
-- current/raw value:
-- issue_flags:
-- source row:
-- evidence crop:
-- suggested fill:
-- reviewer instruction:
+## Candidate Details
+每条候选必须包含：
+- metric/year
+- asset_package
+- current/raw value
+- issue_flags
+- evidence crop
+- what to check
+- suggested fill
+- reviewer instruction
 
-## Notes
+## Warnings
 说明：
-- 本清单只用于人工复核准备
-- 未修改 02/06
-- 用户核对截图/PDF 后再填写 02
+- year_needs_manual 的候选不能直接回写
+- suspected_row_mismatch 的候选不能直接照填数值
 
 ## validation_steps
-执行以下检查：
-
-1. 确认 delivery 状态仍为 PASS：
+1. 运行：
 
 ```bat
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
 
 2. 确认：
+- overall_status = PASS
 - fail_count = 0
-- test_token_hits 行数 = 0
-- duplicate_keys 为空
-- high_risk_flags 为空
+- warn_count = 0
 
-3. 确认生成的 shortlist 不包含测试值：
-- TEST
-- 20266
-- 987654.321
+3. 检查 08A 输出：
+- 不包含 TEST
+- 不包含 987654.321
+- 不包含 20266
+- 不包含 ?????
+- year 列没有空值
+- 如果无法确定年份，必须写 year_needs_manual
 
 ## update_worklog
 必须更新：
 - docs/codex_worklog/LATEST.md
 
 必须新增：
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_manual_review_shortlist.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_enhance_manual_review_shortlist.md
 
 日志必须包含：
 - task_title
@@ -176,16 +227,18 @@ D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py
 - safety_notes
 
 result_summary 必须说明：
-- 是否生成 08_manual_review_shortlist.md
-- 是否生成 08_manual_review_shortlist.xlsx
-- 候选数量
+- 是否生成 08A md/xlsx
+- 08A 候选数量
 - 候选指标列表
-- 是否保持 delivery check PASS
+- year_needs_manual 数量
+- suspected_row_mismatch 数量
+- can_write_to_02=yes_after_manual_check 数量
+- delivery check 是否仍为 PASS
 
 next_step_suggestion：
-- 用户打开 08_manual_review_shortlist.md 和 evidence_crop_path 对应截图
-- 人工确认 3-5 条真实指标
-- 再填写 02_人工复核指标队列.xlsx
+- 用户查看 08A enhanced shortlist 和截图
+- 用户选择 3-5 条真正能确认的指标
+- 若用户上传截图/PDF，ChatGPT 可辅助判断该填哪些字段
 
 ## git_commit
 允许提交：
@@ -193,23 +246,25 @@ next_step_suggestion：
 - docs/codex_worklog/history/
 
 不要提交：
-- output/delivery_package/08_manual_review_shortlist.md
-- output/delivery_package/08_manual_review_shortlist.xlsx
+- output/delivery_package/08A_manual_review_shortlist_enhanced.md
+- output/delivery_package/08A_manual_review_shortlist_enhanced.xlsx
 - output 下任何 Excel/PDF/截图产物
 
 执行：
 
 ```bat
 git add docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "prepare manual review shortlist"
+git commit -m "enhance manual review shortlist"
 git push origin main
 ```
 
 ## expected_final_state
 - delivery check 仍为 PASS
-- 本地生成 08_manual_review_shortlist.md
-- 本地生成 08_manual_review_shortlist.xlsx
-- 候选数量为 3-5 条
+- 本地生成 08A_manual_review_shortlist_enhanced.md
+- 本地生成 08A_manual_review_shortlist_enhanced.xlsx
+- 08A 中没有乱码 ?????
+- 08A 中 year 没有空值
+- 08A 中没有 TEST/20266/987654.321
 - 未修改 01/02/06 正式数据
 - 未提交 output 产物到 Git
 
