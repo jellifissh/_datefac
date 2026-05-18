@@ -1,66 +1,39 @@
 # NEXT CODEX TASK
 
 ## task_title
-修复 worklog 编码规范并设计多年份人工修正策略
+重新生成无乱码的多年份人工修正策略文档
 
 ## project
 D:\_datefac
 
 ## current_status
-上一轮已经成功将首批 4 条人工复核值写入 02 并回写到 06。
+用户已上传并检查：
+- D:\_datefac\output\delivery_package\10_manual_multi_year_correction_strategy.md
+- D:\_datefac\output\delivery_package\10_manual_multi_year_correction_strategy.xlsx
 
-已确认结果：
-- corrected_value_non_empty_rows = 4
-- effective_correction_rows = 4
-- applied_override_count = 1
-- applied_new_manual_count = 3
-- duplicate_key_count_final = 0
-- check_delivery_state.py --json: PASS
-- overall_status = PASS
-- pass_count = 12
-- warn_count = 0
+该策略文档方向基本正确，但关键中文内容大面积乱码，例如：
+- Current Limitation 中出现大量 `??`
+- Remaining Values 中归母净利润说明乱码
+- Option A/B/C 的优缺点和风险说明乱码
+- Recommendation 与 Next Implementation Plan 中关键解释乱码
+
+可用信息：
+- 02 row_index=1/4/5/7 人工字段已填写
+- 06 中 4 条人工修正值已验证成功
+- delivery check = PASS
 - fail_count = 0
+- warn_count = 0
+- 推荐方向仍倾向 Option C：新增独立人工年份修正覆盖表
 
-06 中已验证到：
-- 归属母公司净利润 2026E = 288.52，manual_corrected
-- 每股收益 2026E = 1.65，manual_added
-- P/E 2026E = 29.97，manual_added
-- EV/EBITDA 2026E = 22.76，manual_added
+当前不能直接实现 Option C，因为策略文档不可读。必须先重新生成干净版策略文档。
 
-剩余核心问题：
-1. Codex 写入 docs/codex_worklog/LATEST.md 时中文出现乱码，需要修复后续日志编码规范。
-2. 归属母公司净利润仍有多年份小数精度问题：
-   - 2025A = 204.59
-   - 2027E = 398.83
-   - 2028E = 536.53
-3. 当前 02_人工复核指标队列.xlsx 中同一行只能填写一个 year，因此不能在同一个 row_index=1 上同时填写 2025A/2026E/2027E/2028E。
-4. 需要先设计“同一指标多年份人工修正策略”，不要直接乱改 02 或主流程。
+## goal
+重新生成无乱码、可读、可作为下一步实现依据的策略文档：
 
-## confirmed_values_from_user_crop
-用户已确认 page_001_table_001.png 中“盈利预测和财务指标”表：
+- D:\_datefac\output\delivery_package\10A_manual_multi_year_correction_strategy_clean.md
+- D:\_datefac\output\delivery_package\10A_manual_multi_year_correction_strategy_clean.xlsx
 
-| standard_metric | unit | 2025A | 2026E | 2027E | 2028E |
-|---|---|---:|---:|---:|---:|
-| 归属母公司净利润 | 百万元 | 204.59 | 288.52 | 398.83 | 536.53 |
-| 每股收益 | 元/股 | 1.17 | 1.65 | 2.28 | 3.06 |
-| P/E | 倍 | 42.27 | 29.97 | 21.68 | 16.12 |
-| P/B | 倍 | 4.23 | 3.76 | 3.26 | 2.76 |
-| EV/EBITDA | 倍 | 40.31 | 22.76 | 16.08 | 11.46 |
-
-## goals
-本任务先做分析和方案，不直接应用多年份修正。
-
-目标：
-1. 修复/规范 Codex worklog 写入方式，确保后续中文不乱码。
-2. 检查当前 02/06/06A/06D 状态，确认上一轮 4 条人工回写真实成功。
-3. 生成多年份人工修正策略文档。
-4. 评估至少 3 种方案：
-   - A. 在 02 中复制同一指标行，拆成多条单年份复核行
-   - B. 扩展 apply_manual_review_corrections.py 支持一个 02 行中多年份 corrected_values
-   - C. 新增独立 02A_manual_year_overrides.xlsx 或 02B_manual_year_overrides.xlsx 专门承载多年份人工修正
-5. 推荐最稳妥方案，并说明为什么。
-6. 不修改 02/06 正式数据。
-7. 不修改 apply_manual_review_corrections.py 主逻辑，除非只是修复 worklog 写法示例或文档，不要引入新回写能力。
+本任务只生成策略文档，不实现代码，不修改数据。
 
 ## hard_constraints
 1. 不要运行 factory_core.py
@@ -69,104 +42,103 @@ D:\_datefac
 4. 不要修改 01_自动可信核心指标.xlsx
 5. 不要修改 02_人工复核指标队列.xlsx
 6. 不要修改 06_最终核心财务指标.xlsx
-7. 不要扩样本
+7. 不要运行 apply_manual_review_corrections.py
 8. 不要重新处理 PDF
-9. 不要提交 output 下 Excel/PDF/截图产物到 Git
-10. 本轮不要实现多年份回写，只做策略分析和状态确认
+9. 不要扩样本
+10. 不要提交 output 下 Excel/Markdown/PDF/截图产物到 Git
+11. 本轮只读状态、生成本地 10A 文档、更新 worklog
 
-## required_steps
+## encoding_requirements
+必须用 Python UTF-8 写入所有 Markdown 文档，禁止用 PowerShell 默认重定向写中文。
 
-### 1. 同步 Git
-执行：
-
-```bat
-cd /d D:\_datefac
-git fetch origin
-git pull origin main
-git status --short
-git log --oneline --decorate -5
-```
-
-读取 NEXT_CODEX_TASK.md 后，先确认 task_title 是：
-“修复 worklog 编码规范并设计多年份人工修正策略”
-
-如果不是，停止，不要执行旧任务。
-
-### 2. 修复后续 worklog 编码写法
-后续写入 docs/codex_worklog/LATEST.md 和 history 时，必须使用 Python UTF-8 写入，不要用 PowerShell 默认重定向。
-
-建议使用：
+建议写法：
 
 ```python
 from pathlib import Path
 Path(path).write_text(content, encoding="utf-8")
 ```
 
-要求：
-- 本次 LATEST.md 不得出现 ????? 乱码
-- 中文必须正常显示
-- 文件可以是 UTF-8 或 UTF-8 with BOM，但优先 UTF-8
+Excel 使用 openpyxl/pandas 正常写入。
 
-### 3. 检查上一轮人工回写状态
-读取：
+生成后必须读取文件内容验证：
+- 不包含 `????`
+- 不包含连续 `??` 表示乱码
+- 不包含 Unicode replacement char `�`
+- 中文标题和中文段落能正常读取
+
+## input_files
+只读读取：
 - D:\_datefac\output\delivery_package\02_人工复核指标队列.xlsx
 - D:\_datefac\output\delivery_package\06_最终核心财务指标.xlsx
 - D:\_datefac\output\delivery_package\06A_人工修正应用明细.xlsx
 - D:\_datefac\output\delivery_package\06D_人工复核回写诊断.xlsx
 - D:\_datefac\output\delivery_package\07_delivery_state_check.xlsx
+- D:\_datefac\output\delivery_package\10_manual_multi_year_correction_strategy.md
 
-确认：
-- 02 row_index=1/4/5/7 的人工字段已填写
-- 06 中存在 4 条人工修正结果
-- duplicate_key_count_final=0
-- check_delivery_state.py --json 仍 PASS
+## confirmed_current_state
+策略文档必须明确记录当前已成功回写的 4 条：
 
-### 4. 生成策略文档
-在本地生成：
+| standard_metric | year | final_value | unit/source | final_value_source |
+|---|---|---:|---|---|
+| 归属母公司净利润 | 2026E | 288.52 | 百万元 | manual_corrected |
+| 每股收益 | 2026E | 1.65 | 元/股 | manual_added |
+| P/E | 2026E | 29.97 | 倍 | manual_added |
+| EV/EBITDA | 2026E | 22.76 | 倍 | manual_added |
 
-```text
-D:\_datefac\output\delivery_package\10_manual_multi_year_correction_strategy.md
-D:\_datefac\output\delivery_package\10_manual_multi_year_correction_strategy.xlsx
-```
+必须记录 delivery 状态：
+- overall_status = PASS
+- fail_count = 0
+- warn_count = 0
+- duplicate_key_count_final = 0
 
-不要加入 Git。
+## remaining_values
+策略文档必须列出尚未应用的归母净利润多年份小数值：
 
-文档必须包含：
+| standard_metric | year | corrected_value | corrected_unit | evidence |
+|---|---|---:|---|---|
+| 归属母公司净利润 | 2025A | 204.59 | 百万元 | page_001_table_001.png |
+| 归属母公司净利润 | 2027E | 398.83 | 百万元 | page_001_table_001.png |
+| 归属母公司净利润 | 2028E | 536.53 | 百万元 | page_001_table_001.png |
 
-## Current Limitation
-说明当前 02 单行只能表达一个 year，因此无法在同一 row_index=1 上同时修正 2025A/2026E/2027E/2028E。
+## required_document_sections
+10A Markdown 必须包含以下章节：
 
-## Remaining Values
-列出尚未应用的归母净利润多年份值：
-- 2025A = 204.59 百万元
-- 2027E = 398.83 百万元
-- 2028E = 536.53 百万元
+# Manual Multi-Year Correction Strategy - Clean Version
 
-## Option A: Duplicate Manual Queue Rows
-说明如何复制 02 中 row_index=1 的来源字段，拆成多条人工复核行，每行一个 year。
+## 1. Current Status
+说明当前 4 条人工修正已成功，delivery 仍 PASS。
 
-分析：
-- 优点
-- 缺点
-- 风险
-- 对现有 apply_manual_review_corrections.py 的影响
-- 是否推荐
+## 2. Current Limitation
+说明当前 02_人工复核指标队列.xlsx 的一行只能表达一个 year，所以同一个 row_index=1 不能同时承载 2025A/2026E/2027E/2028E。
 
-## Option B: Multi-value Columns in Same Row
-例如 corrected_values_json 或 corrected_2025A/corrected_2027E/corrected_2028E。
+## 3. Remaining Multi-Year Values
+列出 2025A/2027E/2028E 的归母净利润待覆盖值。
 
-分析：
-- 优点
-- 缺点
-- 风险
-- 对现有脚本影响
-- 是否推荐
+## 4. Option A - Duplicate Rows in 02 Manual Queue
+说明：复制 02 中同一指标候选行，拆成多条单年份复核行。
 
-## Option C: Separate Manual Year Overrides File
-新增独立文件承载人工多年份修正，例如：
+必须分析：
+- 优点：改动小，沿用现有 apply 脚本的一行一年模型
+- 缺点：污染 02 候选队列，人工复制容易出错，来源字段重复，后续难区分候选行与人工事实行
+- 风险：重复 key、行来源混乱、人工误改 source 字段
+- 对现有脚本影响：可能不需要大改，但需要保证拆行后的 key 唯一
+- 是否推荐：不推荐作为长期方案，只可作为临时手工补救
+
+## 5. Option B - Multi-Value Fields in One 02 Row
+说明：在同一 02 行中新增 corrected_values_json 或 corrected_2025A/corrected_2027E 等多值列。
+
+必须分析：
+- 优点：不复制行，形式上集中
+- 缺点：破坏当前一行一年假设，解析复杂，Excel 人工填写体验差
+- 风险：year 歧义、JSON 格式错误、诊断复杂、apply 逻辑变重
+- 对现有脚本影响：需要明显改造 year 解析和 correction application
+- 是否推荐：不推荐
+
+## 6. Option C - Separate Manual Year Overrides File
+说明：新增独立人工覆盖事实表，例如：
 D:\_datefac\output\delivery_package\02A_人工年份修正覆盖表.xlsx
 
-字段建议：
+建议字段：
 - asset_package
 - standard_metric
 - year
@@ -178,65 +150,95 @@ D:\_datefac\output\delivery_package\02A_人工年份修正覆盖表.xlsx
 - reviewed_at
 - reviewer_note
 - evidence_crop_path
+- source_note
 
-分析：
-- 优点
-- 缺点
-- 风险
-- 对现有脚本影响
-- 是否推荐
+必须分析：
+- 优点：一行一指标一年，避免多年份歧义；不污染 02 队列；适合批量人工补录；便于审计；与 final key 对齐
+- 缺点：需要扩展 apply_manual_review_corrections.py 读取新表；需要新增模板/诊断/check 逻辑
+- 风险：两个人工来源的优先级需要定义清楚；需要避免与 02 修正重复冲突
+- 对现有脚本影响：新增读取分支、冲突检测、06A/06D 来源标记
+- 是否推荐：推荐
 
-## Recommendation
-给出推荐方案。
+## 7. Recommended Architecture
+明确推荐 Option C。
 
-倾向：推荐 Option C，理由是：
-- 不污染原 02 队列结构
-- 一行一指标一年，天然避免多年份歧义
-- 适合后续批量人工补录
-- 对 apply_manual_review_corrections.py 可通过新增读取分支接入
-- 保留 02 作为候选队列，02A 作为人工覆盖事实表，更符合数据工程分层
+建议分层：
+- 02_人工复核指标队列.xlsx = 问题候选队列 / 人工复核入口
+- 02A_人工年份修正覆盖表.xlsx = 已确认人工覆盖事实表
+- apply_manual_review_corrections.py = 同时读取 02 与 02A，按 key 合并
+- 06A = 记录人工修正应用明细
+- 06D = 记录诊断与冲突
 
-## Next Implementation Plan
-如果推荐 Option C，给出后续实现计划：
-1. 创建 02A_人工年份修正覆盖表.xlsx 模板生成工具或由 apply 脚本自动识别
-2. 扩展 apply_manual_review_corrections.py 读取该表
-3. 合并进 final_df 时使用同一 key：asset_package + standard_metric + year
-4. 生成 06A 明细和 06D 诊断
-5. check_delivery_state.py 增加对 02A overrides 的检查
+## 8. Merge and Priority Rules
+必须定义：
+1. key = asset_package + standard_metric + year
+2. 如果 02A 与 02 对同一 key 都有修正：
+   - 推荐 02A 优先，或标记冲突进入 06B/06D
+   - 必须在文档中说明推荐优先级
+3. 02A 中每行必须有单一年份 year
+4. review_status 必须为 corrected/accepted 等有效状态
+5. use_corrected_value 必须为 是/TRUE
+6. corrected_value 必须非空且可数值化
 
-### 5. 更新 worklog
+## 9. Proposed 02A Template Example
+必须给出表格示例：
+
+| asset_package | standard_metric | year | corrected_value | corrected_unit | review_status | use_corrected_value | reviewer | reviewed_at | reviewer_note | evidence_crop_path |
+|---|---|---|---:|---|---|---|---|---|---|---|
+| H3_AP202605091822098939_1_资产包 | 归属母公司净利润 | 2025A | 204.59 | 百万元 | corrected | 是 | 小唐 | 2026-05-18 | 根据 page_001_table_001.png 人工复核 | D:\...\page_001_table_001.png |
+| H3_AP202605091822098939_1_资产包 | 归属母公司净利润 | 2027E | 398.83 | 百万元 | corrected | 是 | 小唐 | 2026-05-18 | 根据 page_001_table_001.png 人工复核 | D:\...\page_001_table_001.png |
+| H3_AP202605091822098939_1_资产包 | 归属母公司净利润 | 2028E | 536.53 | 百万元 | corrected | 是 | 小唐 | 2026-05-18 | 根据 page_001_table_001.png 人工复核 | D:\...\page_001_table_001.png |
+
+## 10. Implementation Plan
+建议后续实现步骤：
+1. 新增生成 02A 模板的工具或在 apply 脚本中自动创建空模板
+2. 扩展 apply_manual_review_corrections.py 读取 02A
+3. 标准化 02A 列名与布尔/状态字段
+4. 按 asset_package + standard_metric + year 形成 override records
+5. 与 01 trusted + 02 corrections 合并
+6. 06A 增加 source = manual_year_override
+7. 06D 增加 02A 读取诊断、重复 key、冲突明细
+8. check_delivery_state.py 增加 02A 检查项
+9. 用 2025A/2027E/2028E 归母净利润进行验收
+
+## 11. Decision
+明确写：
+建议进入 Option C 实现阶段，但实现前应先让用户确认是否接受新增 02A 人工年份修正覆盖表。
+
+## output_xlsx_requirements
+10A Excel 至少包含这些 sheet：
+- summary
+- current_status
+- remaining_values
+- options_comparison
+- proposed_02A_template
+- implementation_plan
+
+## validation_steps
+生成后验证：
+1. 读取 10A Markdown，确认没有 `????`、连续 `??`、`�`
+2. 读取 10A Excel，确认 sheet 存在
+3. 运行 check_delivery_state.py --json，确认仍 PASS
+4. 确认 01/02/06 未被修改
+
+## update_worklog
 必须更新：
 - docs/codex_worklog/LATEST.md
 
 必须新增：
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_multi_year_strategy.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_regenerate_clean_multi_year_strategy.md
 
-本次 worklog 必须中文正常，不允许乱码。
-
-日志必须包含：
-- task_title
-- started_at
-- finished_at
-- git_commit_before
-- git_commit_after
-- commands_run
-- files_changed
-- outputs_generated
-- checks_performed
-- result_summary
-- remaining_issues
-- next_step_suggestion
-- safety_notes
+worklog 必须使用 UTF-8 写入，中文不能乱码。
 
 result_summary 必须说明：
-- 上一轮 4 条人工修正是否仍有效
-- delivery check 是否 PASS
-- 是否生成 10 strategy md/xlsx
-- 推荐方案是什么
-- 为什么不直接改 02 或 06
+- 是否生成 10A md/xlsx
+- 是否无乱码
+- 推荐方案是否为 Option C
+- delivery check 是否仍 PASS
+- 是否未修改 01/02/06
 
 next_step_suggestion：
-- 若用户确认，下一步实现 Option C：人工年份修正覆盖表 02A 与 apply 脚本接入
+- 用户确认后，下一步实现 Option C：新增 02A 人工年份修正覆盖表并接入 apply 脚本
 
 ## git_commit
 允许提交：
@@ -244,25 +246,25 @@ next_step_suggestion：
 - docs/codex_worklog/history/
 
 不要提交：
-- output/delivery_package/10_manual_multi_year_correction_strategy.md
-- output/delivery_package/10_manual_multi_year_correction_strategy.xlsx
+- output/delivery_package/10A_manual_multi_year_correction_strategy_clean.md
+- output/delivery_package/10A_manual_multi_year_correction_strategy_clean.xlsx
 - output 下任何 Excel/PDF/截图产物
 
 执行：
 
 ```bat
 git add docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "plan multi-year manual correction strategy"
+git commit -m "regenerate clean multi-year correction strategy"
 git push origin main
 ```
 
 ## expected_final_state
+- 本地生成 10A clean strategy md/xlsx
+- 10A 无乱码
 - delivery check 仍 PASS
-- worklog 中文不乱码
-- 本地生成 10_manual_multi_year_correction_strategy.md
-- 本地生成 10_manual_multi_year_correction_strategy.xlsx
-- 没有修改 01/02/06 正式数据
-- 没有提交 output 产物到 Git
+- 推荐 Option C
+- 未修改 01/02/06
+- 未提交 output 产物到 Git
 
 ## safety_notes
 - 未运行 factory_core.py
