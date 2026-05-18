@@ -1,4 +1,4 @@
-# Codex Worklog - Latest
+# Codex Worklog - History
 
 ## task_title
 Prepare Stage 1 three-sample expansion execution plan
