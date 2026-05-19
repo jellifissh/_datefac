@@ -1,80 +1,63 @@
 # NEXT CODEX TASK
 
 ## task_title
-Expand Stage 1 AI repair deterministic extract replay coverage
+Prepare Stage 1 AI repair real-provider preflight bundle
 
 ## project
 D:\_datefac
 
 ## current_status
-The Stage 1 AI repair deterministic extract replay set has completed.
+The deterministic extract replay coverage expansion has completed.
 
-Latest user-uploaded/reviewed outputs:
-- D:\_datefac\output\delivery_package\46_stage1_ai_repair_extract_replay_log.md
-- D:\_datefac\output\delivery_package\46_stage1_ai_repair_extract_replay_log.xlsx
-- D:\_datefac\output\delivery_package\47_stage1_ai_repair_extract_replay_evaluation.md
-- D:\_datefac\output\delivery_package\47_stage1_ai_repair_extract_replay_evaluation.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay\extract_replay_responses.jsonl
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay\ai_repair_results.jsonl
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay\ai_repair_results.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay\ai_repair_candidates.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay\ai_repair_validation.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay\ai_repair_merge_preview.xlsx
+Latest committed result:
+- commit: ab2b60d expand stage1 ai repair extract coverage
 
-Key result from 46/47:
-- task_title = Add Stage 1 AI repair deterministic extract replay set
-- extract_replay_status = WARN
-- processed_task_count = 77
-- response_file_task_count = 9
+Latest user-uploaded/reviewed output summary:
+- task_title = Expand Stage 1 AI repair deterministic extract replay coverage
+- extract_coverage_status = WARN
+- response_file_task_count = 12
 - decision_counts = {extract: 7, manual_review: 69, ignore: 1}
 - extracted_candidate_count = 7
 - ai_candidate_for_rule_validation_count = 7
-- manual_review_candidate_count = 69
-- ignore_count = 1
-- schema_validation_status = PASS
 - evidence_check_status = PASS
 - invalid_extract_count = 0
-- value_not_in_evidence_count = 0
-- year_not_in_evidence_count = 0
-- sample_extract_summary = S1: 6, S3: 1
-- target_metric_extract_summary = EBITDA: 1, EV/EBITDA: 2, P/B: 1, P/E: 1, 营业收入: 2
 - production_delivery_status_after = PASS / pass_count=17 / warn_count=0 / fail_count=0
 - production_files_unchanged = true
-- production_guard_changed_count = 0
 - factory_core.py not run
 - marker/surya/vision/PaddleOCR not triggered
 - model download not triggered
 - no real AI inference call was made
 
 Interpretation:
-The extract path now works end-to-end: deterministic offline extract responses can pass schema/evidence checks and appear as `ai_candidate_for_rule_validation` in merge preview. Coverage is still limited: S1 dominates, S3 has only one extract, S2 has none, and target metrics do not yet cover net profit/EPS/ROE. Before connecting a real provider, expand the deterministic extract replay set with per-sample curated task selection.
+Deterministic replay proved the extract path but did not materially expand safe extract coverage beyond 7. This is now a reasonable boundary for purely deterministic replay. The next step is not to call a real model yet, but to prepare a real-provider preflight bundle: request JSONL, provider interface contract, safety budget, response file contract, and validation checklist.
 
 ## goal
-Expand deterministic extract replay coverage by selecting more safe, evidence-backed extract tasks from the Stage 1 packet.
+Prepare a sandbox-only real-provider preflight bundle for the Stage 1 AI repair worker.
 
-This task must remain sandbox-only and offline-only. It must not call a real model.
+This task must not call any model or network. It only prepares request batches, provider contracts, config templates, and validation documents for a future controlled provider run.
 
 Target code:
-- D:\_datefac\tools\run_stage1_ai_repair_worker.py if validation changes are needed
-- D:\_datefac\tools\build_stage1_ai_repair_extract_replay_set.py
+- D:\_datefac\tools\run_stage1_ai_repair_worker.py if interface validation changes are needed
+- New helper preferred:
+  D:\_datefac\tools\prepare_stage1_ai_repair_provider_preflight.py
 
 Target local reports:
-- D:\_datefac\output\delivery_package\48_stage1_ai_repair_extract_coverage_log.md
-- D:\_datefac\output\delivery_package\48_stage1_ai_repair_extract_coverage_log.xlsx
-- D:\_datefac\output\delivery_package\49_stage1_ai_repair_extract_coverage_evaluation.md
-- D:\_datefac\output\delivery_package\49_stage1_ai_repair_extract_coverage_evaluation.xlsx
+- D:\_datefac\output\delivery_package\50_stage1_ai_repair_provider_preflight_log.md
+- D:\_datefac\output\delivery_package\50_stage1_ai_repair_provider_preflight_log.xlsx
+- D:\_datefac\output\delivery_package\51_stage1_ai_repair_provider_preflight_evaluation.md
+- D:\_datefac\output\delivery_package\51_stage1_ai_repair_provider_preflight_evaluation.xlsx
 
-Sandbox extract coverage replay dir:
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_coverage
+Sandbox preflight dir:
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight
 
 Expected sandbox files:
-- extract_coverage_responses.jsonl
-- ai_repair_results.jsonl
-- ai_repair_results.xlsx
-- ai_repair_candidates.xlsx
-- ai_repair_validation.xlsx
-- ai_repair_merge_preview.xlsx
-- extract_task_selection_diagnostics.xlsx
+- provider_request_batch.jsonl
+- provider_request_batch_sample.md
+- provider_response_contract.md
+- provider_config_template.json
+- provider_run_checklist.md
+- provider_response_validation_plan.md
+- provider_preflight_inventory.xlsx
 
 ## absolute_hard_constraints
 1. Do not run factory_core.py.
@@ -95,135 +78,133 @@ Expected sandbox files:
 12. Do not commit output artifacts.
 13. Worklog must be English only and UTF-8.
 14. Chinese company/metric text must remain readable, no `????` or `�`.
+15. Do not put any API key, token, password, endpoint secret, or credential in any file.
 
 ## implementation_requirements
 
-### 1. Curated task selection
-Enhance `build_stage1_ai_repair_extract_replay_set.py` to select deterministic extracts more deliberately.
-
+### 1. Build provider request batch
 Read:
 - D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl
 - D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema_and_prompt.md
 
-Selection targets:
-- Prefer 10 to 20 response tasks total, if deterministic evidence allows.
-- Try to include at least:
-  - S1: 5 to 10 extract responses
-  - S3: 3 to 8 extract responses
-  - S2: keep table-level manual_review unless deterministic metric/value evidence exists
-- Try to cover target metrics beyond previous set:
-  - 营业收入
-  - 归属母公司净利润 / 归母净利润
-  - 每股收益 / EPS
-  - P/E
-  - P/B
-  - EV/EBITDA
-  - ROE
-  - EBITDA
-- Do not fabricate coverage. If a metric/sample cannot be safely extracted, record why in diagnostics.
+Create:
+- provider_request_batch.jsonl
 
-### 2. Safe extract construction rules
-Every extract response must obey:
-- value appears in row_cells, row_preview, nearby_rows_context, or raw_table_preview;
-- year appears in detected_years or evidence text;
-- standard_metric is target metric or appears in evidence;
-- source task has enough context to justify metric-year-value alignment;
-- no hard-risk evidence should be hidden.
-
-If exact alignment is unclear, generate manual_review instead of extract.
-
-### 3. Diagnostics
-Create `extract_task_selection_diagnostics.xlsx` with sheets:
-- candidate_task_pool
-- selected_extract_tasks
-- rejected_extract_candidates
-- sample_metric_coverage_gap
-- manual_review_due_to_ambiguity
-
-Required diagnostic fields:
+Each line should include:
+- request_id
 - repair_task_id
 - sample_id
+- company
 - task_type
-- standard_metric_hint
-- detected_years
-- selected_decision
-- selected_metric
-- selected_year
-- selected_value
-- evidence_source
-- reject_reason if any
-- confidence
+- priority
+- provider_prompt
+- expected_output_schema
+- evidence_digest
+- source_trace_id
+- safety_constraints
+- response_required_json_only = true
+- must_not_invent_values = true
 
-### 4. Worker replay
-Run `run_stage1_ai_repair_worker.py` with provider `offline_file` using the generated `extract_coverage_responses.jsonl`.
+Do not include full PDF contents or raw binary data.
+Keep each provider prompt bounded and evidence-only.
 
-Expected behavior:
-- schema validation PASS;
-- evidence check PASS;
-- invalid_extract_count = 0;
-- accepted extracts route to `ai_candidate_for_rule_validation`;
-- missing responses route to manual_review_candidate;
-- production files unchanged.
+### 2. Task selection for first real-provider run
+Do not send all 77 tasks by default.
 
-### 5. Reports 48/49
-Generate:
-- D:\_datefac\output\delivery_package\48_stage1_ai_repair_extract_coverage_log.md
-- D:\_datefac\output\delivery_package\48_stage1_ai_repair_extract_coverage_log.xlsx
+Select a controlled first batch:
+- 10 to 20 tasks total
+- include S1/S3 ambiguous high-value cases
+- include S2 table-level repair tasks
+- include at least one row_segment_repair if available
+- include at least one semantic_guard_review
+- include at least one metric_year_value_alignment if available
 
-48 report must include:
+Add priority:
+- P0: high-value extract candidate ambiguity
+- P1: S2 table-level no-metric diagnosis
+- P2: semantic guard review / lower-value ambiguity
+
+Create diagnostics in XLSX:
+- selected_provider_requests
+- excluded_packet_tasks
+- sample_task_counts
+- task_type_counts
+- priority_counts
+
+### 3. Provider config template
+Create `provider_config_template.json` with placeholders only:
+- provider_name: local_or_cloud_provider_placeholder
+- model_name: placeholder
+- endpoint_url: placeholder_do_not_commit_real_endpoint
+- api_key_env_var: STAGE1_AI_REPAIR_API_KEY
+- timeout_seconds
+- max_retries
+- max_concurrent_requests
+- max_input_chars_per_task
+- max_output_tokens
+- temperature: 0
+- json_only: true
+- dry_run: true
+
+No real secrets.
+
+### 4. Response contract and validation plan
+Create:
+- provider_response_contract.md
+- provider_response_validation_plan.md
+
+Must specify:
+- response must be one JSON object per request;
+- repair_task_id must match request;
+- output must conform to 38 schema;
+- extracted values must appear in evidence;
+- invalid responses are demoted or blocked;
+- no AI response can directly write production 06;
+- all real-provider outputs must first be saved to local response JSONL and then replayed via offline_file.
+
+### 5. Preflight evaluation
+Generate 50/51 reports.
+
+50 report must include:
 - task_title
 - started_at / finished_at
 - commands_run
-- packet_path
-- schema_path
-- extract_coverage_dir
-- response_file_path
-- response_file_task_count
-- extract_response_count
-- manual_review_response_count
-- ignore_response_count
+- input_files_read
 - output_files_generated
+- provider_request_count
+- selected_sample_counts
+- selected_task_type_counts
+- config_template_status
+- no_secret_check_status
 - production_guard_changed_count
 - safety_checks
 
-Generate:
-- D:\_datefac\output\delivery_package\49_stage1_ai_repair_extract_coverage_evaluation.md
-- D:\_datefac\output\delivery_package\49_stage1_ai_repair_extract_coverage_evaluation.xlsx
-
-49 report must include:
-- extract_coverage_status: PASS / WARN / FAIL
-- processed_task_count
-- response_file_task_count
-- decision_counts
-- extracted_candidate_count
-- ai_candidate_for_rule_validation_count
-- manual_review_candidate_count
-- ignore_count
-- schema_validation_status
-- evidence_check_status
-- invalid_extract_count
-- value_not_in_evidence_count
-- year_not_in_evidence_count
-- merge_preview_summary
-- sample_extract_summary
-- target_metric_extract_summary
-- sample_metric_coverage_gap
-- rejected_extract_candidate_summary
+51 report must include:
+- provider_preflight_status: PASS / WARN / FAIL
+- provider_request_count
+- selected_sample_counts
+- selected_task_type_counts
+- priority_counts
+- prompt_size_summary
+- schema_reference_status
+- response_contract_status
+- validation_plan_status
+- no_secret_check_status
 - production_delivery_status_after
 - production_files_unchanged
 - recommended_next_step
 
 Excel sheets required:
 - summary
-- response_inventory
-- task_results
-- extracted_candidates
-- evidence_check
-- merge_preview
-- sample_extract_summary
-- target_metric_extract_summary
-- coverage_gap
-- rejected_extract_candidates
+- selected_provider_requests
+- excluded_packet_tasks
+- sample_task_counts
+- task_type_counts
+- priority_counts
+- prompt_size_summary
+- config_template
+- no_secret_check
 - production_guard
 - safety_checks
 - next_steps
@@ -231,42 +212,43 @@ Excel sheets required:
 ## validation_commands
 Run:
 ```bat
-D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\run_stage1_ai_repair_worker.py
-D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\build_stage1_ai_repair_extract_replay_set.py
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\build_stage1_ai_repair_extract_replay_set.py ^
+D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\prepare_stage1_ai_repair_provider_preflight.py
+D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\prepare_stage1_ai_repair_provider_preflight.py ^
   --packet-jsonl D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl ^
   --schema-json D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json ^
+  --prompt-md D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema_and_prompt.md ^
   --trial-run-root D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315 ^
   --delivery-dir D:\_datefac\output\delivery_package ^
-  --max-extracts 20 ^
-  --coverage-mode curated
+  --max-provider-tasks 20
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
+
+If `run_stage1_ai_repair_worker.py` is modified, also py_compile it.
 
 ## acceptance_criteria
 This task passes if:
 1. py_compile passes.
-2. Extract coverage response JSONL is generated.
-3. Worker runs offline_file with the extract coverage JSONL.
-4. At least 7 previously accepted extracts still pass, unless explicitly rejected with valid reason.
-5. S3 extract count increases if deterministic evidence allows; if not, gap is documented.
-6. Every accepted extract value passes evidence check.
-7. No invalid extract becomes `ai_candidate_for_rule_validation`.
-8. Coverage diagnostics are generated.
-9. 48/49 reports are generated.
+2. Provider request batch is generated.
+3. Provider request count is between 10 and 20 unless insufficient eligible tasks are documented.
+4. S1/S2/S3 are represented where possible.
+5. Task type coverage includes at least S2 table-level and at least one ambiguity/review task type.
+6. Provider config template contains no real secrets.
+7. Response contract and validation plan are generated.
+8. No network/model/API call occurs.
+9. 50/51 reports are generated.
 10. Production 01/02/02A/06 are unchanged.
 11. Production delivery remains PASS.
 12. No factory_core/marker/surya/vision/PaddleOCR/model download occurred.
 13. Output artifacts are not committed.
 
-A WARN status is acceptable if safe extract coverage remains limited, provided evidence checks are strict and gaps are clearly explained.
+A WARN status is acceptable if eligible provider task diversity is limited, provided this is clearly documented.
 
 ## update_worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_expand_stage1_ai_repair_extract_coverage.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_stage1_ai_repair_provider_preflight.md
 
 Worklog must be English only and UTF-8.
 
@@ -280,10 +262,8 @@ Worklog must include:
 - files_read
 - files_changed
 - files_generated
-- extract_coverage_status
-- decision_counts
-- extracted_candidate_count
-- evidence_check_status
+- provider_preflight_status
+- provider_request_count
 - production_delivery_status_after
 - result_summary
 - remaining_issues
@@ -292,53 +272,48 @@ Worklog must include:
 
 ## git_commit
 Allowed to commit:
+- tools/prepare_stage1_ai_repair_provider_preflight.py
 - tools/run_stage1_ai_repair_worker.py if modified
-- tools/build_stage1_ai_repair_extract_replay_set.py
 - docs/codex_worklog/LATEST.md
 - docs/codex_worklog/history/
 
 Do not commit:
-- output/delivery_package/48_stage1_ai_repair_extract_coverage_log.md
-- output/delivery_package/48_stage1_ai_repair_extract_coverage_log.xlsx
-- output/delivery_package/49_stage1_ai_repair_extract_coverage_evaluation.md
-- output/delivery_package/49_stage1_ai_repair_extract_coverage_evaluation.xlsx
+- output/delivery_package/50_stage1_ai_repair_provider_preflight_log.md
+- output/delivery_package/50_stage1_ai_repair_provider_preflight_log.xlsx
+- output/delivery_package/51_stage1_ai_repair_provider_preflight_evaluation.md
+- output/delivery_package/51_stage1_ai_repair_provider_preflight_evaluation.xlsx
 - output/_stage1_safe_runner_trial/**
 - any output artifacts
 
 Commit:
 ```bat
-git add tools/run_stage1_ai_repair_worker.py tools/build_stage1_ai_repair_extract_replay_set.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "expand stage1 ai repair extract coverage"
+git add tools/prepare_stage1_ai_repair_provider_preflight.py tools/run_stage1_ai_repair_worker.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
+git commit -m "prepare stage1 ai repair provider preflight"
 git push origin main
 ```
 
-If some listed files are unchanged, adjust git add accordingly.
+If worker was not modified, omit it from git add.
 
 ## expected_final_response
 After completion, output:
 1. task_title
-2. worker_path
-3. extract_replay_helper_path
-4. py_compile_status
-5. extract_coverage_status
-6. response_file_task_count
-7. decision_counts
-8. extracted_candidate_count
-9. ai_candidate_for_rule_validation_count
-10. evidence_check_status
-11. invalid_extract_count
-12. sample_extract_summary
-13. target_metric_extract_summary
-14. coverage_gap_summary
-15. generated_outputs
-16. production_delivery_status_after
-17. production_files_unchanged
-18. factory_core/vision/model_download_status
-19. next_step_suggestion
-20. commit sha
+2. helper_path
+3. py_compile_status
+4. provider_preflight_status
+5. provider_request_count
+6. selected_sample_counts
+7. selected_task_type_counts
+8. priority_counts
+9. no_secret_check_status
+10. generated_outputs
+11. production_delivery_status_after
+12. production_files_unchanged
+13. factory_core/vision/model_download_status
+14. next_step_suggestion
+15. commit sha
 
 ## safety_notes
-- This task expands deterministic extract replay only.
+- This task only prepares a real-provider preflight bundle.
 - It must not call a real model.
 - It must not write AI results into production delivery_package.
 - It must not run factory_core.py.
