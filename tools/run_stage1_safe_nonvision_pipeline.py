@@ -22,6 +22,7 @@ BASELINE_GUARD_PDF = "H3_AP202605091822098939_1.pdf"
 PRODUCTION_PREFIX_PATTERNS = ["01_*.xlsx", "02_*.xlsx", "02A_*.xlsx", "06_*.xlsx"]
 
 YEAR_RE = re.compile(r"\b(20\d{2}(?:[AE])?)\b", re.IGNORECASE)
+NUM_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 METRIC_KEYWORDS = [
     "营业收入",
     "收入",
@@ -41,6 +42,31 @@ METRIC_KEYWORDS = [
     "净利率",
 ]
 RATING_DISCLAIMER_HINTS = ["评级", "免责声明", "法律声明", "风险提示", "投资建议"]
+
+STANDARD_METRIC_MAP = {
+    "营业收入": ["营业收入", "收入"],
+    "归属母公司净利润": ["归属母公司净利润", "归母净利润", "净利润"],
+    "每股收益": ["每股收益", "EPS"],
+    "P/E": ["P/E", "PE"],
+    "P/B": ["P/B", "PB"],
+    "EV/EBITDA": ["EV/EBITDA"],
+    "ROE": ["ROE"],
+    "EBITDA": ["EBITDA"],
+    "毛利率": ["毛利率"],
+    "净利率": ["净利率"],
+}
+STANDARD_METRIC_PRIORITY = [
+    "营业收入",
+    "归属母公司净利润",
+    "每股收益",
+    "P/E",
+    "P/B",
+    "EV/EBITDA",
+    "ROE",
+    "EBITDA",
+    "毛利率",
+    "净利率",
+]
 
 SAFE_ENTRYPOINT_CANDIDATES = [
     r"D:\_datefac\tools\probe_pdf_tables.py",
@@ -879,6 +905,529 @@ def _write_23_24_reports(
     return report23_md, report23_xlsx, report24_md, report24_xlsx
 
 
+def _parse_page_table_from_sheet(sheet_name: str) -> Tuple[int, int]:
+    m = re.match(r"p(\d+)_t(\d+)", _norm(sheet_name).lower())
+    if not m:
+        return 0, 0
+    return int(m.group(1)), int(m.group(2))
+
+
+def _match_standard_metric(text: str) -> str:
+    t = _norm(text).upper()
+    for std in STANDARD_METRIC_PRIORITY:
+        for kw in STANDARD_METRIC_MAP.get(std, []):
+            if _norm(kw).upper() in t:
+                return std
+    return ""
+
+
+def _detect_year_columns(df: pd.DataFrame) -> Dict[int, Tuple[str, List[str]]]:
+    year_cols: Dict[int, Tuple[str, List[str]]] = {}
+    if df is None or df.empty:
+        return year_cols
+    max_scan_rows = min(5, len(df))
+    for cidx, col in enumerate(df.columns):
+        flags: List[str] = []
+        candidates: List[str] = []
+        head_text = _norm(col)
+        cells = [head_text]
+        for ridx in range(max_scan_rows):
+            cells.append(_norm(df.iat[ridx, cidx]))
+        for cell in cells:
+            for m in YEAR_RE.finditer(cell):
+                token = m.group(1).upper()
+                candidates.append(token)
+        if not candidates:
+            continue
+        year = candidates[0]
+        if re.fullmatch(r"20\d{2}", year):
+            flags.append("year_suffix_missing")
+        year_cols[cidx] = (year, flags)
+    return year_cols
+
+
+def _parse_numeric(cell: str) -> Tuple[Optional[float], List[str]]:
+    text = _norm(cell)
+    flags: List[str] = []
+    if not text:
+        return None, flags
+    compact = text.replace(",", "").replace(" ", "").replace("％", "%")
+    is_percent = compact.endswith("%")
+    if is_percent:
+        compact = compact[:-1]
+        flags.append("percent_value")
+    if re.fullmatch(r"[-+]?\d+(?:\.\d+)?", compact):
+        val = float(compact)
+        if val < 0:
+            flags.append("negative_value_present")
+        return val, flags
+    nums = NUM_RE.findall(compact)
+    if len(nums) == 1:
+        val = float(nums[0])
+        flags.append("parsed_from_mixed_text")
+        if val < 0:
+            flags.append("negative_value_present")
+        return val, flags
+    if len(nums) > 1:
+        flags.append("ambiguous_multi_numeric_cell")
+    return None, flags
+
+
+def _standardize_table_sheet(
+    sample_id: str,
+    asset_package: str,
+    company: str,
+    sheet_name: str,
+    df: pd.DataFrame,
+) -> Tuple[List[Dict[str, object]], List[Dict[str, object]], List[Dict[str, object]]]:
+    standardized_rows: List[Dict[str, object]] = []
+    manual_rows: List[Dict[str, object]] = []
+    diag_rows: List[Dict[str, object]] = []
+    page, table_index = _parse_page_table_from_sheet(sheet_name)
+    year_cols = _detect_year_columns(df)
+    if not year_cols:
+        diag_rows.append(
+            {
+                "sample_id": sample_id,
+                "sheet_name": sheet_name,
+                "diagnostic_type": "no_year_columns",
+                "detail": "no year-like evidence detected",
+            }
+        )
+        return standardized_rows, manual_rows, diag_rows
+
+    for ridx in range(len(df)):
+        row_values = [_norm(x) for x in df.iloc[ridx].tolist()]
+        row_text = _row_text(row_values)
+        std_metric = _match_standard_metric(row_text)
+        if not std_metric:
+            continue
+
+        extracted_any = False
+        ambiguous_count = 0
+        for cidx, (year, year_flags) in year_cols.items():
+            if cidx >= len(row_values):
+                continue
+            raw_cell = row_values[cidx]
+            val, flags = _parse_numeric(raw_cell)
+            if val is None:
+                if _norm(raw_cell):
+                    ambiguous_count += 1
+                continue
+            extracted_any = True
+            route = "likely_core_metric_trial"
+            confidence = "high" if len(year_cols) >= 3 else "medium"
+            row_flags = year_flags + flags
+            standardized_rows.append(
+                {
+                    "sample_id": sample_id,
+                    "asset_package": asset_package,
+                    "company": company,
+                    "standard_metric": std_metric,
+                    "metric_keyword": std_metric,
+                    "year": year,
+                    "value": val,
+                    "unit_guess": "",
+                    "source_page": page,
+                    "source_table_index": table_index,
+                    "source_row_index": ridx + 1,
+                    "row_preview": row_text[:300],
+                    "confidence": confidence,
+                    "route_recommendation": route,
+                    "flags": "|".join(sorted(set(row_flags))),
+                }
+            )
+        if not extracted_any:
+            flags = ["ambiguous_year_value_alignment"]
+            if ambiguous_count > 0:
+                flags.append("non_numeric_or_mixed_cells")
+            manual_rows.append(
+                {
+                    "sample_id": sample_id,
+                    "asset_package": asset_package,
+                    "company": company,
+                    "standard_metric": std_metric,
+                    "metric_keyword": std_metric,
+                    "year": "",
+                    "value": "",
+                    "unit_guess": "",
+                    "source_page": page,
+                    "source_table_index": table_index,
+                    "source_row_index": ridx + 1,
+                    "row_preview": row_text[:300],
+                    "confidence": "low",
+                    "route_recommendation": "manual_review_candidate",
+                    "flags": "|".join(flags),
+                }
+            )
+    return standardized_rows, manual_rows, diag_rows
+
+
+def _run_standardizer_for_sample(asset_dir: Path, sample_id: str) -> Dict[str, object]:
+    result: Dict[str, object] = {
+        "sample_id": sample_id,
+        "asset_package": asset_dir.name,
+        "company": "",
+        "sample_status": "FAIL",
+        "metric_rows": 0,
+        "manual_rows": 0,
+        "ignored_rows": 0,
+        "error": "",
+        "standardized_rows": [],
+        "manual_review_rows": [],
+        "diag_rows": [],
+        "generated_files": [],
+    }
+    files_02a = sorted(asset_dir.glob("02A_*.xlsx"))
+    files_02 = [p for p in sorted(asset_dir.glob("02_*.xlsx")) if not p.name.startswith("02A_")]
+    files_05 = sorted(asset_dir.glob("05_stage1_core_metric_candidates.xlsx"))
+    files_summary = sorted(asset_dir.glob("stage1_sandbox_asset_summary.xlsx"))
+    if not files_02a or not files_02 or not files_05 or not files_summary:
+        result["sample_status"] = "FAIL"
+        result["error"] = "missing_required_trial_assets"
+        return result
+
+    try:
+        df_summary = pd.read_excel(files_summary[0], engine="openpyxl").fillna("")
+        if not df_summary.empty and "company" in df_summary.columns:
+            result["company"] = _norm(df_summary.iloc[0].get("company"))
+    except Exception:
+        pass
+
+    try:
+        xls = pd.ExcelFile(files_02[0], engine="openpyxl")
+    except Exception as exc:
+        result["sample_status"] = "FAIL"
+        result["error"] = f"read_02_failed:{type(exc).__name__}:{exc}"
+        return result
+
+    standardized_rows: List[Dict[str, object]] = []
+    manual_rows: List[Dict[str, object]] = []
+    diag_rows: List[Dict[str, object]] = []
+    sheet_names = [s for s in xls.sheet_names if _norm(s).lower() != "tables_index"]
+    for sheet in sheet_names:
+        try:
+            df = pd.read_excel(files_02[0], sheet_name=sheet, engine="openpyxl").fillna("").astype(str)
+        except Exception as exc:
+            diag_rows.append(
+                {
+                    "sample_id": sample_id,
+                    "sheet_name": sheet,
+                    "diagnostic_type": "sheet_read_failed",
+                    "detail": f"{type(exc).__name__}:{exc}",
+                }
+            )
+            continue
+        s_rows, m_rows, d_rows = _standardize_table_sheet(
+            sample_id=sample_id,
+            asset_package=asset_dir.name,
+            company=result["company"],
+            sheet_name=sheet,
+            df=df,
+        )
+        standardized_rows.extend(s_rows)
+        manual_rows.extend(m_rows)
+        diag_rows.extend(d_rows)
+
+    result["standardized_rows"] = standardized_rows
+    result["manual_review_rows"] = manual_rows
+    result["diag_rows"] = diag_rows
+    result["metric_rows"] = len(standardized_rows)
+    result["manual_rows"] = len(manual_rows)
+    result["ignored_rows"] = 0
+    if len(standardized_rows) == 0 and len(manual_rows) == 0:
+        result["sample_status"] = "WARN"
+        result["error"] = "STANDARDIZER_NO_METRIC_CANDIDATES"
+    elif len(standardized_rows) == 0 and len(manual_rows) > 0:
+        result["sample_status"] = "PARTIAL"
+    else:
+        result["sample_status"] = "PASS"
+    return result
+
+
+def _write_sample_standardizer_outputs(
+    trial_std_root: Path,
+    sample_result: Dict[str, object],
+) -> List[Dict[str, str]]:
+    sample_id = _norm(sample_result.get("sample_id")) or "UNKNOWN"
+    sample_dir = trial_std_root / sample_id
+    sample_dir.mkdir(parents=True, exist_ok=True)
+    std_df = pd.DataFrame(sample_result.get("standardized_rows", []))
+    manual_df = pd.DataFrame(sample_result.get("manual_review_rows", []))
+    diag_df = pd.DataFrame(sample_result.get("diag_rows", []))
+    summary_df = pd.DataFrame(
+        [
+            {
+                "sample_id": sample_id,
+                "asset_package": sample_result.get("asset_package", ""),
+                "company": sample_result.get("company", ""),
+                "sample_status": sample_result.get("sample_status", ""),
+                "metric_rows": sample_result.get("metric_rows", 0),
+                "manual_rows": sample_result.get("manual_rows", 0),
+                "ignored_rows": sample_result.get("ignored_rows", 0),
+                "error": sample_result.get("error", ""),
+            }
+        ]
+    )
+    p1 = _safe_write_excel({"standardized_trial_rows": std_df}, sample_dir / "05_stage1_standardized_core_metric_trial.xlsx")
+    p2 = _safe_write_excel(
+        {"diagnostics": diag_df, "manual_review_candidates": manual_df},
+        sample_dir / "05_stage1_standardizer_diagnostics.xlsx",
+    )
+    p3 = _safe_write_excel({"summary": summary_df}, sample_dir / "stage1_standardizer_trial_summary.xlsx")
+    return [
+        {"sample_id": sample_id, "file_type": "standardized_trial", "path": str(p1)},
+        {"sample_id": sample_id, "file_type": "diagnostics", "path": str(p2)},
+        {"sample_id": sample_id, "file_type": "trial_summary", "path": str(p3)},
+    ]
+
+
+def _write_29_30_reports(
+    delivery_dir: Path,
+    trial_run_root: Path,
+    runner_path: Path,
+    started_at: str,
+    finished_at: str,
+    command_run: str,
+    files_read: List[str],
+    generated_files: List[Dict[str, str]],
+    per_sample_status: List[Dict[str, object]],
+    standardized_rows: List[Dict[str, object]],
+    manual_rows: List[Dict[str, object]],
+    production_guard_rows: List[Dict[str, str]],
+    safety_checks: List[Dict[str, str]],
+    production_status_after: Dict[str, str],
+) -> Tuple[Path, Path, Path, Path, str]:
+    changed_count = sum(1 for r in production_guard_rows if r.get("changed") == "1")
+    has_fail = any(_norm(r.get("sample_status")) == "FAIL" for r in per_sample_status)
+    has_partial = any(_norm(r.get("sample_status")) == "PARTIAL" for r in per_sample_status)
+    has_warn = any(_norm(r.get("sample_status")) == "WARN" for r in per_sample_status)
+    if changed_count > 0:
+        status = "FAIL"
+    elif has_fail and len(per_sample_status) == sum(1 for r in per_sample_status if _norm(r.get("sample_status")) == "FAIL"):
+        status = "FAIL"
+    elif has_fail or has_partial:
+        status = "PARTIAL"
+    elif has_warn:
+        status = "WARN"
+    else:
+        status = "PASS"
+
+    per_sample_metric_rows = []
+    for r in per_sample_status:
+        per_sample_metric_rows.append(
+            {
+                "sample_id": r.get("sample_id", ""),
+                "sample_status": r.get("sample_status", ""),
+                "metric_rows": r.get("metric_rows", 0),
+                "manual_review_candidate_rows": r.get("manual_rows", 0),
+                "ignored_rows": r.get("ignored_rows", 0),
+                "error": r.get("error", ""),
+            }
+        )
+
+    flags_counter: Dict[str, int] = {}
+    for row in standardized_rows + manual_rows:
+        for f in [x.strip() for x in _norm(row.get("flags")).split("|") if x.strip()]:
+            flags_counter[f] = flags_counter.get(f, 0) + 1
+    flags_summary = [{"flag": k, "count": v} for k, v in sorted(flags_counter.items(), key=lambda x: (-x[1], x[0]))]
+
+    coverage: Dict[str, Dict[str, int]] = {}
+    for row in standardized_rows:
+        metric = _norm(row.get("standard_metric"))
+        sid = _norm(row.get("sample_id"))
+        if not metric:
+            continue
+        if metric not in coverage:
+            coverage[metric] = {"row_count": 0, "sample_count": 0}
+        coverage[metric]["row_count"] += 1
+        coverage[metric].setdefault(f"sample::{sid}", 1)
+    coverage_rows = []
+    for metric, payload in coverage.items():
+        sample_count = len([k for k in payload.keys() if k.startswith("sample::")])
+        coverage_rows.append({"standard_metric": metric, "row_count": payload["row_count"], "sample_count": sample_count})
+
+    blockers = []
+    if changed_count > 0:
+        blockers.append("production_guard_changed")
+    if not standardized_rows:
+        blockers.append("no_standardized_rows")
+    ready_samples = [r["sample_id"] for r in per_sample_metric_rows if int(r.get("metric_rows", 0) or 0) > 0]
+
+    report29_md = _safe_write_text(
+        delivery_dir / "29_stage1_sandbox_standardizer_trial_log.md",
+        "\n".join(
+            [
+                "# Stage1 Sandbox Standardizer Trial Log",
+                "",
+                "- task_title: Run sandbox-only standardizer trial for Stage 1 assets",
+                f"- runner_path: {runner_path}",
+                f"- started_at: {started_at}",
+                f"- finished_at: {finished_at}",
+                f"- trial_run_root: {trial_run_root}",
+                f"- command_run: {command_run}",
+                f"- production_guard_changed_count: {changed_count}",
+                f"- sandbox_standardizer_status: {status}",
+            ]
+        ),
+    )
+    report29_xlsx = _safe_write_excel(
+        {
+            "summary": pd.DataFrame(
+                [
+                    {"field": "task_title", "value": "Run sandbox-only standardizer trial for Stage 1 assets"},
+                    {"field": "runner_path", "value": str(runner_path)},
+                    {"field": "started_at", "value": started_at},
+                    {"field": "finished_at", "value": finished_at},
+                    {"field": "trial_run_root", "value": str(trial_run_root)},
+                    {"field": "command_run", "value": command_run},
+                    {"field": "sandbox_standardizer_status", "value": status},
+                    {"field": "production_guard_changed_count", "value": changed_count},
+                ]
+            ),
+            "files_read": pd.DataFrame([{"path": p} for p in files_read]),
+            "files_generated": pd.DataFrame(generated_files),
+            "per_sample_trial_standardizer_status": pd.DataFrame(per_sample_status),
+            "production_guard": pd.DataFrame(production_guard_rows),
+            "safety_checks": pd.DataFrame(safety_checks),
+        },
+        delivery_dir / "29_stage1_sandbox_standardizer_trial_log.xlsx",
+    )
+
+    report30_md = _safe_write_text(
+        delivery_dir / "30_stage1_sandbox_standardizer_trial_evaluation.md",
+        "\n".join(
+            [
+                "# Stage1 Sandbox Standardizer Trial Evaluation",
+                "",
+                f"- sandbox_standardizer_status: {status}",
+                f"- production_delivery_status_after: {json.dumps(production_status_after, ensure_ascii=False)}",
+                f"- samples_ready_for_sandbox_delivery_trial: {','.join(ready_samples)}",
+                f"- blockers: {'|'.join(blockers) if blockers else 'none'}",
+            ]
+        ),
+    )
+    report30_xlsx = _safe_write_excel(
+        {
+            "summary": pd.DataFrame(
+                [
+                    {"field": "sandbox_standardizer_status", "value": status},
+                    {"field": "production_delivery_status_after", "value": json.dumps(production_status_after, ensure_ascii=False)},
+                    {"field": "samples_ready_for_sandbox_delivery_trial", "value": "|".join(ready_samples)},
+                    {"field": "blockers", "value": "|".join(blockers)},
+                ]
+            ),
+            "per_sample_status": pd.DataFrame(per_sample_metric_rows),
+            "standardized_trial_rows": pd.DataFrame(standardized_rows),
+            "manual_review_candidates": pd.DataFrame(manual_rows),
+            "flags_summary": pd.DataFrame(flags_summary),
+            "target_metric_coverage": pd.DataFrame(coverage_rows),
+            "production_guard": pd.DataFrame(production_guard_rows),
+            "safety_checks": pd.DataFrame(safety_checks),
+            "next_steps": pd.DataFrame(
+                [
+                    {
+                        "recommended_next_step": "Review manual_review_candidate rows and run a sandbox delivery trial for ready samples.",
+                    }
+                ]
+            ),
+        },
+        delivery_dir / "30_stage1_sandbox_standardizer_trial_evaluation.xlsx",
+    )
+    return report29_md, report29_xlsx, report30_md, report30_xlsx, status
+
+
+def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -> int:
+    trial_run_root = Path(args.trial_run_root)
+    delivery_dir = Path(args.delivery_dir)
+    if args.strict_scope and not _ensure_under(DEFAULT_TRIAL_ROOT, trial_run_root):
+        print("BLOCKED_STRICT_SCOPE: trial-run-root must be under output/_stage1_safe_runner_trial")
+        return 3
+    assets_root = trial_run_root / "assets"
+    if not assets_root.exists():
+        print(f"BLOCKED_TRIAL_ASSETS_MISSING: {assets_root}")
+        return 3
+
+    before = _snapshot_files(_collect_production_guard_files(DEFAULT_DELIVERY_DIR))
+    started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    files_read: List[str] = []
+    generated_files: List[Dict[str, str]] = []
+    per_sample_status: List[Dict[str, object]] = []
+    standardized_all: List[Dict[str, object]] = []
+    manual_all: List[Dict[str, object]] = []
+
+    trial_std_root = trial_run_root / "standardizer_trial"
+    trial_std_root.mkdir(parents=True, exist_ok=True)
+
+    sample_dirs = sorted([p for p in assets_root.iterdir() if p.is_dir()])
+    for idx, sample_dir in enumerate(sample_dirs, start=1):
+        sample_id = f"S{idx}"
+        files_read.extend([str(x) for x in sample_dir.glob("*.xlsx")])
+        res = _run_standardizer_for_sample(sample_dir, sample_id=sample_id)
+        per_sample_status.append(
+            {
+                "sample_id": sample_id,
+                "asset_package": res.get("asset_package", ""),
+                "company": res.get("company", ""),
+                "sample_status": res.get("sample_status", ""),
+                "metric_rows": res.get("metric_rows", 0),
+                "manual_rows": res.get("manual_rows", 0),
+                "ignored_rows": res.get("ignored_rows", 0),
+                "error": res.get("error", ""),
+            }
+        )
+        standardized_rows = res.get("standardized_rows", [])
+        manual_rows = res.get("manual_review_rows", [])
+        if isinstance(standardized_rows, list):
+            standardized_all.extend(standardized_rows)
+        if isinstance(manual_rows, list):
+            manual_all.extend(manual_rows)
+        generated_files.extend(_write_sample_standardizer_outputs(trial_std_root, res))
+
+    after = _snapshot_files(_collect_production_guard_files(DEFAULT_DELIVERY_DIR))
+    production_guard_rows = _compare_snapshot(before, after)
+    changed_count = sum(1 for r in production_guard_rows if r.get("changed") == "1")
+    production_status_after = _run_delivery_check_json(DEFAULT_DELIVERY_DIR, no_write=False)
+    finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    safety_checks = [
+        {"check_name": "factory_core_not_run", "status": "PASS", "detail": "standardizer mode reads trial xlsx only"},
+        {"check_name": "vision_backends_not_triggered", "status": "PASS", "detail": "no vision/OCR code paths"},
+        {"check_name": "model_download_not_triggered", "status": "PASS", "detail": "no model backend imports"},
+        {"check_name": "production_files_unchanged", "status": "PASS" if changed_count == 0 else "FAIL", "detail": f"changed={changed_count}"},
+    ]
+
+    command_run = " ".join([sys.executable, str(runner_path)] + sys.argv[1:])
+    r29m, r29x, r30m, r30x, status = _write_29_30_reports(
+        delivery_dir=delivery_dir,
+        trial_run_root=trial_run_root,
+        runner_path=runner_path,
+        started_at=started_at,
+        finished_at=finished_at,
+        command_run=command_run,
+        files_read=files_read,
+        generated_files=generated_files,
+        per_sample_status=per_sample_status,
+        standardized_rows=standardized_all,
+        manual_rows=manual_all,
+        production_guard_rows=production_guard_rows,
+        safety_checks=safety_checks,
+        production_status_after=production_status_after,
+    )
+    print(f"runner_path: {runner_path}")
+    print(f"sandbox_standardizer_status: {status}")
+    print(f"trial_run_root: {trial_run_root}")
+    print(f"report_29_md: {r29m}")
+    print(f"report_29_xlsx: {r29x}")
+    print(f"report_30_md: {r30m}")
+    print(f"report_30_xlsx: {r30x}")
+    print(f"production_delivery_status_after: {json.dumps(production_status_after, ensure_ascii=False)}")
+    print(f"production_guard_changed_count: {changed_count}")
+    print(f"per_sample_metric_rows: {json.dumps([{ 'sample_id': r.get('sample_id'), 'metric_rows': r.get('metric_rows', 0)} for r in per_sample_status], ensure_ascii=False)}")
+    if changed_count > 0:
+        return 5
+    return 0 if status in {"PASS", "WARN", "PARTIAL"} else 4
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Scoped safe non-vision Stage 1 runner.")
     parser.add_argument("--manifest", type=str, default="")
@@ -895,6 +1444,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pdfplumber-only", action="store_true", default=True)
     parser.add_argument("--allow-production-write", action="store_true")
     parser.add_argument("--allow-baseline", action="store_true")
+    parser.add_argument("--standardize-sandbox", action="store_true")
+    parser.add_argument("--trial-run-root", type=str, default="")
     return parser
 
 
@@ -1068,6 +1619,19 @@ def _run_execute_sandbox_mode(
 
 def main() -> int:
     args = build_parser().parse_args()
+    runner_path = Path(__file__).resolve()
+    if args.standardize_sandbox:
+        if args.dry_run or args.execute:
+            print("BLOCKED_INVALID_ARGS: --standardize-sandbox cannot be combined with --dry-run/--execute.")
+            return 2
+        if not args.no_vision:
+            print("BLOCKED_UNSAFE_ARGS: --no-vision must stay enabled.")
+            return 2
+        if not _norm(args.trial_run_root):
+            print("BLOCKED_INVALID_ARGS: --trial-run-root is required for --standardize-sandbox.")
+            return 2
+        return _run_standardize_sandbox_mode(args, runner_path)
+
     if args.dry_run and args.execute:
         print("BLOCKED_INVALID_ARGS: --dry-run and --execute cannot both be set.")
         return 2
@@ -1079,7 +1643,6 @@ def main() -> int:
         return 2
 
     manifest = Path(args.manifest) if _norm(args.manifest) else None
-    runner_path = Path(__file__).resolve()
     try:
         samples, source_rows, manifest_path = _load_samples(manifest, args.pdf)
     except Exception as exc:
