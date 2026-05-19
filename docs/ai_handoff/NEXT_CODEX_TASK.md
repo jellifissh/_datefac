@@ -1,72 +1,65 @@
 # NEXT CODEX TASK
 
 ## task_title
-Add Stage 1 AI repair provider dry-run controller
+Prepare Stage 1 real-provider micro test harness
 
 ## project
 D:\_datefac
 
 ## current_status
-The Stage 1 AI repair provider response intake gate has completed.
+The Stage 1 AI repair provider dry-run controller has completed or is considered ready enough for the next planning step.
 
-Latest committed result:
-- commit: 857ed06 add stage1 ai repair provider response intake gate
+Context:
+The project has already built the Stage 1 AI repair safety chain:
+- AI repair packet and schema
+- offline_mock worker
+- offline_file replay
+- guardrail replay tests
+- deterministic extract replay
+- provider preflight bundle
+- provider response intake gate
+- provider dry-run controller
 
-Latest user-uploaded/reviewed output summary:
-- task_title = Add Stage 1 AI repair provider response intake gate
-- provider_intake_status = PASS
-- raw_response_count = 9
-- clean_response_count = 3
-- rejected_response_count = 6
-- offline_replay_status = PASS
-- no_secret_check_status = PASS
-- rejection_reason_summary includes:
-  - unknown_request / unknown repair task
-  - duplicate repair task
-  - fabricated value / value not in evidence
-  - missing required field: decision
-  - malformed JSON
-- production_delivery_status_after = PASS / pass_count=17 / warn_count=0 / fail_count=0
-- production_files_unchanged = true
-- factory_core.py not run
-- marker/surya/vision/PaddleOCR not triggered
-- model download not triggered
-- no real AI inference call was made
+The next useful step is not more infrastructure. The next step is to prepare a very small real-provider micro test harness so the user can manually test a local/cloud model later and then feed the raw response back through the existing intake/replay/evaluation pipeline.
 
-Interpretation:
-The request bundle, response contract, intake gate, offline replay, schema validation, evidence checking, and production isolation are now in place. Before a future real model run, add a dry-run controller that prepares execution batches and run manifests without sending any requests. This creates a final safety and operations layer for a future controlled provider call.
+This task must only prepare the test harness. It must not call any model.
 
 ## goal
-Add a sandbox-only provider dry-run controller for Stage 1 AI repair.
+Prepare a sandbox-only real-provider micro test harness for Stage 1 AI repair.
 
-This task must not call any model or network. It only reads the provider request batch and configuration template, produces dry-run manifests, request shards, cost/budget estimates, execution checklist, and a replay plan.
+The harness should:
+1. select 5 to 10 representative requests from the existing provider request batch;
+2. prefer row_segment_repair and metric_year_value_alignment tasks;
+3. avoid semantic_guard_review in the first micro test unless needed as a low-priority example;
+4. generate a compact JSONL request batch for manual model testing;
+5. generate a prompt file that the user can paste into a local/cloud model;
+6. generate a raw response template JSONL for the model output;
+7. generate manual local-model test instructions;
+8. generate intake/replay/evaluation command templates for after the user saves model outputs;
+9. produce 56/57 local reports;
+10. avoid production writes.
 
 Target new helper:
-- D:\_datefac\tools\dry_run_stage1_ai_repair_provider.py
-
-Target code may also update if needed:
-- D:\_datefac\tools\intake_stage1_ai_repair_provider_responses.py
-- D:\_datefac\tools\run_stage1_ai_repair_worker.py
+- D:\_datefac\tools\prepare_stage1_real_provider_micro_test_harness.py
 
 Target local reports:
-- D:\_datefac\output\delivery_package\54_stage1_ai_repair_provider_dry_run_log.md
-- D:\_datefac\output\delivery_package\54_stage1_ai_repair_provider_dry_run_log.xlsx
-- D:\_datefac\output\delivery_package\55_stage1_ai_repair_provider_dry_run_evaluation.md
-- D:\_datefac\output\delivery_package\55_stage1_ai_repair_provider_dry_run_evaluation.xlsx
+- D:\_datefac\output\delivery_package\56_stage1_real_provider_micro_test_harness_log.md
+- D:\_datefac\output\delivery_package\56_stage1_real_provider_micro_test_harness_log.xlsx
+- D:\_datefac\output\delivery_package\57_stage1_real_provider_micro_test_harness_plan.md
+- D:\_datefac\output\delivery_package\57_stage1_real_provider_micro_test_harness_plan.xlsx
 
-Sandbox dry-run dir:
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_dry_run
+Sandbox micro test dir:
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_micro_test
 
 Expected sandbox files:
-- provider_dry_run_manifest.json
-- provider_request_shard_001.jsonl
-- provider_request_shard_002.jsonl if needed
-- provider_request_shard_index.xlsx
-- provider_execution_checklist.md
-- provider_command_template.md
-- provider_response_save_contract.md
-- provider_post_run_replay_plan.md
-- provider_budget_estimate.xlsx
+- micro_test_request_batch.jsonl
+- micro_test_request_batch.xlsx
+- micro_test_prompt.md
+- local_model_response_template.jsonl
+- local_model_response_raw_PLACEHOLDER.jsonl
+- run_local_model_manual_steps.md
+- micro_test_intake_replay_commands.md
+- micro_test_selection_diagnostics.xlsx
 
 ## absolute_hard_constraints
 1. Do not run factory_core.py.
@@ -88,112 +81,123 @@ Expected sandbox files:
 13. Worklog must be English only and UTF-8.
 14. Chinese company/metric text must remain readable, no `????` or `�`.
 15. Do not put any API key, token, password, endpoint secret, or credential in any file.
-16. The controller must default to dry_run=true and must refuse execution if a non-dry-run flag is attempted in this task.
 
-## implementation_requirements
+## input_sources
+Read existing files only:
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight\provider_request_batch.jsonl
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight\provider_config_template.json
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema_and_prompt.md
+- D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl
 
-### 1. Dry-run helper CLI
-Implement:
-```bat
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\dry_run_stage1_ai_repair_provider.py ^
-  --request-batch D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight\provider_request_batch.jsonl ^
-  --config-template D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight\provider_config_template.json ^
-  --trial-run-root D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315 ^
-  --delivery-dir D:\_datefac\output\delivery_package ^
-  --max-requests-per-shard 10 ^
-  --dry-run
-```
+If provider_request_batch.jsonl is missing, stop with BLOCKED_MISSING_PROVIDER_REQUEST_BATCH and explain.
 
-### 2. Request sharding
-Split provider_request_batch.jsonl into shards:
-- default max 10 requests per shard;
-- preserve request_id / repair_task_id / priority / sample_id / task_type;
-- produce shard index xlsx with counts by sample, task_type, priority.
+## selection_rules
+Select 5 to 10 requests.
 
-### 3. Budget estimate
-Create a rough token/character budget estimate:
-- input_char_count per request;
-- estimated_input_tokens = ceil(chars / 4) unless better deterministic estimator exists;
-- estimated_output_tokens from config template max_output_tokens;
-- per-shard token totals;
-- total estimated tokens.
+Priority:
+1. row_segment_repair, especially rows with multiple metric blocks and clear evidence.
+2. metric_year_value_alignment, especially rows with explicit detected years and values.
+3. S2 table-level repair may include 1 item only if needed for sample coverage.
+4. semantic_guard_review should be excluded from the first micro test unless there are not enough other tasks.
 
-Do not call tokenizer libraries that trigger downloads.
+Selection should include where possible:
+- at least 2 S1 tasks;
+- at least 1 S3 task;
+- at most 1 S2 task;
+- at least 1 row_segment_repair;
+- at least 1 metric_year_value_alignment if available.
 
-### 4. Command template
-Generate provider_command_template.md with safe placeholders only.
+Do not fabricate tasks. If eligible tasks are fewer than 5, report WARN_INSUFFICIENT_ELIGIBLE_TASKS.
 
-It must say:
-- This is not executed by this pipeline.
-- Use external credentials only via env var.
-- Save raw provider responses to a local JSONL file.
-- Do not paste API keys into repo files.
-- After provider run, feed raw response JSONL to `intake_stage1_ai_repair_provider_responses.py`, not directly to worker.
+## prompt_requirements
+Generate `micro_test_prompt.md` for manual use.
 
-### 5. Post-run replay plan
-Generate provider_post_run_replay_plan.md:
-- raw response path convention;
-- intake command template;
-- expected clean/rejected files;
-- offline_file replay path;
-- production write remains forbidden until separate approval.
+It must include:
+- role: strict financial table repair worker;
+- return JSONL only;
+- one output JSON object per input request;
+- output must conform to 38 schema;
+- do not invent values;
+- copy numbers from evidence only;
+- if ambiguous, choose manual_review;
+- preserve repair_task_id;
+- preserve year labels unless explicitly flagged `year_normalized`;
+- no markdown in model output;
+- no explanations outside JSON.
 
-### 6. Safety checks
-Verify:
-- dry_run is true;
-- no network call attempted;
-- no secret-like strings in outputs;
-- no production files changed;
-- no model/vision/OCR triggered.
+Also include a compact section explaining how the user should paste 5 to 10 requests into the model and save the output to:
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_micro_test\local_model_response_raw.jsonl
 
-### 7. Reports 54/55
+## response_template_requirements
+Generate `local_model_response_template.jsonl` with one placeholder response per selected request.
+
+Each placeholder should be valid JSON and default to:
+- decision = manual_review
+- repairs = []
+- manual_review_items includes a placeholder reason
+- notes = "Replace this placeholder with actual model output or keep manual_review if ambiguous."
+
+Also generate `local_model_response_raw_PLACEHOLDER.jsonl` with comments avoided because JSONL does not allow comments.
+
+## intake/replay command templates
+Generate `micro_test_intake_replay_commands.md` with commands for after the user manually creates local_model_response_raw.jsonl.
+
+The commands should route the raw response through:
+1. intake_stage1_ai_repair_provider_responses.py
+2. run_stage1_ai_repair_worker.py provider offline_file if needed or via intake --run-offline-replay
+3. check_delivery_state.py --json
+
+Must clearly state:
+- Do not write output directly to production 06.
+- Raw model output must go through intake gate first.
+- Clean responses only can be replayed.
+
+## reports
 Generate:
-- D:\_datefac\output\delivery_package\54_stage1_ai_repair_provider_dry_run_log.md
-- D:\_datefac\output\delivery_package\54_stage1_ai_repair_provider_dry_run_log.xlsx
+- D:\_datefac\output\delivery_package\56_stage1_real_provider_micro_test_harness_log.md
+- D:\_datefac\output\delivery_package\56_stage1_real_provider_micro_test_harness_log.xlsx
 
-54 report must include:
+56 report must include:
 - task_title
 - started_at / finished_at
 - commands_run
-- request_batch_path
-- config_template_path
-- dry_run_dir
-- request_count
-- shard_count
+- provider_request_batch_path
+- selected_request_count
+- selected_sample_counts
+- selected_task_type_counts
 - output_files_generated
 - no_secret_check_status
 - production_guard_changed_count
 - safety_checks
 
 Generate:
-- D:\_datefac\output\delivery_package\55_stage1_ai_repair_provider_dry_run_evaluation.md
-- D:\_datefac\output\delivery_package\55_stage1_ai_repair_provider_dry_run_evaluation.xlsx
+- D:\_datefac\output\delivery_package\57_stage1_real_provider_micro_test_harness_plan.md
+- D:\_datefac\output\delivery_package\57_stage1_real_provider_micro_test_harness_plan.xlsx
 
-55 report must include:
-- provider_dry_run_status: PASS / WARN / FAIL
-- dry_run_mode
-- request_count
-- shard_count
+57 report must include:
+- micro_test_harness_status: PASS / WARN / FAIL
+- selected_request_count
 - selected_sample_counts
 - selected_task_type_counts
-- priority_counts
-- estimated_total_input_tokens
-- estimated_total_output_tokens
+- selected_priority_counts
+- excluded_task_summary
+- manual_test_steps_summary
+- expected_user_action
+- intake_replay_plan_status
 - no_secret_check_status
-- command_template_status
-- post_run_replay_plan_status
 - production_delivery_status_after
 - production_files_unchanged
 - recommended_next_step
 
 Excel sheets required:
 - summary
-- shard_index
-- request_inventory
+- selected_requests
+- excluded_requests
 - sample_counts
 - task_type_counts
 - priority_counts
-- budget_estimate
+- output_files
 - no_secret_check
 - production_guard
 - safety_checks
@@ -202,43 +206,45 @@ Excel sheets required:
 ## validation_commands
 Run:
 ```bat
-D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\dry_run_stage1_ai_repair_provider.py
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\dry_run_stage1_ai_repair_provider.py ^
+D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\prepare_stage1_real_provider_micro_test_harness.py
+D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\prepare_stage1_real_provider_micro_test_harness.py ^
   --request-batch D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight\provider_request_batch.jsonl ^
-  --config-template D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_provider_preflight\provider_config_template.json ^
+  --schema-json D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json ^
+  --prompt-md D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema_and_prompt.md ^
+  --packet-jsonl D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl ^
   --trial-run-root D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315 ^
   --delivery-dir D:\_datefac\output\delivery_package ^
-  --max-requests-per-shard 10 ^
-  --dry-run
+  --min-requests 5 ^
+  --max-requests 10
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
-
-If intake or worker code is modified, also py_compile them.
 
 ## acceptance_criteria
 This task passes if:
 1. py_compile passes.
-2. Dry-run manifest is generated.
-3. Request shards are generated.
-4. Shard index and budget estimate are generated.
-5. Command template and post-run replay plan are generated.
-6. Dry-run controller refuses or does not expose actual execution in this task.
-7. No network/model/API call occurs.
-8. No secrets are written.
-9. 54/55 reports are generated.
-10. Production 01/02/02A/06 are unchanged.
-11. Production delivery remains PASS.
-12. No factory_core/marker/surya/vision/PaddleOCR/model download occurred.
-13. Output artifacts are not committed.
+2. Micro test request batch is generated.
+3. Selected request count is between 5 and 10 unless insufficient eligible tasks are documented.
+4. row_segment_repair is included if available.
+5. metric_year_value_alignment is included if available.
+6. S1 and S3 are represented if possible.
+7. Prompt and response template are generated.
+8. Intake/replay command template is generated.
+9. No real model/API/network call occurs.
+10. No secrets are written.
+11. 56/57 reports are generated.
+12. Production 01/02/02A/06 are unchanged.
+13. Production delivery remains PASS.
+14. No factory_core/marker/surya/vision/PaddleOCR/model download occurred.
+15. Output artifacts are not committed.
 
-A WARN status is acceptable if request batch is missing or smaller than expected, provided this is clearly documented and no unsafe action occurs.
+A WARN status is acceptable if eligible task diversity is limited, provided this is documented.
 
 ## update_worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_add_stage1_ai_repair_provider_dry_run_controller.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_stage1_real_provider_micro_test_harness.md
 
 Worklog must be English only and UTF-8.
 
@@ -252,9 +258,8 @@ Worklog must include:
 - files_read
 - files_changed
 - files_generated
-- provider_dry_run_status
-- request_count
-- shard_count
+- micro_test_harness_status
+- selected_request_count
 - no_secret_check_status
 - production_delivery_status_after
 - result_summary
@@ -264,53 +269,44 @@ Worklog must include:
 
 ## git_commit
 Allowed to commit:
-- tools/dry_run_stage1_ai_repair_provider.py
-- tools/intake_stage1_ai_repair_provider_responses.py if modified
-- tools/run_stage1_ai_repair_worker.py if modified
+- tools/prepare_stage1_real_provider_micro_test_harness.py
 - docs/codex_worklog/LATEST.md
 - docs/codex_worklog/history/
 
 Do not commit:
-- output/delivery_package/54_stage1_ai_repair_provider_dry_run_log.md
-- output/delivery_package/54_stage1_ai_repair_provider_dry_run_log.xlsx
-- output/delivery_package/55_stage1_ai_repair_provider_dry_run_evaluation.md
-- output/delivery_package/55_stage1_ai_repair_provider_dry_run_evaluation.xlsx
+- output/delivery_package/56_stage1_real_provider_micro_test_harness_log.md
+- output/delivery_package/56_stage1_real_provider_micro_test_harness_log.xlsx
+- output/delivery_package/57_stage1_real_provider_micro_test_harness_plan.md
+- output/delivery_package/57_stage1_real_provider_micro_test_harness_plan.xlsx
 - output/_stage1_safe_runner_trial/**
 - any output artifacts
 
 Commit:
 ```bat
-git add tools/dry_run_stage1_ai_repair_provider.py tools/intake_stage1_ai_repair_provider_responses.py tools/run_stage1_ai_repair_worker.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "add stage1 ai repair provider dry run controller"
+git add tools/prepare_stage1_real_provider_micro_test_harness.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
+git commit -m "prepare stage1 real provider micro test harness"
 git push origin main
 ```
-
-If intake/worker were not modified, omit them from git add.
 
 ## expected_final_response
 After completion, output:
 1. task_title
-2. dry_run_helper_path
+2. helper_path
 3. py_compile_status
-4. provider_dry_run_status
-5. dry_run_mode
-6. request_count
-7. shard_count
-8. selected_sample_counts
-9. selected_task_type_counts
-10. priority_counts
-11. estimated_total_input_tokens
-12. estimated_total_output_tokens
-13. no_secret_check_status
-14. generated_outputs
-15. production_delivery_status_after
-16. production_files_unchanged
-17. factory_core/vision/model_download_status
-18. next_step_suggestion
-19. commit sha
+4. micro_test_harness_status
+5. selected_request_count
+6. selected_sample_counts
+7. selected_task_type_counts
+8. generated_outputs
+9. no_secret_check_status
+10. production_delivery_status_after
+11. production_files_unchanged
+12. factory_core/vision/model_download_status
+13. next_step_suggestion
+14. commit sha
 
 ## safety_notes
-- This task creates a provider dry-run controller only.
+- This task prepares a micro test harness only.
 - It must not call a real model.
 - It must not write AI results into production delivery_package.
 - It must not run factory_core.py.
