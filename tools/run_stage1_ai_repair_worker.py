@@ -303,7 +303,7 @@ def _check_extract_evidence(task: Dict[str, Any], result: Dict[str, Any]) -> Tup
         if not _year_in_evidence(year, detected_years, evidence_txt):
             row_flags.append(f"year_not_in_evidence:{year}")
         if not _metric_allowed_or_in_evidence(metric, evidence_txt):
-            row_flags.append(f"metric_not_allowed_or_in_evidence:{metric}")
+            row_flags.append(f"metric_not_allowed_or_not_in_evidence:{metric}")
 
         flags.extend(row_flags)
         rows.append(
@@ -323,8 +323,16 @@ def _check_extract_evidence(task: Dict[str, Any], result: Dict[str, Any]) -> Tup
 def _with_task_meta(result: Dict[str, Any], task: Dict[str, Any]) -> Dict[str, Any]:
     source = task.get("source", {}) if isinstance(task.get("source"), dict) else {}
     out = dict(result)
-    out.setdefault("repairs", [])
-    out.setdefault("manual_review_items", [])
+    if not isinstance(out.get("repairs"), list):
+        out["repairs"] = [] if out.get("repairs") is None else out.get("repairs")
+        if not isinstance(out["repairs"], list):
+            out["repairs"] = []
+    if not isinstance(out.get("manual_review_items"), list):
+        out["manual_review_items"] = [] if out.get("manual_review_items") is None else out.get("manual_review_items")
+        if not isinstance(out["manual_review_items"], list):
+            out["manual_review_items"] = []
+    if "decision" not in out:
+        out["decision"] = ""
     out.setdefault("notes", "")
     out["_task_type"] = _norm(task.get("task_type"))
     out["_sample_id"] = _norm(task.get("sample_id"))
@@ -566,7 +574,13 @@ def _build_sample_offline_response(tasks: List[Dict[str, Any]], path: Path) -> D
 def _write_jsonl(path: Path, rows: List[Dict[str, Any]]) -> Path:
     payload_lines = []
     for r in rows:
-        obj = {k: r[k] for k in ["repair_task_id", "decision", "repairs", "manual_review_items", "notes"]}
+        obj = {
+            "repair_task_id": r.get("repair_task_id"),
+            "decision": r.get("decision"),
+            "repairs": r.get("repairs", []),
+            "manual_review_items": r.get("manual_review_items", []),
+            "notes": r.get("notes", ""),
+        }
         payload_lines.append(json.dumps(obj, ensure_ascii=False))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(payload_lines), encoding="utf-8")
@@ -616,11 +630,15 @@ def main() -> int:
     unknown_response_task_ids: Set[str] = set()
     duplicate_response_task_ids: Set[str] = set()
     missing_response_task_ids: Set[str] = set()
+    malformed_json_lines: List[int] = []
     sample_builder_meta: Dict[str, Any] = {}
 
     if args.provider == "offline_file":
         resp_path = Path(args.offline_response_jsonl)
-        sample_builder_meta = _build_sample_offline_response(tasks, resp_path)
+        # Keep backward compatibility for single-file replay validation:
+        # auto-build sample only when the specific sample file is requested and missing.
+        if not resp_path.exists() and resp_path.name == "offline_model_responses_sample.jsonl":
+            sample_builder_meta = _build_sample_offline_response(tasks, resp_path)
         if not resp_path.exists():
             print("BLOCKED_OFFLINE_RESPONSE_FILE_MISSING")
             return 3
@@ -629,7 +647,36 @@ def main() -> int:
         for idx, line in enumerate(resp_path.read_text(encoding="utf-8").splitlines(), start=1):
             if not line.strip():
                 continue
-            obj = json.loads(line)
+            try:
+                obj = json.loads(line)
+            except Exception:
+                malformed_json_lines.append(idx)
+                offline_response_validation_rows.append(
+                    {
+                        "line_no": idx,
+                        "repair_task_id": "",
+                        "status": "FAIL",
+                        "issue": "malformed_json_line",
+                    }
+                )
+                continue
+            if not isinstance(obj, dict):
+                malformed_json_lines.append(idx)
+                offline_response_validation_rows.append(
+                    {
+                        "line_no": idx,
+                        "repair_task_id": "",
+                        "status": "FAIL",
+                        "issue": "malformed_json_line",
+                    }
+                )
+                continue
+            missing_required = [k for k in schema_payload.get("required", []) if k not in obj]
+            if missing_required:
+                obj.setdefault("_validation_flags", [])
+                obj["_validation_flags"].append("missing_required_fields")
+                for k in missing_required:
+                    obj["_validation_flags"].append(f"schema_missing_field:{k}")
             obj.setdefault("repairs", [])
             obj.setdefault("manual_review_items", [])
             obj.setdefault("notes", "")
@@ -698,6 +745,7 @@ def main() -> int:
         task = task_map.get(tid, {})
 
         flags: List[str] = []
+        flags.extend(r.get("_validation_flags", []))
         flags.extend(_validate_result_schema_basic(r))
         flags.extend(_validate_result_against_schema_payload(r, schema_payload))
 
@@ -707,6 +755,7 @@ def main() -> int:
             flags.append("unknown_response_task_id")
         if tid in missing_response_task_ids and "offline_response_missing" not in flags:
             flags.append("offline_response_missing")
+            flags.append("missing_response_task_id")
 
         evidence_status, evidence_flags, evidence_rows = _check_extract_evidence(task, r)
         if evidence_flags:
@@ -719,6 +768,14 @@ def main() -> int:
             "missing_repair_task_id", "invalid_decision", "repairs_not_list",
             "manual_review_items_not_list", "extract_without_repairs", "manual_review_without_items",
         }]
+        if any(f.startswith("schema_missing_field:") for f in schema_flags):
+            flags.append("missing_required_fields")
+        if schema_flags:
+            flags.append("schema_validation_failed")
+        if "invalid_decision" in schema_flags:
+            flags.append("invalid_decision")
+        if "missing_repair_task_id" in schema_flags:
+            flags.append("missing_required_fields")
         if schema_flags:
             schema_error_count += 1
 
@@ -851,7 +908,7 @@ def main() -> int:
 
     schema_validation_status = "PASS" if schema_error_count == 0 else "FAIL"
     offline_validation_status = "PASS"
-    if duplicate_response_task_ids or unknown_response_task_ids:
+    if duplicate_response_task_ids or unknown_response_task_ids or malformed_json_lines:
         offline_validation_status = "FAIL"
     elif missing_response_task_ids:
         offline_validation_status = "WARN"
@@ -999,6 +1056,7 @@ def main() -> int:
                 f"- extraction_value_evidence_check_status: {extraction_value_evidence_check_status}",
                 f"- unknown_response_task_count: {len(unknown_response_task_ids)}",
                 f"- duplicate_response_task_count: {len(duplicate_response_task_ids)}",
+                f"- malformed_json_line_count: {len(malformed_json_lines)}",
                 f"- missing_response_task_count: {len(missing_response_task_ids)}",
                 f"- sample_decision_summary: {json.dumps(sample_decision_summary, ensure_ascii=False)}",
                 f"- task_type_decision_summary: {json.dumps(task_type_decision_summary, ensure_ascii=False)}",
@@ -1027,6 +1085,7 @@ def main() -> int:
                     {"field": "extraction_value_evidence_check_status", "value": extraction_value_evidence_check_status},
                     {"field": "unknown_response_task_count", "value": len(unknown_response_task_ids)},
                     {"field": "duplicate_response_task_count", "value": len(duplicate_response_task_ids)},
+                    {"field": "malformed_json_line_count", "value": len(malformed_json_lines)},
                     {"field": "missing_response_task_count", "value": len(missing_response_task_ids)},
                     {"field": "production_delivery_status_after", "value": json.dumps(production_status_after, ensure_ascii=False)},
                     {"field": "production_files_unchanged", "value": "1" if changed_count == 0 else "0"},
@@ -1064,6 +1123,7 @@ def main() -> int:
     print(f"evidence_check_status: {extraction_value_evidence_check_status}")
     print(f"unknown_response_task_count: {len(unknown_response_task_ids)}")
     print(f"duplicate_response_task_count: {len(duplicate_response_task_ids)}")
+    print(f"malformed_json_line_count: {len(malformed_json_lines)}")
     print(f"missing_response_task_count: {len(missing_response_task_ids)}")
     print(
         "generated_outputs: "
