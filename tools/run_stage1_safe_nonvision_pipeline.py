@@ -82,6 +82,15 @@ SEMANTIC_RISK_FLAGS = {
     "broad_keyword_unsafe",
     "duplicate_metric_year_non_preferred",
 }
+HARD_RISK_FLAGS = {
+    "source_row_semantic_risk",
+    "forbidden_source_label_for_metric",
+    "broad_keyword_unsafe",
+    "multi_metric_row_ambiguous",
+    "ambiguous_year_value_alignment",
+    "ambiguous_multi_numeric_cell",
+    "duplicate_metric_year_non_preferred",
+}
 FORBIDDEN_ACCOUNT_HINTS = [
     "管理费用",
     "财务费用",
@@ -159,6 +168,26 @@ FORBIDDEN_SOURCE_LABEL_BY_METRIC = {
         "评级",
         "投资建议",
     ],
+}
+POSITIVE_SOURCE_ALLOWLIST_BY_METRIC = {
+    "营业收入": ["营业收入", "主营业务收入", "收入", "合计收入", "分业务收入"],
+    "归属母公司净利润": ["归属母公司净利润", "归母净利润", "归属于母公司股东净利润", "归属于上市公司股东的净利润", "母公司拥有人应占利润"],
+    "每股收益": ["每股收益", "EPS", "基本每股收益", "稀释每股收益"],
+    "P/E": ["P/E", "PE", "市盈率"],
+    "P/B": ["P/B", "PB", "市净率"],
+    "EV/EBITDA": ["EV/EBITDA", "EVEBITDA", "EV EBITDA"],
+    "ROE": ["ROE", "净资产收益率"],
+    "EBITDA": ["EBITDA"],
+    "毛利率": ["毛利率"],
+    "净利率": ["净利率"],
+}
+TABLE_ROLE_SCORE = {
+    "core_metrics": 40,
+    "full_financial_forecast": 30,
+    "business_forecast": 12,
+    "rating_or_disclaimer": -200,
+    "other_year_table": 5,
+    "unknown": 0,
 }
 
 SAFE_ENTRYPOINT_CANDIDATES = [
@@ -1127,6 +1156,211 @@ def _metric_label_match_type(std_metric: str, source_label: str, row_text: str) 
     return "no_alias_match"
 
 
+def _allowlist_match(std_metric: str, source_label: str) -> Tuple[bool, str, int]:
+    src = _norm(source_label)
+    if not src:
+        return False, "empty_source_label", 0
+    allow = [_norm(x) for x in POSITIVE_SOURCE_ALLOWLIST_BY_METRIC.get(std_metric, []) if _norm(x)]
+    src_u = src.upper()
+    for token in allow:
+        if src_u == token.upper():
+            return True, f"allowlist_exact:{token}", 30
+    for token in allow:
+        if token.upper() in src_u:
+            return True, f"allowlist_contains:{token}", 16
+    return False, "allowlist_no_match", 0
+
+
+def _value_type_plausible(std_metric: str, value: float, flags: List[str]) -> Tuple[bool, str]:
+    flag_set = set(flags)
+    is_percent = "percent_value" in flag_set
+    abs_v = abs(float(value))
+    if std_metric in AMOUNT_METRICS:
+        if is_percent:
+            return False, "amount_metric_percent_value"
+        return True, "amount_metric_ok"
+    if std_metric in RATE_METRICS:
+        if is_percent:
+            return True, "rate_metric_percent_value"
+        if abs_v <= 100:
+            return True, "rate_metric_numeric_plausible"
+        return False, "rate_metric_out_of_range"
+    if std_metric in VALUATION_METRICS:
+        if is_percent:
+            return False, "valuation_metric_percent_value"
+        if abs_v <= 10000:
+            return True, "valuation_metric_ok"
+        return False, "valuation_metric_out_of_range"
+    if std_metric == "每股收益":
+        if is_percent:
+            return False, "eps_percent_value"
+        if abs_v <= 1000:
+            return True, "eps_numeric_ok"
+        return False, "eps_out_of_range"
+    return True, "default_numeric_ok"
+
+
+def _classify_table_role(raw_row: Dict[str, object], candidates_df: pd.DataFrame) -> Tuple[str, str]:
+    candidate_type = _norm(raw_row.get("candidate_type")).lower()
+    confidence = _norm(raw_row.get("confidence")).lower()
+    metric_hits = _norm(raw_row.get("metric_keyword_hits"))
+    year_text = _norm(raw_row.get("detected_year_cells"))
+    row_count = int(raw_row.get("row_count") or 0)
+    has_year = bool(year_text)
+
+    page = int(raw_row.get("page") or 0)
+    table_index = int(raw_row.get("table_index") or 0)
+    table_rows = pd.DataFrame()
+    if candidates_df is not None and not candidates_df.empty and "page" in candidates_df.columns and "table_index" in candidates_df.columns:
+        table_rows = candidates_df[(candidates_df["page"] == page) & (candidates_df["table_index"] == table_index)]
+
+    preview_join = ""
+    keyword_join = ""
+    if not table_rows.empty:
+        if "row_preview" in table_rows.columns:
+            preview_join = " | ".join([_norm(x) for x in table_rows["row_preview"].head(8).tolist() if _norm(x)])
+        if "metric_keyword" in table_rows.columns:
+            keyword_join = " | ".join([_norm(x) for x in table_rows["metric_keyword"].tolist() if _norm(x)])
+    role_text = " | ".join([candidate_type, confidence, metric_hits, keyword_join, preview_join])
+    role_text_u = role_text.upper()
+
+    if _contains_any(role_text, RATING_DISCLAIMER_HINTS):
+        return "rating_or_disclaimer", "rating_disclaimer_hints"
+    if "评" in role_text and "建议" in role_text:
+        return "rating_or_disclaimer", "rating_suggestion_hints"
+
+    core_hit = 0
+    for m in STANDARD_METRIC_PRIORITY:
+        aliases = STANDARD_METRIC_MAP.get(m, [m])
+        if any(_norm(a).upper() in role_text_u for a in aliases):
+            core_hit += 1
+
+    if core_hit >= 6 and candidate_type in {"likely_core_metric", "manual_review_candidate"} and has_year:
+        return "core_metrics", f"core_hit={core_hit}"
+    if core_hit >= 3 and has_year and row_count >= 4:
+        return "full_financial_forecast", f"core_hit={core_hit}"
+    if has_year and ("业务" in role_text or "分部" in role_text or "产品" in role_text) and ("收入" in role_text):
+        return "business_forecast", "business_segment_revenue_pattern"
+    if has_year:
+        return "other_year_table", "year_table_without_strong_metric_pattern"
+    return "unknown", "insufficient_role_evidence"
+
+
+def _normalize_metric_aliases() -> None:
+    alias_to_metric = {
+        "收入": "营业收入",
+        "净利润": "归属母公司净利润",
+        "归母净利润": "归属母公司净利润",
+        "PE": "P/E",
+        "PB": "P/B",
+        "EVEBITDA": "EV/EBITDA",
+    }
+    for alias, canonical in alias_to_metric.items():
+        if canonical not in STANDARD_METRIC_MAP:
+            continue
+        existing = [_norm(x) for x in STANDARD_METRIC_MAP[canonical] if _norm(x)]
+        if alias not in existing:
+            STANDARD_METRIC_MAP[canonical].append(alias)
+    if "收入" in STANDARD_METRIC_MAP:
+        del STANDARD_METRIC_MAP["收入"]
+    if "净利润" in STANDARD_METRIC_MAP:
+        del STANDARD_METRIC_MAP["净利润"]
+
+
+def _build_table_role_priors(asset_dir: Path, file_02a: Path, file_05: Path) -> Tuple[Dict[Tuple[int, int], Dict[str, object]], List[Dict[str, object]]]:
+    priors: Dict[Tuple[int, int], Dict[str, object]] = {}
+    prior_rows: List[Dict[str, object]] = []
+    try:
+        raw_df = pd.read_excel(file_02a, sheet_name="raw_tables_index", engine="openpyxl").fillna("")
+    except Exception:
+        return priors, prior_rows
+    try:
+        cand_df = pd.read_excel(file_05, engine="openpyxl").fillna("")
+    except Exception:
+        cand_df = pd.DataFrame()
+    for _, r in raw_df.iterrows():
+        try:
+            page = int(r.get("page") or 0)
+            table_index = int(r.get("table_index") or 0)
+        except Exception:
+            continue
+        role, reason = _classify_table_role(dict(r), cand_df)
+        score = int(TABLE_ROLE_SCORE.get(role, 0))
+        key = (page, table_index)
+        priors[key] = {
+            "table_role": role,
+            "table_role_score": score,
+            "table_role_reason": reason,
+            "candidate_type": _norm(r.get("candidate_type")),
+            "candidate_confidence": _norm(r.get("confidence")),
+            "metric_keyword_hits": _norm(r.get("metric_keyword_hits")),
+            "detected_year_cells": _norm(r.get("detected_year_cells")),
+        }
+        prior_rows.append(
+            {
+                "asset_package": asset_dir.name,
+                "page": page,
+                "table_index": table_index,
+                "table_role": role,
+                "table_role_score": score,
+                "table_role_reason": reason,
+                "candidate_type": _norm(r.get("candidate_type")),
+                "confidence": _norm(r.get("confidence")),
+                "detected_year_cells": _norm(r.get("detected_year_cells")),
+                "metric_keyword_hits": _norm(r.get("metric_keyword_hits")),
+            }
+        )
+    return priors, prior_rows
+
+
+def _build_no_metric_diagnosis(sample_id: str, asset_dir: Path, file_02a: Path, file_05: Path) -> Dict[str, object]:
+    diagnosis = {
+        "sample_id": sample_id,
+        "asset_package": asset_dir.name,
+        "raw_table_count": 0,
+        "year_evidence_count": 0,
+        "label_examples": "",
+        "keyword_hit_examples": "",
+        "label_fragmented_suspected": "0",
+        "negative_values_without_labels": "0",
+        "recommendation": "Tune extraction heuristics / AI repair / manual visual review",
+    }
+    raw_df = pd.DataFrame()
+    cand_df = pd.DataFrame()
+    try:
+        raw_df = pd.read_excel(file_02a, sheet_name="raw_tables_index", engine="openpyxl").fillna("")
+    except Exception:
+        pass
+    try:
+        cand_df = pd.read_excel(file_05, engine="openpyxl").fillna("")
+    except Exception:
+        pass
+    if not raw_df.empty:
+        diagnosis["raw_table_count"] = len(raw_df)
+        diagnosis["year_evidence_count"] = int((raw_df["detected_year_cells"].astype(str).str.strip() != "").sum()) if "detected_year_cells" in raw_df.columns else 0
+        if "metric_keyword_hits" in raw_df.columns:
+            hits = [x for x in raw_df["metric_keyword_hits"].astype(str).tolist() if _norm(x)]
+            diagnosis["keyword_hit_examples"] = " | ".join(hits[:5]) if hits else "none"
+    if not cand_df.empty:
+        if "row_preview" in cand_df.columns:
+            examples = [x for x in cand_df["row_preview"].astype(str).tolist() if _norm(x)]
+            diagnosis["label_examples"] = " | ".join(examples[:5]) if examples else ""
+        if "metric_keyword" in cand_df.columns and diagnosis["keyword_hit_examples"] in {"", "none"}:
+            k = [x for x in cand_df["metric_keyword"].astype(str).tolist() if _norm(x)]
+            diagnosis["keyword_hit_examples"] = " | ".join(k[:5]) if k else "none"
+    if int(diagnosis["year_evidence_count"] or 0) > 0 and _norm(diagnosis["keyword_hit_examples"]) in {"", "none"}:
+        diagnosis["label_fragmented_suspected"] = "1"
+    try:
+        cells_df = pd.read_excel(file_02a, sheet_name="raw_table_cells", engine="openpyxl").fillna("")
+        if not cells_df.empty and "cell_value" in cells_df.columns:
+            has_neg = any(_norm(v).strip().startswith("-") for v in cells_df["cell_value"].astype(str).tolist())
+            if has_neg and diagnosis["label_fragmented_suspected"] == "1":
+                diagnosis["negative_values_without_labels"] = "1"
+    except Exception:
+        pass
+    return diagnosis
+
+
 def _semantic_guard_flags(std_metric: str, source_label: str, row_text: str, trailing_labels: List[str]) -> List[str]:
     flags: List[str] = []
     src = _norm(source_label)
@@ -1185,6 +1419,14 @@ def _duplicate_row_score(row: Dict[str, object]) -> int:
     for hard in {"source_row_semantic_risk", "forbidden_source_label_for_metric", "broad_keyword_unsafe"}:
         if hard in flags:
             score -= 100
+    if _norm(row.get("source_label_allowlisted")) == "1":
+        score += int(row.get("allowlist_score") or 10)
+    table_role_score = int(row.get("table_role_score") or 0)
+    score += table_role_score
+    if _norm(row.get("safe_promotion")) == "1":
+        score += 15
+    if _norm(row.get("table_role")) == "rating_or_disclaimer":
+        score -= 300
     if "percent_value" in flags and _norm(row.get("standard_metric")) in AMOUNT_METRICS:
         score -= 30
     if "percent_value" in flags and _norm(row.get("standard_metric")) in RATE_METRICS:
@@ -1266,6 +1508,7 @@ def _standardize_table_sheet(
     company: str,
     sheet_name: str,
     df: pd.DataFrame,
+    table_role_priors: Optional[Dict[Tuple[int, int], Dict[str, object]]] = None,
 ) -> Tuple[List[Dict[str, object]], List[Dict[str, object]], List[Dict[str, object]]]:
     standardized_rows: List[Dict[str, object]] = []
     manual_rows: List[Dict[str, object]] = []
@@ -1289,6 +1532,10 @@ def _standardize_table_sheet(
         row_values = [_norm(x) for x in df.iloc[ridx].tolist()]
         row_text = _row_text(row_values)
         source_label, _, trailing_labels = _extract_source_label(row_values)
+        table_meta = (table_role_priors or {}).get((page, table_index), {})
+        table_role = _norm(table_meta.get("table_role")) or "unknown"
+        table_role_score = int(table_meta.get("table_role_score") or TABLE_ROLE_SCORE.get(table_role, 0))
+        table_role_reason = _norm(table_meta.get("table_role_reason"))
         metric_positions: List[Tuple[int, str]] = []
         row_upper = row_text.upper()
         for std in STANDARD_METRIC_PRIORITY:
@@ -1318,6 +1565,9 @@ def _standardize_table_sheet(
                     "source_row_index": ridx + 1,
                     "source_label": source_label,
                     "source_label_match_type": "multi_metric_ambiguous",
+                    "table_role": table_role,
+                    "table_role_score": table_role_score,
+                    "promotion_reason": "multi_metric_ambiguous",
                     "row_preview": row_text[:300],
                     "confidence": "low",
                     "route_recommendation": "manual_review_candidate",
@@ -1328,6 +1578,7 @@ def _standardize_table_sheet(
         std_metric = metric_positions[0][1]
         label_match_type = _metric_label_match_type(std_metric, source_label, row_text)
         semantic_flags = _semantic_guard_flags(std_metric, source_label, row_text, trailing_labels)
+        allowlisted, allow_reason, allow_score = _allowlist_match(std_metric, source_label)
 
         extracted_any = False
         ambiguous_count = 0
@@ -1346,7 +1597,14 @@ def _standardize_table_sheet(
             route = "likely_core_metric_trial"
             confidence = "high" if len(year_cols) >= 3 else "medium"
             row_flags = year_flags + flags + semantic_flags
-            if any(f in risky_flags for f in row_flags):
+            value_ok, value_reason = _value_type_plausible(std_metric, val, row_flags)
+            hard_risk_present = any(f in HARD_RISK_FLAGS for f in row_flags)
+            strong_role_support = table_role in {"core_metrics", "full_financial_forecast"}
+            business_revenue_support = table_role == "business_forecast" and std_metric == "营业收入" and allowlisted
+            role_disallowed = table_role == "rating_or_disclaimer"
+            safe_promotion = (allowlisted or strong_role_support or business_revenue_support) and value_ok and (not role_disallowed) and (not hard_risk_present)
+            promotion_reason = f"{allow_reason};role={table_role}:{table_role_reason};value={value_reason}"
+            if any(f in risky_flags for f in row_flags) or not safe_promotion:
                 route = "manual_review_candidate"
                 confidence = "low"
             standardized_rows.append(
@@ -1364,6 +1622,14 @@ def _standardize_table_sheet(
                     "source_row_index": ridx + 1,
                     "source_label": source_label,
                     "source_label_match_type": label_match_type,
+                    "source_label_allowlisted": "1" if allowlisted else "0",
+                    "allowlist_reason": allow_reason,
+                    "allowlist_score": allow_score,
+                    "table_role": table_role,
+                    "table_role_score": table_role_score,
+                    "table_role_reason": table_role_reason,
+                    "safe_promotion": "1" if safe_promotion else "0",
+                    "promotion_reason": promotion_reason,
                     "row_preview": row_text[:300],
                     "confidence": confidence,
                     "route_recommendation": route,
@@ -1389,6 +1655,14 @@ def _standardize_table_sheet(
                     "source_row_index": ridx + 1,
                     "source_label": source_label,
                     "source_label_match_type": label_match_type,
+                    "source_label_allowlisted": "1" if allowlisted else "0",
+                    "allowlist_reason": allow_reason,
+                    "allowlist_score": allow_score,
+                    "table_role": table_role,
+                    "table_role_score": table_role_score,
+                    "table_role_reason": table_role_reason,
+                    "safe_promotion": "0",
+                    "promotion_reason": "no_numeric_value_after_metric_match",
                     "row_preview": row_text[:300],
                     "confidence": "low",
                     "route_recommendation": "manual_review_candidate",
@@ -1412,6 +1686,14 @@ def _standardize_table_sheet(
                         "source_row_index": ridx + 1,
                         "source_label": source_label,
                         "source_label_match_type": label_match_type,
+                        "source_label_allowlisted": "1" if allowlisted else "0",
+                        "allowlist_reason": allow_reason,
+                        "allowlist_score": allow_score,
+                        "table_role": table_role,
+                        "table_role_score": table_role_score,
+                        "table_role_reason": table_role_reason,
+                        "safe_promotion": "0",
+                        "promotion_reason": "partial_year_value_alignment",
                         "row_preview": row_text[:300],
                         "confidence": "low",
                         "route_recommendation": "manual_review_candidate",
@@ -1526,6 +1808,8 @@ def _run_standardizer_for_sample(asset_dir: Path, default_sample_id: str, manife
         "manual_review_rows": [],
         "diag_rows": [],
         "generated_files": [],
+        "table_role_prior_rows": [],
+        "no_metric_diagnosis": {},
     }
     files_02a = sorted(asset_dir.glob("02A_*.xlsx"))
     files_02 = [p for p in sorted(asset_dir.glob("02_*.xlsx")) if not p.name.startswith("02A_")]
@@ -1535,6 +1819,9 @@ def _run_standardizer_for_sample(asset_dir: Path, default_sample_id: str, manife
         result["sample_status"] = "FAIL"
         result["error"] = "missing_required_trial_assets"
         return result
+
+    table_role_priors, table_role_prior_rows = _build_table_role_priors(asset_dir, files_02a[0], files_05[0])
+    result["table_role_prior_rows"] = table_role_prior_rows
 
     try:
         xls = pd.ExcelFile(files_02[0], engine="openpyxl")
@@ -1566,6 +1853,7 @@ def _run_standardizer_for_sample(asset_dir: Path, default_sample_id: str, manife
             company=result["company"],
             sheet_name=sheet,
             df=df,
+            table_role_priors=table_role_priors,
         )
         standardized_rows.extend(s_rows)
         manual_rows.extend(m_rows)
@@ -1590,6 +1878,7 @@ def _run_standardizer_for_sample(asset_dir: Path, default_sample_id: str, manife
     if len(standardized_rows) == 0 and len(manual_rows) == 0:
         result["sample_status"] = "WARN_NO_METRICS"
         result["error"] = "STANDARDIZER_NO_METRIC_CANDIDATES"
+        result["no_metric_diagnosis"] = _build_no_metric_diagnosis(sample_id, asset_dir, files_02a[0], files_05[0])
     elif len(standardized_rows) == 0 and len(manual_rows) > 0:
         result["sample_status"] = "WARN_SEMANTIC_GUARD"
     elif risky_count >= max(5, len(standardized_rows) // 2):
@@ -1657,8 +1946,11 @@ def _write_29_30_reports(
     duplicate_groups_before: int,
     duplicate_groups_after: int,
     remaining_likely_duplicates_count: int,
+    safe_promotions_count: int,
     promoted_likely_rows: List[Dict[str, object]],
     routed_manual_rows: List[Dict[str, object]],
+    table_role_prior_rows: List[Dict[str, object]],
+    no_metric_diagnosis_rows: List[Dict[str, object]],
     production_guard_rows: List[Dict[str, str]],
     safety_checks: List[Dict[str, str]],
     production_status_after: Dict[str, str],
@@ -1696,6 +1988,12 @@ def _write_29_30_reports(
         for f in [x.strip() for x in _norm(row.get("flags")).split("|") if x.strip()]:
             flags_counter[f] = flags_counter.get(f, 0) + 1
     flags_summary = [{"flag": k, "count": v} for k, v in sorted(flags_counter.items(), key=lambda x: (-x[1], x[0]))]
+    promotion_reason_counter: Dict[str, int] = {}
+    for row in standardized_rows + manual_rows:
+        reason = _norm(row.get("promotion_reason"))
+        if reason:
+            promotion_reason_counter[reason] = promotion_reason_counter.get(reason, 0) + 1
+    promotion_reason_rows = [{"promotion_reason": k, "count": v} for k, v in sorted(promotion_reason_counter.items(), key=lambda x: (-x[1], x[0]))]
 
     coverage: Dict[str, Dict[str, int]] = {}
     for row in standardized_rows:
@@ -1735,12 +2033,12 @@ def _write_29_30_reports(
             duplicate_non_preferred_count += 1
 
     report29_md = _safe_write_text(
-        delivery_dir / "33_stage1_standardizer_semantic_guard_log.md",
+        delivery_dir / "35_stage1_standardizer_allowlist_prior_log.md",
         "\n".join(
             [
-                "# Stage1 Standardizer Semantic Guard Log",
+                "# Stage1 Standardizer Allowlist Prior Log",
                 "",
-                "- task_title: Harden Stage 1 sandbox standardizer semantic guards",
+                "- task_title: Add Stage 1 sandbox standardizer allowlists and table priors",
                 f"- runner_path: {runner_path}",
                 f"- started_at: {started_at}",
                 f"- finished_at: {finished_at}",
@@ -1748,6 +2046,7 @@ def _write_29_30_reports(
                 f"- command_run: {command_run}",
                 f"- production_guard_changed_count: {changed_count}",
                 f"- sandbox_standardizer_status: {status}",
+                f"- safe_promotions_count: {safe_promotions_count}",
                 f"- source_row_semantic_risk_count: {source_row_semantic_risk_count}",
                 f"- broad_keyword_unsafe_count: {broad_keyword_unsafe_count}",
                 f"- forbidden_source_label_count: {forbidden_source_label_count}",
@@ -1760,13 +2059,14 @@ def _write_29_30_reports(
         {
             "summary": pd.DataFrame(
                 [
-                    {"field": "task_title", "value": "Harden Stage 1 sandbox standardizer semantic guards"},
+                    {"field": "task_title", "value": "Add Stage 1 sandbox standardizer allowlists and table priors"},
                     {"field": "runner_path", "value": str(runner_path)},
                     {"field": "started_at", "value": started_at},
                     {"field": "finished_at", "value": finished_at},
                     {"field": "trial_run_root", "value": str(trial_run_root)},
                     {"field": "command_run", "value": command_run},
                     {"field": "sandbox_standardizer_status", "value": status},
+                    {"field": "safe_promotions_count", "value": safe_promotions_count},
                     {"field": "production_guard_changed_count", "value": changed_count},
                     {"field": "source_row_semantic_risk_count", "value": source_row_semantic_risk_count},
                     {"field": "broad_keyword_unsafe_count", "value": broad_keyword_unsafe_count},
@@ -1777,13 +2077,28 @@ def _write_29_30_reports(
                 ]
             ),
             "files_read": pd.DataFrame([{"path": p} for p in files_read]),
+            "files_changed": pd.DataFrame(
+                [
+                    {"path": str(runner_path), "change_scope": "sandbox standardizer allowlist/prior logic"},
+                ]
+            ),
             "files_generated": pd.DataFrame(generated_files),
             "sample_identity_mapping": pd.DataFrame(sample_identity_rows),
             "per_sample_status": pd.DataFrame(per_sample_status),
-            "semantic_guard_summary": pd.DataFrame(
+            "allowlist_summary": pd.DataFrame(
                 [
                     {
                         "risky_alignment_rows_count": len(risky_rows),
+                        "safe_promotions_count": safe_promotions_count,
+                        "source_row_semantic_risk_count": source_row_semantic_risk_count,
+                        "forbidden_source_label_count": forbidden_source_label_count,
+                    }
+                ]
+            ),
+            "table_role_prior_summary": pd.DataFrame(
+                [
+                    {
+                        "table_role_priors_count": len(table_role_prior_rows),
                         "duplicate_metric_year_groups_before": duplicate_groups_before,
                         "duplicate_metric_year_groups_after": duplicate_groups_after,
                         "rows_promoted_to_likely_core_metric_trial": len(promoted_likely_rows),
@@ -1793,28 +2108,32 @@ def _write_29_30_reports(
                 ]
             ),
             "duplicate_arbitration": pd.DataFrame(duplicate_summary),
+            "table_role_priors": pd.DataFrame(table_role_prior_rows),
+            "s2_no_metric_diagnosis_summary": pd.DataFrame(no_metric_diagnosis_rows),
             "production_guard": pd.DataFrame(production_guard_rows),
             "safety_checks": pd.DataFrame(safety_checks),
         },
-        delivery_dir / "33_stage1_standardizer_semantic_guard_log.xlsx",
+        delivery_dir / "35_stage1_standardizer_allowlist_prior_log.xlsx",
     )
 
     report30_md = _safe_write_text(
-        delivery_dir / "34_stage1_standardizer_semantic_guard_evaluation.md",
+        delivery_dir / "36_stage1_standardizer_allowlist_prior_evaluation.md",
         "\n".join(
             [
-                "# Stage1 Standardizer Semantic Guard Evaluation",
+                "# Stage1 Standardizer Allowlist Prior Evaluation",
                 "",
                 f"- sandbox_standardizer_status: {status}",
                 f"- production_delivery_status_after: {json.dumps(production_status_after, ensure_ascii=False)}",
                 f"- sample_identity_mapping: {json.dumps(sample_identity_rows, ensure_ascii=False)}",
                 f"- risky_alignment_rows_count: {len(risky_rows)}",
+                f"- safe_promotions_count: {safe_promotions_count}",
                 f"- source_row_semantic_risk_count: {source_row_semantic_risk_count}",
                 f"- broad_keyword_unsafe_count: {broad_keyword_unsafe_count}",
                 f"- forbidden_source_label_count: {forbidden_source_label_count}",
                 f"- duplicate_metric_year_groups_before_after: {duplicate_groups_before}->{duplicate_groups_after}",
                 f"- duplicate_metric_year_non_preferred_count: {duplicate_non_preferred_count}",
                 f"- remaining_likely_core_duplicates_count: {remaining_likely_duplicates_count}",
+                f"- s2_no_metric_diagnosis: {json.dumps([x for x in no_metric_diagnosis_rows if _norm(x.get('sample_id')) == 'S2'], ensure_ascii=False)}",
                 f"- samples_ready_for_sandbox_delivery_trial: {','.join(ready_samples)}",
                 f"- blockers: {'|'.join(blockers) if blockers else 'none'}",
             ]
@@ -1827,6 +2146,7 @@ def _write_29_30_reports(
                     {"field": "sandbox_standardizer_status", "value": status},
                     {"field": "production_delivery_status_after", "value": json.dumps(production_status_after, ensure_ascii=False)},
                     {"field": "risky_alignment_rows_count", "value": len(risky_rows)},
+                    {"field": "safe_promotions_count", "value": safe_promotions_count},
                     {"field": "source_row_semantic_risk_count", "value": source_row_semantic_risk_count},
                     {"field": "broad_keyword_unsafe_count", "value": broad_keyword_unsafe_count},
                     {"field": "forbidden_source_label_count", "value": forbidden_source_label_count},
@@ -1844,21 +2164,23 @@ def _write_29_30_reports(
             "per_sample_status": pd.DataFrame(per_sample_metric_rows),
             "standardized_trial_rows": pd.DataFrame(standardized_rows),
             "manual_review_candidates": pd.DataFrame(manual_rows),
-            "semantic_risk_rows": pd.DataFrame(risky_rows),
+            "safe_promotions": pd.DataFrame([r for r in standardized_rows if _norm(r.get("route_recommendation")) == "likely_core_metric_trial"]),
+            "promotion_reason_summary": pd.DataFrame(promotion_reason_rows),
+            "table_role_priors": pd.DataFrame(table_role_prior_rows),
+            "s2_no_metric_diagnosis": pd.DataFrame(no_metric_diagnosis_rows),
             "duplicate_arbitration": pd.DataFrame(duplicate_summary),
-            "flags_summary": pd.DataFrame(flags_summary),
             "target_metric_coverage": pd.DataFrame(coverage_rows),
             "production_guard": pd.DataFrame(production_guard_rows),
             "safety_checks": pd.DataFrame(safety_checks),
             "next_steps": pd.DataFrame(
                 [
                     {
-                        "recommended_next_step": "Review manual and semantic-risk rows first, then build deterministic metric-to-source rules for remaining duplicates.",
+                        "recommended_next_step": "Use table-role + allowlist evidence to iteratively recover safe metric coverage, especially for S1/S3, while keeping hard-risk rows manual.",
                     }
                 ]
             ),
         },
-        delivery_dir / "34_stage1_standardizer_semantic_guard_evaluation.xlsx",
+        delivery_dir / "36_stage1_standardizer_allowlist_prior_evaluation.xlsx",
     )
     return report29_md, report29_xlsx, report30_md, report30_xlsx, status
 
@@ -1866,6 +2188,7 @@ def _write_29_30_reports(
 def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -> int:
     trial_run_root = Path(args.trial_run_root)
     delivery_dir = Path(args.delivery_dir)
+    _normalize_metric_aliases()
     if args.strict_scope and not _ensure_under(DEFAULT_TRIAL_ROOT, trial_run_root):
         print("BLOCKED_STRICT_SCOPE: trial-run-root must be under output/_stage1_safe_runner_trial")
         return 3
@@ -1883,6 +2206,8 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
     standardized_all: List[Dict[str, object]] = []
     manual_all: List[Dict[str, object]] = []
     sample_results: List[Dict[str, object]] = []
+    table_role_prior_all: List[Dict[str, object]] = []
+    no_metric_diagnosis_rows: List[Dict[str, object]] = []
 
     trial_std_root = trial_run_root / "standardizer_trial"
     trial_std_root.mkdir(parents=True, exist_ok=True)
@@ -1925,6 +2250,10 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
             standardized_all.extend(standardized_rows)
         if isinstance(manual_rows, list):
             manual_all.extend(manual_rows)
+        if isinstance(res.get("table_role_prior_rows"), list):
+            table_role_prior_all.extend(res.get("table_role_prior_rows", []))
+        if isinstance(res.get("no_metric_diagnosis"), dict) and res.get("no_metric_diagnosis"):
+            no_metric_diagnosis_rows.append(res.get("no_metric_diagnosis"))
         sample_results.append(res)
 
     dup_map_before: Dict[Tuple[str, str, str], int] = {}
@@ -1942,6 +2271,10 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
         if flags & risky_tokens and _norm(row.get("route_recommendation")) == "likely_core_metric_trial":
             row["route_recommendation"] = "manual_review_candidate"
             row["confidence"] = "low"
+            row["safe_promotion"] = "0"
+            row["promotion_reason"] = _join_flags(_split_flags(_norm(row.get("promotion_reason"))) + ["hard_risk_demoted_after_arbitration"])
+
+    safe_promotions_count = sum(1 for row in standardized_all if _norm(row.get("route_recommendation")) == "likely_core_metric_trial")
 
     dup_map_after: Dict[Tuple[str, str, str], int] = {}
     for row in standardized_all:
@@ -2051,8 +2384,11 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
         duplicate_groups_before=duplicate_groups_before,
         duplicate_groups_after=duplicate_groups_after,
         remaining_likely_duplicates_count=remaining_likely_duplicates,
+        safe_promotions_count=safe_promotions_count,
         promoted_likely_rows=promoted_likely_rows,
         routed_manual_rows=routed_manual_rows,
+        table_role_prior_rows=table_role_prior_all,
+        no_metric_diagnosis_rows=no_metric_diagnosis_rows,
         production_guard_rows=production_guard_rows,
         safety_checks=safety_checks,
         production_status_after=production_status_after,
@@ -2060,18 +2396,20 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
     print(f"runner_path: {runner_path}")
     print(f"sandbox_standardizer_status: {status}")
     print(f"trial_run_root: {trial_run_root}")
-    print(f"report_33_md: {r29m}")
-    print(f"report_33_xlsx: {r29x}")
-    print(f"report_34_md: {r30m}")
-    print(f"report_34_xlsx: {r30x}")
+    print(f"report_35_md: {r29m}")
+    print(f"report_35_xlsx: {r29x}")
+    print(f"report_36_md: {r30m}")
+    print(f"report_36_xlsx: {r30x}")
     print(f"production_delivery_status_after: {json.dumps(production_status_after, ensure_ascii=False)}")
     print(f"production_guard_changed_count: {changed_count}")
     print(f"sample_identity_mapping: {json.dumps(sample_identity_rows, ensure_ascii=False)}")
     print(f"per_sample_metric_rows: {json.dumps([{ 'sample_id': r.get('sample_id'), 'metric_rows': r.get('metric_rows', 0)} for r in per_sample_status], ensure_ascii=False)}")
     print(f"risky_alignment_rows_count: {len(risky_rows)}")
+    print(f"safe_promotions_count: {safe_promotions_count}")
     print(f"duplicate_metric_year_summary: {json.dumps(duplicate_summary, ensure_ascii=False)}")
     print(f"duplicate_metric_year_groups_before_after: {duplicate_groups_before}->{duplicate_groups_after}")
     print(f"remaining_likely_core_duplicates_count: {remaining_likely_duplicates}")
+    print(f"s2_no_metric_diagnosis_summary: {json.dumps([x for x in no_metric_diagnosis_rows if _norm(x.get('sample_id')) == 'S2'], ensure_ascii=False)}")
     if changed_count > 0:
         return 5
     return 0 if status in {"PASS", "WARN", "PARTIAL"} else 4
