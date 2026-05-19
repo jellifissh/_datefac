@@ -1,370 +1,385 @@
 # NEXT CODEX TASK
 
 ## task_title
-Add Stage 1 sandbox standardizer allowlists and table priors
+Prepare Stage 1 sandbox AI repair packet
 
 ## project
 D:\_datefac
 
 ## current_status
-The Stage 1 sandbox standardizer semantic guard task has completed.
+The Stage 1 sandbox standardizer allowlist/table-prior task has completed.
 
-Latest known result from user screenshot / local reports:
-- task_title = Harden Stage 1 sandbox standardizer semantic guards
+Latest user-uploaded/reviewed reports:
+- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.xlsx
+- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.xlsx
+
+Key result from 35/36:
+- task_title = Add Stage 1 sandbox standardizer allowlists and table priors
 - py_compile_status = PASS
 - help_status = PASS
 - sandbox_standardizer_status = WARN
-- production_delivery_status_after = PASS / pass_count=17 / warn_count=0 / fail_count=0
+- production_delivery_status_after = PASS / warn_count=0 / fail_count=0
 - production_guard_changed_count = 0
 - production 01/02/02A/06 unchanged
 - factory_core.py not run
 - marker/surya/vision/PaddleOCR not triggered
 - model download not triggered
 
-Per-sample result after semantic guards:
-- S1 / H3_AP202605141822317484_1 / 三鑫医疗: WARN_SEMANTIC_GUARD, metric_rows=4, manual_review_candidate_rows=82
+Per-sample result:
+- S1 / H3_AP202605141822317484_1 / 三鑫医疗: WARN_SEMANTIC_GUARD, metric_rows=3, manual_review_candidate_rows=83
 - S2 / H3_AP202605121822223662_1 / 冠豪高新: WARN_NO_METRICS, metric_rows=0, manual_review_candidate_rows=0
 - S3 / H3_AP202605141822318060_1 / 科锐国际: WARN_SEMANTIC_GUARD, metric_rows=40, manual_review_candidate_rows=81
 
 Quality metrics:
-- source_row_semantic_risk_count = 94
-- broad_keyword_unsafe_count = 0
-- forbidden_source_label_count = 56
-- duplicate_metric_year_groups_before_after = 61 -> 0
+- safe_promotions_count = 43
 - remaining_likely_core_duplicates_count = 0
+- source_row_semantic_risk_count = 94
+- forbidden_source_label_count = 56
+- S2 no-metric diagnosis: raw_table_count=5, year_evidence_count=5, label_fragmented_suspected=1, keyword_hit_examples=none
 
 Interpretation:
-The stricter semantic guard fixed duplicate promotion and routed risky rows away from likely_core_metric_trial. However, it is now overly conservative for S1/S3. The next step is to recover safe coverage using positive metric-specific source-label allowlists and table-role priors, without weakening hard semantic guards.
+The deterministic standardizer now has useful safety properties: hard-risk rows are demoted, duplicate likely-core groups are 0, and production files remain clean. However, S1/S3 still contain many manual candidates and S2 has year evidence but no recoverable metric labels. This is the right point to prepare an AI repair layer input packet. Do not call any AI model in this task. Build evidence packets and strict schemas only.
 
 ## goal
-Improve sandbox standardizer precision/coverage balance by adding:
-1. metric-specific positive source-label allowlists;
-2. table-role priors based on trial asset metadata and candidate type;
-3. safer promotion rules for S1/S3 only when source labels and table roles are strongly compatible;
-4. dedicated diagnosis for S2 no-metric condition.
+Create a sandbox-only AI repair input packet and schema for the Stage 1 samples.
 
-This task must rerun sandbox standardizer only using existing trial assets.
-Do not reprocess PDFs.
-Do not modify production delivery data.
+This task must not call an LLM, API, local model, OCR, or vision backend. It only prepares structured repair packets for later AI repair MVP.
 
-Target code:
-- D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py
+Target new helper/tool:
+- D:\_datefac\tools\prepare_stage1_ai_repair_packet.py
 
-Target local reports:
-- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.md
-- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.xlsx
-- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.md
-- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.xlsx
+If integrating into `run_stage1_safe_nonvision_pipeline.py` is cleaner, allowed, but prefer a separate helper to keep AI-repair preparation isolated.
 
-Rerun output remains under:
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\standardizer_trial
+Target local outputs:
+- D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.md
+- D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.xlsx
+- D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema_and_prompt.md
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema_and_prompt.xlsx
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json
+
+Optional validation output:
+- D:\_datefac\output\delivery_package\38_stage1_ai_repair_packet_validation.xlsx
 
 ## absolute_hard_constraints
 1. Do not run factory_core.py.
 2. Do not trigger marker / surya / vision / PaddleOCR.
 3. Do not download model.safetensors or any model.
-4. Do not run OCR.
-5. Do not reprocess PDFs.
-6. Do not rebuild production delivery_package.
-7. Do not run apply_manual_review_corrections.py on production delivery_dir.
-8. Do not modify production delivery files:
+4. Do not call any LLM, local model, cloud API, or AI inference endpoint.
+5. Do not run OCR.
+6. Do not reprocess PDFs.
+7. Do not rebuild production delivery_package.
+8. Do not run apply_manual_review_corrections.py.
+9. Do not modify production delivery files:
    - 01_自动可信核心指标.xlsx
    - 02_人工复核指标队列.xlsx
    - 02A_人工年份修正覆盖表.xlsx
    - 06_最终核心财务指标.xlsx
-9. Do not process baseline 091 as Stage 1 sample.
-10. Do not commit output artifacts.
-11. Worklog must be English only and UTF-8.
-12. Do not relax existing hard-risk demotion rules. This task may add safe promotions only when positive evidence is strong.
+10. Do not process baseline 091 as Stage 1 sample.
+11. Do not commit output artifacts.
+12. Worklog must be English only and UTF-8.
+13. Packet text must preserve Chinese metric/company names without garbling.
 
-## required_fixes
+## input_sources
+Use existing sandbox/trial and delivery reports only:
 
-### 1. Add metric-specific positive source-label allowlists
-Add explicit allowlists for each target metric.
+Primary trial root:
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315
 
-Suggested allowlist examples:
+Read if present:
+- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.xlsx
+- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.xlsx
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\standardizer_trial\*\05_stage1_standardized_core_metric_trial.xlsx
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\standardizer_trial\*\05_stage1_standardizer_diagnostics.xlsx
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\assets\*\02A_研报原始表格资产.xlsx
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\assets\*\02_研报全量结构化数据.xlsx
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\assets\*\05_stage1_core_metric_candidates.xlsx
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\assets\*\stage1_sandbox_asset_summary.xlsx
 
-营业收入:
-- 营业收入
-- 主营业务收入
-- 收入
-- 合计收入
-- 分业务收入
+If Chinese filenames are difficult to glob because of encoding, locate 02A/02 files by prefix and workbook sheet names, not by exact garbled string.
 
-归属母公司净利润:
-- 归属母公司净利润
-- 归母净利润
-- 归属于母公司股东净利润
-- 归属于上市公司股东的净利润
-- 母公司拥有人应占利润
+## required_repair_task_types
+Create AI repair packet entries for at least these task types:
 
-每股收益:
-- 每股收益
-- EPS
-- 基本每股收益
-- 稀释每股收益
+1. `row_segment_repair`
+   For manual_review_candidate rows where one row contains multiple metric blocks, for example:
+   - 营业收入 ... 净利润 ...
+   - PE ... 每股指标 ...
+   - PB ... 每股收益 ...
+   Input should include row_preview, source_label, table year headers, page/table/source row, and raw table context.
 
-P/E:
-- P/E
-- PE
-- 市盈率
+2. `metric_year_value_alignment`
+   For rows with:
+   - ambiguous_year_value_alignment
+   - partial_year_value_alignment
+   - no_numeric_value_after_metric_match
+   Input should include detected years, row cells, table header rows, and candidate metric.
 
-P/B:
-- P/B
-- PB
-- 市净率
+3. `semantic_guard_review`
+   For rows demoted by:
+   - source_row_semantic_risk
+   - forbidden_source_label_for_metric
+   - broad_keyword_unsafe
+   These must be framed as review questions, not automatic correction requests.
 
-EV/EBITDA:
-- EV/EBITDA
-- EVEBITDA
-- EV EBITDA
+4. `s2_table_level_repair`
+   For S2 / 冠豪高新 where no metric rows were found but raw_table_count=5 and year_evidence_count=5.
+   Include compact previews of the candidate tables from S2 and ask AI to identify whether target financial metrics exist, without inventing missing values.
 
-ROE:
-- ROE
-- 净资产收益率
+## packet_selection_rules
+Do not dump everything blindly. Keep packet useful and bounded.
 
-EBITDA:
-- EBITDA
+Suggested selection:
+- Include all high-value manual candidates from S1/S3 where source_page is a visually approved/core page.
+- Include rows from core_metrics or full_financial_forecast table roles first.
+- Include S1 page 4 business forecast rows only as lower-priority tasks.
+- Include S2 table-level previews because row-level metrics are missing.
+- Cap packet entries at around 80 unless more are clearly useful.
+- Group similar repeated rows when possible.
 
-毛利率:
-- 毛利率
-
-净利率:
-- 净利率
-
-Rules:
-- Exact label match or strong source_label match should increase semantic_score.
-- Row-text-only match without source_label match should remain lower confidence.
-- Do not allow broad `收入` to override forbidden-source checks.
-
-### 2. Add table-role priors
-Read table metadata if available from trial assets:
-- 02A_研报原始表格资产.xlsx raw_tables_index
-- 05_stage1_core_metric_candidates.xlsx
-- stage1_sandbox_asset_summary.xlsx
-
-Use candidate_type / confidence / page / metric_keyword_hits if available.
-
-Suggested table role classification:
-- core_metrics
-- full_financial_forecast
-- business_forecast
-- rating_or_disclaimer
-- other_year_table
-- unknown
-
-Promotion prior:
-- core_metrics and full_financial_forecast get positive score.
-- business_forecast can promote 营业收入 segment rows but should be conservative for valuation metrics.
-- rating_or_disclaimer must never promote likely_core_metric_trial.
-- unknown can remain manual if semantic evidence is weak.
-
-Add output columns:
+Every packet entry must include:
+- repair_task_id
+- task_type
+- sample_id
+- company
+- pdf_stem or asset_package
+- source_page
+- source_table_index
+- source_row_index if available
 - table_role
-- table_role_score
+- standard_metric_hint if available
+- detected_years
+- row_cells or row_preview
+- nearby_rows_context
+- risk_flags
+- current_route
+- reason_for_ai_repair
+- expected_output_schema_name
+- must_not_invent_values = true
+- source_trace_id
+
+## jsonl_schema
+Each JSONL line should be one repair task object.
+
+Required top-level fields:
+- repair_task_id: string
+- task_type: string
+- sample_id: string
+- company: string
+- asset_package: string
+- source: object
+- evidence: object
+- current_rule_result: object
+- ai_instruction: object
+- output_schema_name: string
+
+`source` fields:
+- source_page
+- source_table_index
+- source_row_index
+- table_role
+- source_trace_id
+
+`evidence` fields:
+- detected_years
+- row_cells
+- row_preview
+- nearby_rows_context
+- table_header_context
+- raw_table_preview
+
+`current_rule_result` fields:
+- standard_metric_hint
+- route_recommendation
+- confidence
+- flags
+- semantic_score
 - promotion_reason
 
-### 3. Controlled safe promotion after semantic guard
-A row can be likely_core_metric_trial only if:
-- no hard-risk flags exist;
-- source_label is allowed for the metric or table_role strongly supports it;
-- duplicate arbitration leaves it preferred;
-- year-value mapping is explicit enough;
-- amount/rate/valuation value type is plausible.
+`ai_instruction` fields:
+- task_goal
+- allowed_actions
+- forbidden_actions
+- must_not_invent_values
+- require_evidence
+- require_json_only
 
-Rows with hard-risk flags must remain manual_review_candidate.
+## ai_output_schema
+Create `38_stage1_ai_repair_schema.json` with strict schemas for later model output.
 
-Hard-risk flags include at least:
-- source_row_semantic_risk
-- forbidden_source_label_for_metric
-- broad_keyword_unsafe
-- multi_metric_row_ambiguous
-- ambiguous_year_value_alignment
-- ambiguous_multi_numeric_cell
-- duplicate_metric_year_non_preferred
+Minimum schema:
+```json
+{
+  "repair_task_id": "string",
+  "decision": "extract|manual_review|ignore|non_target",
+  "repairs": [
+    {
+      "standard_metric": "string",
+      "year": "string",
+      "value": "number|string|null",
+      "unit": "string|null",
+      "confidence": "high|medium|low",
+      "evidence": "string",
+      "source_cell_or_segment": "string",
+      "flags": ["string"]
+    }
+  ],
+  "manual_review_items": [
+    {
+      "reason": "string",
+      "evidence": "string"
+    }
+  ],
+  "notes": "string"
+}
+```
 
-### 4. S2 no-metric diagnosis
-For S2 / 冠豪高新, do not force extraction.
+Constraints in schema/prompt:
+- AI must not invent values.
+- AI must return JSON only.
+- AI must copy numeric values from evidence only.
+- AI must preserve year labels exactly unless explicitly normalizing with flag `year_normalized`.
+- If table/row is ambiguous, AI must choose `manual_review`, not guess.
+- AI repairs are candidates only and must not be written to production 06.
 
-Instead, add a clear diagnostic table explaining why no metrics are detected:
-- raw table count
-- year evidence count
-- text label examples
-- keyword hit examples or lack thereof
-- whether labels appear fragmented
-- whether negative values exist but labels are missing
-- recommended follow-up: extraction heuristic tuning / AI repair / manual visual review
+## prompt_requirements
+Create `38_stage1_ai_repair_schema_and_prompt.md` with:
+1. System prompt for AI repair worker.
+2. User prompt template for one repair task.
+3. JSON output schema.
+4. Good examples:
+   - safe segmented row extraction;
+   - ambiguous multi-metric row routed to manual review;
+   - S2 table-level no-label case routed to manual review.
+5. Bad examples:
+   - inventing missing year/value;
+   - assigning later metric block values to earlier metric;
+   - treating accounts receivable as revenue.
 
-### 5. Evaluation targets
-This task should improve or at least diagnose without reintroducing unsafe duplicates.
+Do not include API keys or model vendor assumptions.
 
-Expected direction, not a strict requirement:
-- S1 likely_core_metric_trial rows should increase from 4 if safe allowlist evidence exists.
-- S3 likely_core_metric_trial rows may increase modestly if safe table-role/label evidence exists.
-- S2 may remain WARN_NO_METRICS if source labels are not recoverable.
-- remaining_likely_core_duplicates_count must stay 0.
-- source_row_semantic_risk rows must not become likely_core_metric_trial.
+## xlsx_outputs
+37 XLSX must include sheets:
+- summary
+- repair_tasks
+- task_type_summary
+- sample_summary
+- high_priority_tasks
+- s2_table_level_tasks
+- source_trace_index
 
-## rerun_requirements
-Use existing trial assets only:
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315
+38 XLSX must include sheets:
+- schema_summary
+- allowed_decisions
+- required_fields
+- prompt_sections
+- validation_rules
+
+Optional 38 validation XLSX sheets:
+- jsonl_validation
+- missing_fields
+- duplicate_task_ids
+- sample_task_counts
+
+## validation
+Validate packet quality:
+- all repair_task_id values unique;
+- all JSONL lines parse as JSON;
+- every task has sample_id/company/source/evidence/ai_instruction;
+- no blank company for S1/S2/S3;
+- no garbled Chinese text such as `????` or Unicode replacement char `�`;
+- task count > 0;
+- S2 has at least one table-level repair task;
+- production delivery status remains PASS;
+- production 01/02/02A/06 unchanged.
 
 Run:
 ```bat
-D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py --help
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py ^
-  --standardize-sandbox ^
+D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\prepare_stage1_ai_repair_packet.py
+D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\prepare_stage1_ai_repair_packet.py ^
   --trial-run-root D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315 ^
   --delivery-dir D:\_datefac\output\delivery_package ^
-  --strict-scope
+  --max-tasks 80
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
 
-Do not reprocess PDFs.
+If no helper is created and runner is extended instead, adjust commands but keep the same outputs and validation.
 
-## report_requirements
-Generate:
-- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.md
-- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.xlsx
+## report/worklog
+The helper should also generate:
+- D:\_datefac\output\delivery_package\39_stage1_ai_repair_packet_build_log.md
+- D:\_datefac\output\delivery_package\39_stage1_ai_repair_packet_build_log.xlsx
 
-35 report must include:
+39 report must include:
 - task_title
 - started_at / finished_at
 - commands_run
-- files_read
-- files_changed
-- allowlist_summary
-- table_role_prior_summary
-- s2_no_metric_diagnosis_summary
+- input_files_read
+- output_files_generated
+- task_count
+- task_type_counts
+- sample_task_counts
+- jsonl_validation_status
 - production_guard_changed_count
 - safety_checks
+- next_step_recommendation
 
-Generate:
-- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.md
-- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.xlsx
-
-36 report must include:
-- sandbox_standardizer_status
-- production_delivery_status_after
-- per_sample_status
-- likely_core_metric_trial_rows
-- manual_review_candidate_rows
-- source_row_semantic_risk_count
-- forbidden_source_label_count
-- duplicate_metric_year_groups_before_after
-- remaining_likely_core_duplicates_count
-- safe_promotions_count
-- promotion_reason_summary
-- target_metric_coverage
-- s2_no_metric_diagnosis
-- blockers
-- recommended_next_step
-
-Excel sheets required:
-- summary
-- per_sample_status
-- standardized_trial_rows
-- manual_review_candidates
-- safe_promotions
-- promotion_reason_summary
-- table_role_priors
-- s2_no_metric_diagnosis
-- target_metric_coverage
-- production_guard
-- safety_checks
-- next_steps
-
-## acceptance_criteria
-This task passes if:
-1. py_compile passes.
-2. --help passes.
-3. sandbox standardizer reruns using trial assets only.
-4. metric-specific source-label allowlists are implemented.
-5. table-role priors are implemented or explicitly reported as unavailable from current trial metadata.
-6. hard-risk rows remain manual_review_candidate.
-7. duplicate likely_core groups remain 0.
-8. S2 no-metric condition is diagnosed, not silently ignored.
-9. production 01/02/02A/06 are unchanged.
-10. production delivery remains PASS.
-11. no factory_core/marker/surya/vision/PaddleOCR/model download occurred.
-12. 35/36 reports are generated.
-13. output artifacts are not committed.
-
-A WARN/PARTIAL status is acceptable if S2 remains no-metric or S1/S3 still require manual review, provided unsafe rows are not promoted.
-
-## update_worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_add_stage1_standardizer_allowlists_priors.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_prepare_stage1_ai_repair_packet.md
 
 Worklog must be English only and UTF-8.
 
-Worklog must include:
-- task_title
-- started_at
-- finished_at
-- git_commit_before
-- git_commit_after
-- commands_run
-- files_read
-- files_changed
-- files_generated
-- sandbox_standardizer_status
-- per_sample_status_summary
-- allowlist_summary
-- table_role_prior_summary
-- s2_no_metric_diagnosis_summary
-- result_summary
-- remaining_issues
-- next_step_suggestion
-- safety_notes
-
 ## git_commit
 Allowed to commit:
-- tools/run_stage1_safe_nonvision_pipeline.py
+- tools/prepare_stage1_ai_repair_packet.py
+- tools/run_stage1_safe_nonvision_pipeline.py only if actually modified and necessary
 - docs/codex_worklog/LATEST.md
 - docs/codex_worklog/history/
 
 Do not commit:
-- output/delivery_package/35_stage1_standardizer_allowlist_prior_log.md
-- output/delivery_package/35_stage1_standardizer_allowlist_prior_log.xlsx
-- output/delivery_package/36_stage1_standardizer_allowlist_prior_evaluation.md
-- output/delivery_package/36_stage1_standardizer_allowlist_prior_evaluation.xlsx
-- output/_stage1_safe_runner_trial/**
+- output/delivery_package/37_stage1_ai_repair_input_packet.md
+- output/delivery_package/37_stage1_ai_repair_input_packet.xlsx
+- output/delivery_package/37_stage1_ai_repair_input_packet.jsonl
+- output/delivery_package/38_stage1_ai_repair_schema_and_prompt.md
+- output/delivery_package/38_stage1_ai_repair_schema_and_prompt.xlsx
+- output/delivery_package/38_stage1_ai_repair_schema.json
+- output/delivery_package/38_stage1_ai_repair_packet_validation.xlsx
+- output/delivery_package/39_stage1_ai_repair_packet_build_log.md
+- output/delivery_package/39_stage1_ai_repair_packet_build_log.xlsx
 - any output artifacts
 
 Commit:
 ```bat
-git add tools/run_stage1_safe_nonvision_pipeline.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "add stage1 standardizer allowlists and priors"
+git add tools/prepare_stage1_ai_repair_packet.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
+git commit -m "prepare stage1 ai repair packet"
 git push origin main
 ```
 
 ## expected_final_response
 After completion, output:
 1. task_title
-2. py_compile_status
-3. help_status
-4. sandbox_standardizer_status
-5. per_sample_status_summary
-6. safe_promotions_count
-7. remaining_likely_core_duplicates_count
-8. source_row_semantic_risk_count
-9. forbidden_source_label_count
-10. s2_no_metric_diagnosis_summary
-11. generated_reports
-12. production_delivery_status_after
-13. production_files_unchanged
-14. factory_core/vision/model_download_status
-15. next_step_suggestion
-16. commit sha
+2. helper_path
+3. py_compile_status
+4. packet_build_status
+5. generated_outputs
+6. repair_task_count
+7. task_type_counts
+8. sample_task_counts
+9. s2_table_level_task_count
+10. jsonl_validation_status
+11. production_delivery_status_after
+12. production_files_unchanged
+13. factory_core/vision/model_download_status
+14. next_step_suggestion
+15. commit sha
 
 ## safety_notes
-- This task only improves sandbox standardizer scoring and safe promotion.
-- Do not write Stage 1 results into production delivery_package.
+- This task only prepares AI repair input/schema/prompt.
+- Do not call AI yet.
+- Do not write AI results into production delivery_package.
 - Do not run factory_core.py.
 - Do not trigger vision/OCR/model backends.
 - Do not modify production delivery data.
