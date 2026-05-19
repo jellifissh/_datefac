@@ -1,65 +1,52 @@
 # NEXT CODEX TASK
 
 ## task_title
-Implement scoped safe non-vision Stage 1 runner
+Wire guarded sandbox execute mode for Stage 1 safe runner
 
 ## project
 D:\_datefac
 
 ## current_status
-The latest uploaded Stage 1 full pipeline reports show that full execution was blocked before processing.
+The scoped safe non-vision Stage 1 runner has been implemented and committed.
 
-User uploaded/reviewed reports:
-- D:\_datefac\output\delivery_package\21_stage1_full_pipeline_execution_log.xlsx
-- D:\_datefac\output\delivery_package\22_stage1_full_pipeline_result_evaluation.xlsx
-
-Key result from 21/22:
-- final_stage1_full_pipeline_status = BLOCKED
-- final_delivery_status = PASS / pass_count=17 / warn_count=0 / fail_count=0
-- selected PDFs exist
-- samples were not processed
-- generated_assets = none
-- trusted_output_summary = not_updated
-- manual_queue_summary = not_updated
-- duplicate_key_count_final = 0
-- high_risk_flags = 0
-- test_token_hits = 0
-- baseline 091 = not_reprocessed_intact
-- blocker = BLOCKED_NO_SAFE_FULL_PIPELINE
-
-Reason:
-There is no complete safe non-vision full-pipeline entrypoint outside factory_core.py that can process exactly the three selected PDFs end-to-end. The system has safe probe tools, but no scoped safe runner for full Stage 1 processing.
-
-Important Git note:
-Remote docs/codex_worklog/LATEST.md may still reflect the previous visual-confirmation task. Treat the user-uploaded 21/22 reports as the current local evidence for this task.
-
-## goal
-Implement a scoped safe non-vision Stage 1 runner, but do not use it to modify production delivery data yet.
-
-Primary goal:
-- Add a safe runner that can later process exactly the three Stage 1 PDFs without factory_core.py and without vision/OCR backends.
-
-Recommended new tool:
+Latest committed runner:
 - D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py
 
-If a better file name or location is clearly more consistent with the repo, use that, but explain the choice in the worklog.
+Latest known result:
+- py_compile_status = PASS
+- help_status = PASS
+- dry_run_status = DRY_RUN_BLOCKED_NO_SAFE_FULL_PIPELINE
+- current_delivery_status = PASS / pass_count=17 / warn_count=0 / fail_count=0
+- production data untouched: yes
+- factory_core / marker / surya / vision / PaddleOCR / model downloads avoided: yes
 
-The runner should support:
-- `--manifest <path>` or `--pdf <path>` repeated
-- `--output-root D:\_datefac\output`
-- `--delivery-dir D:\_datefac\output\delivery_package`
-- `--dry-run`
-- `--execute`
-- `--strict-scope`
-- `--no-vision` default true
-- `--skip-apply` optional
-- `--stop-on-first-error` default true
+Important code state:
+- The runner has argument parsing, manifest loading, strict-scope checks, baseline guard, dry-run reports, and safety entrypoint inventory.
+- Execute mode is intentionally blocked because safe end-to-end non-vision wiring is not implemented yet.
+- The code currently has `safe_full_pipeline_ready = False` and returns BLOCKED for execute-mode.
 
-This task should implement and validate the runner in dry-run mode only.
-Do not run `--execute` yet.
+Goal now:
+Add guarded execute-mode wiring, but only for a sandbox/trial directory first. Do not modify production delivery_package data yet.
+
+## goal
+Extend `tools/run_stage1_safe_nonvision_pipeline.py` so it can attempt a controlled sandbox execute run for exactly the three Stage 1 samples, while keeping production delivery files untouched.
+
+Primary local reports:
+- D:\_datefac\output\delivery_package\25_stage1_safe_runner_execute_wiring_report.md
+- D:\_datefac\output\delivery_package\25_stage1_safe_runner_execute_wiring_report.xlsx
+- D:\_datefac\output\delivery_package\26_stage1_sandbox_execute_trial_evaluation.md
+- D:\_datefac\output\delivery_package\26_stage1_sandbox_execute_trial_evaluation.xlsx
+
+Sandbox output root:
+- D:\_datefac\output\_stage1_safe_runner_trial
+
+Sandbox delivery dir:
+- D:\_datefac\output\_stage1_safe_runner_trial\delivery_package
+
+Do not write Stage 1 trial results into the production delivery dir except for the 25/26 local report files under production delivery_package.
 
 ## selected_stage1_samples
-The runner must be designed to accept exactly these Stage 1 samples for the first real execution later:
+The runner must support exactly these selected PDFs in the manifest used for validation:
 
 1. H3_AP202605141822317484_1.pdf
    company: 三鑫医疗
@@ -72,169 +59,201 @@ The runner must be designed to accept exactly these Stage 1 samples for the firs
 3. H3_AP202605141822318060_1.pdf
    company: 科锐国际
    approved pages: 5
-   ignored page: 6, likely rating/disclaimer table
+   ignored page: 6
 
-Baseline regression guard only:
+Baseline regression guard:
 - H3_AP202605091822098939_1.pdf
 Do not process as a new Stage 1 sample.
 
 ## absolute_hard_constraints
 1. Do not run factory_core.py.
 2. Do not trigger marker / surya / vision / PaddleOCR.
-3. Do not download model.safetensors or any vision model.
-4. Do not run the new runner in execute mode in this task.
-5. Do not process PDFs beyond dry-run validation.
-6. Do not modify 01_自动可信核心指标.xlsx.
-7. Do not modify 02_人工复核指标队列.xlsx.
-8. Do not modify 02A_人工年份修正覆盖表.xlsx.
-9. Do not modify 06_最终核心财务指标.xlsx.
-10. Do not rebuild delivery_package in this task.
-11. Do not commit output artifacts.
-12. Worklog must be English only and UTF-8.
+3. Do not download model.safetensors or any model.
+4. Do not modify production delivery files:
+   - 01_自动可信核心指标.xlsx
+   - 02_人工复核指标队列.xlsx
+   - 02A_人工年份修正覆盖表.xlsx
+   - 06_最终核心财务指标.xlsx
+5. Do not rebuild the production delivery_package in this task.
+6. Do not process baseline 091 as a Stage 1 sample.
+7. Do not commit output artifacts.
+8. Worklog must be English only and UTF-8.
+9. If safe sandbox execute cannot be wired without unsafe modules, stop with explicit status:
+   - BLOCKED_SANDBOX_EXECUTE_UNSAFE
+   or
+   - BLOCKED_SAFE_COMPONENTS_MISSING
+10. Do not silently fake success. If only dry-run is possible, report that clearly.
 
 ## implementation_requirements
 
-### 1. Source inspection allowed, execution forbidden
-You may inspect source code, including factory_core.py, to understand existing pipeline steps, but you must not run factory_core.py.
+### 1. Add sandbox execute arguments
+Extend `run_stage1_safe_nonvision_pipeline.py` with safe trial arguments:
+- `--trial-root D:\_datefac\output\_stage1_safe_runner_trial`
+- `--sandbox-delivery-dir D:\_datefac\output\_stage1_safe_runner_trial\delivery_package`
+- `--execute-sandbox`
+- `--allow-production-write` default false and not used in this task
 
-Inspect existing scripts/modules to find safe reusable components for:
-- pdfplumber-based table extraction
-- pdfplumber profile fallback
-- glued table splitter
-- raw table asset generation
-- table-region screenshot/index generation if already safe
-- core metric standardization stage
-- delivery_package builder
-- manual correction apply/check scripts
+Rules:
+- `--execute` without `--execute-sandbox` and without `--allow-production-write` must be blocked.
+- Production delivery dir must be read-only in this task.
+- Sandbox output root must be created if absent.
+- Existing sandbox root may be backed up or timestamped before reuse.
 
-Do not import modules that have top-level imports or side effects involving marker/surya/PaddleOCR/vision/model downloads.
-If a module is unsafe at import time, avoid importing it directly and document it.
+### 2. Component discovery and safety audit
+Inspect existing scripts/modules and classify them:
+- safe_to_execute
+- safe_probe_only
+- downstream_only
+- unsafe_import
+- unsafe_runtime
+- missing_scope_support
 
-### 2. Runner safety guards
-The new runner must enforce:
-- explicit PDF list or manifest only
-- strict scope guard: only the provided PDFs are processed
-- baseline 091 is not treated as a new sample unless explicitly included and `--allow-baseline` is passed
-- no factory_core invocation
-- no marker/surya/PaddleOCR/vision command invocation
-- no model.safetensors downloads
-- no network downloads
-- pre-run check for selected PDF existence
-- optional backup requirement before execute mode
+At minimum inspect these if present:
+- tools/probe_pdf_tables.py
+- tools/probe_pdfplumber_profiles.py
+- tools/probe_extractors.py
+- tools/build_manual_review_queue.py
+- tools/validate_financial_metric_values.py
+- tools/build_delivery_package.py
+- tools/apply_manual_review_corrections.py
+- tools/check_delivery_state.py
+- financial_standardizer.py
+- any relevant table splitter / pdfplumber / asset-generation modules
 
-Implement visible checks in code, not just comments.
+Do not import unsafe modules. Prefer static source scan first.
+Forbidden strings or imports include:
+- marker
+- surya
+- PaddleOCR
+- paddleocr
+- vision
+- model.safetensors
+- datalab
+- transformers model download
 
-### 3. Dry-run behavior
-`--dry-run` must:
-- validate arguments
-- locate PDFs
-- list planned asset output folders
-- list planned safe pipeline steps
-- identify discovered safe entrypoints/scripts
-- identify unsafe or blocked entrypoints with reason
-- confirm no production delivery files would be modified
-- write a dry-run report locally
-- exit with code 0 only if the plan is executable in principle
-- exit non-zero if no safe full pipeline path can be constructed
+If a file has forbidden imports only inside optional guarded code, document it and do not call that path.
 
-Dry-run output files:
-- D:\_datefac\output\delivery_package\23_stage1_safe_runner_dry_run.md
-- D:\_datefac\output\delivery_package\23_stage1_safe_runner_dry_run.xlsx
+### 3. Safe sandbox execute plan
+The runner should attempt to build a safe staged command plan using only safe components.
 
-### 4. Execute behavior design
-`--execute` does not need to be run in this task, but the code structure should be ready for later.
+Possible stages:
+1. pdfplumber-only raw table extraction / probe-to-raw-table asset generation
+2. table post-processing / glued splitter if safe
+3. core metric standardization if safe and scope-able
+4. delivery package build into sandbox delivery dir if safe and scope-able
+5. manual correction apply only inside sandbox delivery dir if supported
+6. delivery check on sandbox delivery dir if supported
 
-Execute mode should eventually:
-- backup delivery files first
-- process samples one by one
-- run safe extraction/standardization steps
-- rebuild delivery package
-- run apply_manual_review_corrections.py
-- run check_delivery_state.py --json
-- stop on stop conditions
-- generate execution/evaluation reports
+If an existing script does not support custom output root / delivery dir / scoped PDF list, do not use it for execute; mark it as missing_scope_support.
 
-If some execute steps cannot yet be wired because safe modules are missing or unsafe to import, implement a clear `BLOCKED_NOT_IMPLEMENTED` or `BLOCKED_UNSAFE_IMPORT` path rather than silently skipping.
+### 4. Minimum useful sandbox execution
+If full 01/02/05/06 generation cannot be wired safely yet, implement a minimum useful sandbox execution path:
+- run pdfplumber-only table extraction/probe for the three PDFs into sandbox asset folders;
+- generate a sandbox manifest of extracted candidate tables;
+- generate a trial report explaining which downstream stages are blocked and why.
 
-### 5. Test/validation requirements
+This is acceptable only if clearly reported as:
+- SANDBOX_EXECUTE_PARTIAL
+not PASS.
+
+### 5. Reports
+Generate:
+- D:\_datefac\output\delivery_package\25_stage1_safe_runner_execute_wiring_report.md
+- D:\_datefac\output\delivery_package\25_stage1_safe_runner_execute_wiring_report.xlsx
+
+25 report must include:
+- runner_path
+- new_arguments
+- component_inventory
+- safe_components
+- blocked_components
+- scope_support_findings
+- execute_plan
+- production_write_guard_status
+- sandbox_paths
+- implementation_status
+
+Generate:
+- D:\_datefac\output\delivery_package\26_stage1_sandbox_execute_trial_evaluation.md
+- D:\_datefac\output\delivery_package\26_stage1_sandbox_execute_trial_evaluation.xlsx
+
+26 report must include:
+- sandbox_execute_status: PASS / WARN / FAIL / BLOCKED / SANDBOX_EXECUTE_PARTIAL
+- selected_samples
+- sandbox_outputs_created
+- per_sample_trial_status
+- stages_completed
+- stages_blocked
+- safety_checks
+- production_delivery_status_before
+- production_delivery_status_after
+- production_files_unchanged_check
+- recommended_next_step
+
+Excel sheets required:
+- summary
+- component_inventory
+- execute_plan
+- sample_trial_results
+- stages_completed
+- stages_blocked
+- safety_checks
+- production_guard
+- next_steps
+
+### 6. Validation commands
 Run:
 ```bat
 D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py --help
 ```
 
-Create a local manifest for dry run only, for example:
-D:\_datefac\output\delivery_package\23_stage1_selected_samples_manifest.json
+Create/update manifest:
+- D:\_datefac\output\delivery_package\25_stage1_selected_samples_manifest.json
 
-Run dry-run only:
+Run sandbox execute only:
 ```bat
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py ^
-  --manifest D:\_datefac\output\delivery_package\23_stage1_selected_samples_manifest.json ^
+  --manifest D:\_datefac\output\delivery_package\25_stage1_selected_samples_manifest.json ^
   --output-root D:\_datefac\output ^
   --delivery-dir D:\_datefac\output\delivery_package ^
-  --dry-run ^
+  --trial-root D:\_datefac\output\_stage1_safe_runner_trial ^
+  --sandbox-delivery-dir D:\_datefac\output\_stage1_safe_runner_trial\delivery_package ^
+  --execute ^
+  --execute-sandbox ^
   --strict-scope
 ```
 
-Also run read-only delivery check:
+Then run production delivery state check read-only:
 ```bat
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
 
-Do not run execute mode.
+Do not use `--allow-production-write`.
 
-### 6. Reports
-Generate local validation report:
-- D:\_datefac\output\delivery_package\24_stage1_safe_runner_implementation_report.md
-- D:\_datefac\output\delivery_package\24_stage1_safe_runner_implementation_report.xlsx
-
-24 report must include:
-- implemented_runner_path
-- safe_entrypoints_discovered
-- unsafe_entrypoints_blocked
-- import_safety_findings
-- dry_run_status
-- dry_run_commands
-- dry_run_planned_steps
-- dry_run_planned_samples
-- why execute was not run
-- current_delivery_status
-- next recommended task
-
-Excel sheets required:
-- summary
-- runner_interface
-- safe_entrypoints
-- unsafe_entrypoints
-- dry_run_plan
-- dry_run_results
-- delivery_status
-- next_steps
-
-## acceptance_criteria
+### 7. Acceptance criteria
 This task passes if:
-1. New scoped runner is added or an equivalent safe runner is implemented.
-2. `py_compile` passes.
-3. `--help` works.
-4. `--dry-run` works and produces 23 report.
-5. 24 implementation report is generated.
-6. No production delivery files 01/02/02A/06 are modified.
-7. delivery check remains PASS.
-8. factory_core.py is not run.
-9. marker/surya/vision/PaddleOCR are not triggered.
-10. model.safetensors is not downloaded.
-11. output artifacts are not committed.
+1. runner py_compile passes.
+2. runner help passes.
+3. sandbox execute command runs and produces 25/26 reports.
+4. sandbox execute either:
+   - completes a safe partial pipeline with clear SANDBOX_EXECUTE_PARTIAL status, or
+   - reaches a clear BLOCKED status with exact blocker reasons.
+5. production delivery state remains PASS.
+6. production 01/02/02A/06 are unchanged.
+7. factory_core.py is not run.
+8. marker/surya/vision/PaddleOCR are not triggered.
+9. model.safetensors is not downloaded.
+10. no output artifacts are committed.
 
-If the runner cannot be implemented safely, fail explicitly with:
-- BLOCKED_RUNNER_IMPLEMENTATION_UNSAFE
-and explain which dependency/import/entrypoint blocks it.
+A full PASS is not required yet. Clear partial or blocked status is acceptable if technically honest.
 
 ## update_worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_implement_stage1_safe_runner.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_wire_stage1_sandbox_execute.md
 
 Worklog must be English only and UTF-8.
 
@@ -249,8 +268,9 @@ Worklog must include:
 - files_changed
 - files_generated
 - runner_path
-- dry_run_status
-- current_delivery_status
+- sandbox_execute_status
+- production_delivery_status_before_after
+- component_inventory_summary
 - result_summary
 - remaining_issues
 - next_step_suggestion
@@ -262,19 +282,18 @@ Allowed to commit:
 - docs/codex_worklog/LATEST.md
 - docs/codex_worklog/history/
 
-If you modify small helper code or tests to support the runner, include only those necessary source files and explain why.
-
 Do not commit:
-- output/delivery_package/23_stage1_safe_runner_dry_run.md
-- output/delivery_package/23_stage1_safe_runner_dry_run.xlsx
-- output/delivery_package/24_stage1_safe_runner_implementation_report.md
-- output/delivery_package/24_stage1_safe_runner_implementation_report.xlsx
+- output/delivery_package/25_stage1_safe_runner_execute_wiring_report.md
+- output/delivery_package/25_stage1_safe_runner_execute_wiring_report.xlsx
+- output/delivery_package/26_stage1_sandbox_execute_trial_evaluation.md
+- output/delivery_package/26_stage1_sandbox_execute_trial_evaluation.xlsx
+- output/_stage1_safe_runner_trial/**
 - any output artifacts
 
 Commit:
 ```bat
 git add tools/run_stage1_safe_nonvision_pipeline.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "add scoped stage1 safe nonvision runner"
+git commit -m "wire stage1 sandbox execute mode"
 git push origin main
 ```
 
@@ -284,17 +303,18 @@ After completion, output:
 2. runner_path
 3. py_compile_status
 4. help_status
-5. dry_run_status
+5. sandbox_execute_status
 6. generated_reports
-7. current_delivery_status: overall_status/pass_count/warn_count/fail_count
-8. whether production data was untouched
-9. whether factory_core/vision/model downloads were avoided
-10. next_step_suggestion
-11. commit sha
+7. production_delivery_status_before_after
+8. production_files_unchanged
+9. factory_core/vision/model_download_status
+10. component_blockers
+11. next_step_suggestion
+12. commit sha
 
 ## safety_notes
-- This task implements and dry-runs the runner only.
-- Do not execute the full pipeline yet.
+- This task may run sandbox execute only.
+- Do not write Stage 1 results into production delivery_package.
 - Do not run factory_core.py.
 - Do not trigger vision/OCR/model backends.
 - Do not modify production delivery data.
