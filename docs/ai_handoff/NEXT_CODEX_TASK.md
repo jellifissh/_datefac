@@ -1,23 +1,19 @@
 # NEXT CODEX TASK
 
 ## task_title
-Harden Stage 1 sandbox standardizer semantic guards
+Add Stage 1 sandbox standardizer allowlists and table priors
 
 ## project
 D:\_datefac
 
 ## current_status
-The Stage 1 sandbox standardizer alignment hardening task has completed and was committed.
+The Stage 1 sandbox standardizer semantic guard task has completed.
 
-Latest committed result:
-- commit: 4842314 harden stage1 sandbox standardizer alignment
-
-User uploaded/reviewed reports:
-- D:\_datefac\output\delivery_package\31_stage1_standardizer_alignment_fix_log.xlsx
-- D:\_datefac\output\delivery_package\32_stage1_standardizer_alignment_fix_evaluation.xlsx
-
-Key result from 31/32:
-- sandbox_standardizer_status = PASS
+Latest known result from user screenshot / local reports:
+- task_title = Harden Stage 1 sandbox standardizer semantic guards
+- py_compile_status = PASS
+- help_status = PASS
+- sandbox_standardizer_status = WARN
 - production_delivery_status_after = PASS / pass_count=17 / warn_count=0 / fail_count=0
 - production_guard_changed_count = 0
 - production 01/02/02A/06 unchanged
@@ -25,45 +21,40 @@ Key result from 31/32:
 - marker/surya/vision/PaddleOCR not triggered
 - model download not triggered
 
-Sample identity mapping is now correct:
-- S1 = H3_AP202605141822317484_1 = 三鑫医疗
-- S2 = H3_AP202605121822223662_1 = 冠豪高新
-- S3 = H3_AP202605141822318060_1 = 科锐国际
+Per-sample result after semantic guards:
+- S1 / H3_AP202605141822317484_1 / 三鑫医疗: WARN_SEMANTIC_GUARD, metric_rows=4, manual_review_candidate_rows=82
+- S2 / H3_AP202605121822223662_1 / 冠豪高新: WARN_NO_METRICS, metric_rows=0, manual_review_candidate_rows=0
+- S3 / H3_AP202605141822318060_1 / 科锐国际: WARN_SEMANTIC_GUARD, metric_rows=40, manual_review_candidate_rows=81
 
-Per-sample status from 32:
-- S1: PASS_SAFE_TRIAL, metric_rows=70, manual_review_candidate_rows=16
-- S2: WARN_NO_METRICS, metric_rows=0, manual_review_candidate_rows=0, error=STANDARDIZER_NO_METRIC_CANDIDATES
-- S3: PASS_SAFE_TRIAL, metric_rows=120, manual_review_candidate_rows=1
-
-Important remaining quality concerns:
-1. risky_alignment_rows_count = 17; these rows are routed to manual review, which is good.
-2. duplicate_metric_year_groups = 61; duplicate_metric_year_in_sample appears very frequently.
-3. Some rows still appear unsafe in standardized_trial_rows even after alignment hardening.
-
-Observed unsafe examples from 32 standardized_trial_rows:
-- Row preview: `净利润 | 290.27 | 322.37 | 360.75 | 404.11 | 其他 | -27.17 | -22.62 | -5.00 | -6.00`
-  Problem: values after `其他` may be incorrectly assigned to 归属母公司净利润.
-- Row preview: `归属母公司股东净利润 | 264.94 | 294.37 | 328.75 | 368.11 | 现金流量净额 | 138.24 | 198.73 | 273.23 | 278.57`
-  Problem: cash-flow values may be incorrectly assigned to 归属母公司净利润.
-- Row preview: `应收和预付款项 | 98.04 | 123.36 | 133.22 | 147.29 | 销售收入增长率 | 9.31% | 13.41% | 11.00% | 11.05%`
-  Problem: row is not 营业收入; broad keyword `收入` causes semantic mismatch.
+Quality metrics:
+- source_row_semantic_risk_count = 94
+- broad_keyword_unsafe_count = 0
+- forbidden_source_label_count = 56
+- duplicate_metric_year_groups_before_after = 61 -> 0
+- remaining_likely_core_duplicates_count = 0
 
 Interpretation:
-The standardizer now has correct identity mapping and safer multi-metric flagging, but source-row semantic guards are still too weak. Rows with account names, cash-flow fragments, or ratio fragments can still be promoted to likely_core_metric_trial. This must be fixed before sandbox delivery integration.
+The stricter semantic guard fixed duplicate promotion and routed risky rows away from likely_core_metric_trial. However, it is now overly conservative for S1/S3. The next step is to recover safe coverage using positive metric-specific source-label allowlists and table-role priors, without weakening hard semantic guards.
 
 ## goal
-Harden sandbox standardizer source-row semantic guards and duplicate arbitration.
+Improve sandbox standardizer precision/coverage balance by adding:
+1. metric-specific positive source-label allowlists;
+2. table-role priors based on trial asset metadata and candidate type;
+3. safer promotion rules for S1/S3 only when source labels and table roles are strongly compatible;
+4. dedicated diagnosis for S2 no-metric condition.
 
-This task must rerun sandbox standardizer only using existing trial assets. Do not reprocess PDFs and do not modify production delivery data.
+This task must rerun sandbox standardizer only using existing trial assets.
+Do not reprocess PDFs.
+Do not modify production delivery data.
 
 Target code:
 - D:\_datefac\tools\run_stage1_safe_nonvision_pipeline.py
 
 Target local reports:
-- D:\_datefac\output\delivery_package\33_stage1_standardizer_semantic_guard_log.md
-- D:\_datefac\output\delivery_package\33_stage1_standardizer_semantic_guard_log.xlsx
-- D:\_datefac\output\delivery_package\34_stage1_standardizer_semantic_guard_evaluation.md
-- D:\_datefac\output\delivery_package\34_stage1_standardizer_semantic_guard_evaluation.xlsx
+- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.md
+- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.xlsx
+- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.md
+- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.xlsx
 
 Rerun output remains under:
 - D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\standardizer_trial
@@ -84,92 +75,135 @@ Rerun output remains under:
 9. Do not process baseline 091 as Stage 1 sample.
 10. Do not commit output artifacts.
 11. Worklog must be English only and UTF-8.
+12. Do not relax existing hard-risk demotion rules. This task may add safe promotions only when positive evidence is strong.
 
 ## required_fixes
 
-### 1. Stronger source-row semantic guard
-Before promoting any row to `likely_core_metric_trial`, verify that the row's leading semantic label is compatible with the target standard_metric.
+### 1. Add metric-specific positive source-label allowlists
+Add explicit allowlists for each target metric.
 
-Add a deterministic label extraction function:
-- take the first non-empty cell before the first numeric value as `source_label`;
-- if the table is flattened and multiple label/value blocks exist, split into blocks by text label positions;
-- if reliable block splitting is not possible, route to manual_review_candidate.
+Suggested allowlist examples:
 
-### 2. Disallow broad keyword false positives
-The keyword `收入` is too broad.
+营业收入:
+- 营业收入
+- 主营业务收入
+- 收入
+- 合计收入
+- 分业务收入
+
+归属母公司净利润:
+- 归属母公司净利润
+- 归母净利润
+- 归属于母公司股东净利润
+- 归属于上市公司股东的净利润
+- 母公司拥有人应占利润
+
+每股收益:
+- 每股收益
+- EPS
+- 基本每股收益
+- 稀释每股收益
+
+P/E:
+- P/E
+- PE
+- 市盈率
+
+P/B:
+- P/B
+- PB
+- 市净率
+
+EV/EBITDA:
+- EV/EBITDA
+- EVEBITDA
+- EV EBITDA
+
+ROE:
+- ROE
+- 净资产收益率
+
+EBITDA:
+- EBITDA
+
+毛利率:
+- 毛利率
+
+净利率:
+- 净利率
 
 Rules:
-- `收入` can match 营业收入 only when source_label is exactly or strongly similar to:
-  - 营业收入
-  - 主营业务收入
-  - 收入
-  - 合计收入
-  - 产品/业务 segment + 收入 pattern in business forecast table
-- `销售收入增长率`, `现金流量/营业收入`, `应收和预付款项`, `预收账款`, `营业成本`, `营业税金及附加` must not be promoted as 营业收入.
-- If such rows contain `收入` only as part of a ratio/growth/account description, route to manual_review_candidate or ignore.
+- Exact label match or strong source_label match should increase semantic_score.
+- Row-text-only match without source_label match should remain lower confidence.
+- Do not allow broad `收入` to override forbidden-source checks.
 
-### 3. Add forbidden source label guards by metric
-Examples:
-- For 营业收入, forbidden labels include:
-  - 应收和预付款项
-  - 预收账款
-  - 营业成本
-  - 营业税金及附加
-  - 销售收入增长率
-  - 销售商品提供劳务收到现金/营业收入
-- For 归属母公司净利润, forbidden labels include:
-  - 现金流量净额
-  - 经营活动现金流
-  - 其他
-  - 少数股东损益
-- For P/E, P/B, EV/EBITDA, forbidden labels include:
-  - 每股指标
-  - 每股收益
-  - 每股经营现金
-  - 权益自由现金流
-  - 评级
-  - 投资建议
+### 2. Add table-role priors
+Read table metadata if available from trial assets:
+- 02A_研报原始表格资产.xlsx raw_tables_index
+- 05_stage1_core_metric_candidates.xlsx
+- stage1_sandbox_asset_summary.xlsx
 
-If forbidden label appears in the same row segment after the matched metric label and cannot be split safely, route to manual_review_candidate with flag `source_row_semantic_risk`.
+Use candidate_type / confidence / page / metric_keyword_hits if available.
 
-### 4. Duplicate arbitration
-For sandbox trial, do not promote all duplicates to likely_core_metric_trial.
+Suggested table role classification:
+- core_metrics
+- full_financial_forecast
+- business_forecast
+- rating_or_disclaimer
+- other_year_table
+- unknown
 
-For each `sample_id + standard_metric + year`:
-- if multiple rows exist, choose at most one preferred row as likely_core_metric_trial;
-- all other duplicates must be routed to manual_review_candidate or flagged `duplicate_metric_year_non_preferred`.
+Promotion prior:
+- core_metrics and full_financial_forecast get positive score.
+- business_forecast can promote 营业收入 segment rows but should be conservative for valuation metrics.
+- rating_or_disclaimer must never promote likely_core_metric_trial.
+- unknown can remain manual if semantic evidence is weak.
 
-Preferred row scoring suggestion:
-- exact metric label match > fuzzy/broad match;
-- source_label exact target metric > derived ratio/account label;
-- source table page/role closer to core forecast table > business breakdown table if available;
-- fewer semantic flags > more flags;
-- non-percent values preferred for amount metrics;
-- percent values preferred only for rate metrics like ROE/毛利率/净利率.
+Add output columns:
+- table_role
+- table_role_score
+- promotion_reason
 
-Add fields if helpful:
-- source_label
-- semantic_score
-- preferred_duplicate
-- duplicate_resolution_reason
+### 3. Controlled safe promotion after semantic guard
+A row can be likely_core_metric_trial only if:
+- no hard-risk flags exist;
+- source_label is allowed for the metric or table_role strongly supports it;
+- duplicate arbitration leaves it preferred;
+- year-value mapping is explicit enough;
+- amount/rate/valuation value type is plausible.
 
-### 5. Manual routing flags
-Rows with these flags must not be likely_core_metric_trial:
+Rows with hard-risk flags must remain manual_review_candidate.
+
+Hard-risk flags include at least:
 - source_row_semantic_risk
 - forbidden_source_label_for_metric
-- duplicate_metric_year_non_preferred
 - broad_keyword_unsafe
 - multi_metric_row_ambiguous
 - ambiguous_year_value_alignment
 - ambiguous_multi_numeric_cell
+- duplicate_metric_year_non_preferred
 
-### 6. Status logic
-A sample should be PASS_SAFE_TRIAL only if:
-- it has at least one likely_core_metric_trial row;
-- risky semantic rows are routed away from likely_core_metric_trial;
-- duplicate arbitration has been applied.
+### 4. S2 no-metric diagnosis
+For S2 / 冠豪高新, do not force extraction.
 
-If metrics exist but many rows are manual due semantic risk, use WARN_SEMANTIC_GUARD.
+Instead, add a clear diagnostic table explaining why no metrics are detected:
+- raw table count
+- year evidence count
+- text label examples
+- keyword hit examples or lack thereof
+- whether labels appear fragmented
+- whether negative values exist but labels are missing
+- recommended follow-up: extraction heuristic tuning / AI repair / manual visual review
+
+### 5. Evaluation targets
+This task should improve or at least diagnose without reintroducing unsafe duplicates.
+
+Expected direction, not a strict requirement:
+- S1 likely_core_metric_trial rows should increase from 4 if safe allowlist evidence exists.
+- S3 likely_core_metric_trial rows may increase modestly if safe table-role/label evidence exists.
+- S2 may remain WARN_NO_METRICS if source labels are not recoverable.
+- remaining_likely_core_duplicates_count must stay 0.
+- source_row_semantic_risk rows must not become likely_core_metric_trial.
 
 ## rerun_requirements
 Use existing trial assets only:
@@ -191,37 +225,39 @@ Do not reprocess PDFs.
 
 ## report_requirements
 Generate:
-- D:\_datefac\output\delivery_package\33_stage1_standardizer_semantic_guard_log.md
-- D:\_datefac\output\delivery_package\33_stage1_standardizer_semantic_guard_log.xlsx
+- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.md
+- D:\_datefac\output\delivery_package\35_stage1_standardizer_allowlist_prior_log.xlsx
 
-33 report must include:
+35 report must include:
 - task_title
 - started_at / finished_at
 - commands_run
 - files_read
 - files_changed
-- semantic_guard_summary
-- duplicate_arbitration_summary
+- allowlist_summary
+- table_role_prior_summary
+- s2_no_metric_diagnosis_summary
 - production_guard_changed_count
 - safety_checks
 
 Generate:
-- D:\_datefac\output\delivery_package\34_stage1_standardizer_semantic_guard_evaluation.md
-- D:\_datefac\output\delivery_package\34_stage1_standardizer_semantic_guard_evaluation.xlsx
+- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.md
+- D:\_datefac\output\delivery_package\36_stage1_standardizer_allowlist_prior_evaluation.xlsx
 
-34 report must include:
+36 report must include:
 - sandbox_standardizer_status
 - production_delivery_status_after
 - per_sample_status
 - likely_core_metric_trial_rows
 - manual_review_candidate_rows
 - source_row_semantic_risk_count
-- broad_keyword_unsafe_count
 - forbidden_source_label_count
 - duplicate_metric_year_groups_before_after
-- duplicate_metric_year_non_preferred_count
 - remaining_likely_core_duplicates_count
+- safe_promotions_count
+- promotion_reason_summary
 - target_metric_coverage
+- s2_no_metric_diagnosis
 - blockers
 - recommended_next_step
 
@@ -230,8 +266,10 @@ Excel sheets required:
 - per_sample_status
 - standardized_trial_rows
 - manual_review_candidates
-- semantic_risk_rows
-- duplicate_arbitration
+- safe_promotions
+- promotion_reason_summary
+- table_role_priors
+- s2_no_metric_diagnosis
 - target_metric_coverage
 - production_guard
 - safety_checks
@@ -242,23 +280,25 @@ This task passes if:
 1. py_compile passes.
 2. --help passes.
 3. sandbox standardizer reruns using trial assets only.
-4. obvious semantic false positives are not likely_core_metric_trial.
-5. rows with source_row_semantic_risk or forbidden_source_label_for_metric are routed to manual_review_candidate.
-6. duplicate arbitration reduces likely_core duplicate groups to 0, or every remaining duplicate is explicitly justified.
-7. production 01/02/02A/06 are unchanged.
-8. production delivery remains PASS.
-9. no factory_core/marker/surya/vision/PaddleOCR/model download occurred.
-10. 33/34 reports are generated.
-11. output artifacts are not committed.
+4. metric-specific source-label allowlists are implemented.
+5. table-role priors are implemented or explicitly reported as unavailable from current trial metadata.
+6. hard-risk rows remain manual_review_candidate.
+7. duplicate likely_core groups remain 0.
+8. S2 no-metric condition is diagnosed, not silently ignored.
+9. production 01/02/02A/06 are unchanged.
+10. production delivery remains PASS.
+11. no factory_core/marker/surya/vision/PaddleOCR/model download occurred.
+12. 35/36 reports are generated.
+13. output artifacts are not committed.
 
-A WARN/PARTIAL status is acceptable if S1/S2/S3 still require manual review, provided unsafe rows are not promoted.
+A WARN/PARTIAL status is acceptable if S2 remains no-metric or S1/S3 still require manual review, provided unsafe rows are not promoted.
 
 ## update_worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_harden_stage1_standardizer_semantic_guards.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_add_stage1_standardizer_allowlists_priors.md
 
 Worklog must be English only and UTF-8.
 
@@ -274,8 +314,9 @@ Worklog must include:
 - files_generated
 - sandbox_standardizer_status
 - per_sample_status_summary
-- semantic_guard_summary
-- duplicate_arbitration_summary
+- allowlist_summary
+- table_role_prior_summary
+- s2_no_metric_diagnosis_summary
 - result_summary
 - remaining_issues
 - next_step_suggestion
@@ -288,17 +329,17 @@ Allowed to commit:
 - docs/codex_worklog/history/
 
 Do not commit:
-- output/delivery_package/33_stage1_standardizer_semantic_guard_log.md
-- output/delivery_package/33_stage1_standardizer_semantic_guard_log.xlsx
-- output/delivery_package/34_stage1_standardizer_semantic_guard_evaluation.md
-- output/delivery_package/34_stage1_standardizer_semantic_guard_evaluation.xlsx
+- output/delivery_package/35_stage1_standardizer_allowlist_prior_log.md
+- output/delivery_package/35_stage1_standardizer_allowlist_prior_log.xlsx
+- output/delivery_package/36_stage1_standardizer_allowlist_prior_evaluation.md
+- output/delivery_package/36_stage1_standardizer_allowlist_prior_evaluation.xlsx
 - output/_stage1_safe_runner_trial/**
 - any output artifacts
 
 Commit:
 ```bat
 git add tools/run_stage1_safe_nonvision_pipeline.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "harden stage1 standardizer semantic guards"
+git commit -m "add stage1 standardizer allowlists and priors"
 git push origin main
 ```
 
@@ -309,11 +350,11 @@ After completion, output:
 3. help_status
 4. sandbox_standardizer_status
 5. per_sample_status_summary
-6. source_row_semantic_risk_count
-7. broad_keyword_unsafe_count
-8. forbidden_source_label_count
-9. duplicate_metric_year_groups_before_after
-10. remaining_likely_core_duplicates_count
+6. safe_promotions_count
+7. remaining_likely_core_duplicates_count
+8. source_row_semantic_risk_count
+9. forbidden_source_label_count
+10. s2_no_metric_diagnosis_summary
 11. generated_reports
 12. production_delivery_status_after
 13. production_files_unchanged
@@ -322,7 +363,7 @@ After completion, output:
 16. commit sha
 
 ## safety_notes
-- This task only hardens sandbox standardizer trial output.
+- This task only improves sandbox standardizer scoring and safe promotion.
 - Do not write Stage 1 results into production delivery_package.
 - Do not run factory_core.py.
 - Do not trigger vision/OCR/model backends.
