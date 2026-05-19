@@ -1,40 +1,33 @@
 # NEXT CODEX TASK
 
 ## task_title
-Add Stage 1 AI repair guardrail replay tests
+Add Stage 1 AI repair deterministic extract replay set
 
 ## project
 D:\_datefac
 
 ## current_status
-The Stage 1 AI repair offline file replay validation has completed and was committed.
-
-Latest committed result:
-- commit: ae261af add stage1 ai repair offline replay
+The Stage 1 AI repair guardrail replay tests have completed successfully.
 
 Latest user-uploaded/reviewed outputs:
-- D:\_datefac\output\delivery_package\42_stage1_ai_repair_offline_replay_log.md
-- D:\_datefac\output\delivery_package\42_stage1_ai_repair_offline_replay_log.xlsx
-- D:\_datefac\output\delivery_package\43_stage1_ai_repair_offline_replay_evaluation.md
-- D:\_datefac\output\delivery_package\43_stage1_ai_repair_offline_replay_evaluation.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_offline_replay\ai_repair_results.jsonl
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_offline_replay\ai_repair_results.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_offline_replay\ai_repair_candidates.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_offline_replay\ai_repair_validation.xlsx
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_offline_replay\ai_repair_merge_preview.xlsx
+- D:\_datefac\output\delivery_package\44_stage1_ai_repair_guardrail_tests_log.md
+- D:\_datefac\output\delivery_package\44_stage1_ai_repair_guardrail_tests_log.xlsx
+- D:\_datefac\output\delivery_package\45_stage1_ai_repair_guardrail_tests_evaluation.md
+- D:\_datefac\output\delivery_package\45_stage1_ai_repair_guardrail_tests_evaluation.xlsx
 
-Key result from 42/43:
-- task_title = Add Stage 1 AI repair offline file replay validation
-- provider = offline_file
-- processed_task_count = 77
-- response_file_task_count = 2
-- decision_counts = {manual_review: 76, ignore: 1}
-- extracted_candidate_count = 0
-- schema_validation_status = PASS
-- extraction_value_evidence_check_status = PASS
-- unknown_response_task_count = 0
-- duplicate_response_task_count = 0
-- missing_response_task_count = 75
+Key result from 44/45:
+- task_title = Add Stage 1 AI repair guardrail replay tests
+- guardrail_test_status = PASS
+- total_cases = 9
+- passed_cases = 9
+- failed_cases = 0
+- skipped_cases = 0
+- fabricated_value_blocking_status = PASS
+- unknown_task_id_blocking_status = PASS
+- duplicate_task_id_blocking_status = PASS
+- malformed_json_blocking_status = PASS
+- missing_required_fields_blocking_status = PASS
+- invalid_decision_blocking_status = PASS
 - production_delivery_status_after = PASS / pass_count=17 / warn_count=0 / fail_count=0
 - production_files_unchanged = true
 - production_guard_changed_count = 0
@@ -44,41 +37,36 @@ Key result from 42/43:
 - no real AI inference call was made
 
 Interpretation:
-The offline_file provider path is working, but it was only a small happy-path replay with two responses. Before connecting any real local/cloud provider, the worker needs a guardrail replay test suite that verifies schema errors, duplicate task ids, unknown task ids, missing fields, fabricated values, invalid years, and safe demotion behavior.
+The worker guardrails now block invalid or unsafe AI outputs. Before connecting a real provider, we need a larger deterministic extract replay set that proves the happy extract path works: valid evidence-based extract responses should pass schema/evidence checks, enter `ai_candidate_for_rule_validation`, and appear in merge preview without touching production data.
 
 ## goal
-Add a sandbox-only AI repair guardrail replay test suite.
+Build and validate a larger deterministic offline extract replay set for Stage 1 AI repair.
 
-This task must create controlled offline response files representing valid and invalid model outputs, run the worker against them, and generate reports that prove invalid outputs are blocked or safely demoted.
+This task must remain sandbox-only and offline-only. It must not call a real model.
 
 Target code:
 - D:\_datefac\tools\run_stage1_ai_repair_worker.py
-
-Recommended new helper:
 - D:\_datefac\tools\build_stage1_ai_repair_guardrail_cases.py
 
+You may add a new helper if cleaner:
+- D:\_datefac\tools\build_stage1_ai_repair_extract_replay_set.py
+
 Target local reports:
-- D:\_datefac\output\delivery_package\44_stage1_ai_repair_guardrail_tests_log.md
-- D:\_datefac\output\delivery_package\44_stage1_ai_repair_guardrail_tests_log.xlsx
-- D:\_datefac\output\delivery_package\45_stage1_ai_repair_guardrail_tests_evaluation.md
-- D:\_datefac\output\delivery_package\45_stage1_ai_repair_guardrail_tests_evaluation.xlsx
+- D:\_datefac\output\delivery_package\46_stage1_ai_repair_extract_replay_log.md
+- D:\_datefac\output\delivery_package\46_stage1_ai_repair_extract_replay_log.xlsx
+- D:\_datefac\output\delivery_package\47_stage1_ai_repair_extract_replay_evaluation.md
+- D:\_datefac\output\delivery_package\47_stage1_ai_repair_extract_replay_evaluation.xlsx
 
-Sandbox guardrail dir:
-- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_guardrail_tests
+Sandbox extract replay dir:
+- D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315\ai_repair_extract_replay
 
-Expected files under guardrail dir:
-- guardrail_case_valid_manual_review.jsonl
-- guardrail_case_valid_ignore.jsonl
-- guardrail_case_valid_extract_if_possible.jsonl
-- guardrail_case_unknown_task_id.jsonl
-- guardrail_case_duplicate_task_id.jsonl
-- guardrail_case_fabricated_value.jsonl
-- guardrail_case_invalid_decision.jsonl
-- guardrail_case_missing_required_fields.jsonl
-- guardrail_case_malformed_json.jsonl
-- per_case_results\<case_name>\ai_repair_results.jsonl
-- per_case_results\<case_name>\ai_repair_validation.xlsx
-- per_case_results\<case_name>\ai_repair_merge_preview.xlsx
+Expected sandbox files:
+- extract_replay_responses.jsonl
+- ai_repair_results.jsonl
+- ai_repair_results.xlsx
+- ai_repair_candidates.xlsx
+- ai_repair_validation.xlsx
+- ai_repair_merge_preview.xlsx
 
 ## absolute_hard_constraints
 1. Do not run factory_core.py.
@@ -102,138 +90,102 @@ Expected files under guardrail dir:
 
 ## implementation_requirements
 
-### 1. Improve worker validation if needed
-Ensure `run_stage1_ai_repair_worker.py` can clearly report these validation conditions:
-- unknown_response_task_id
-- duplicate_response_task_id
-- missing_response_task_id
-- malformed_json_line
-- missing_required_fields
-- invalid_decision
-- value_not_in_evidence
-- year_not_in_evidence
-- metric_not_allowed_or_not_in_evidence
-- schema_validation_failed
-
-Invalid extracts must not become `ai_candidate_for_rule_validation`.
-They must be blocked, demoted to manual_review_candidate, or cause case-level FAIL depending on severity.
-
-### 2. Build controlled guardrail cases
-Create helper `build_stage1_ai_repair_guardrail_cases.py` that reads:
+### 1. Construct deterministic extract responses from packet evidence only
+Read:
 - D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl
 - D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json
 
-It should generate offline response JSONL cases under guardrail dir.
+Build 3 to 8 valid extract responses if possible.
 
-Case expectations:
+Rules:
+- Every extracted value must be copied from evidence exactly or in normalized numeric form.
+- Every extracted year must appear in detected_years or evidence text.
+- Every standard_metric must be in the target metric list or clearly present in evidence.
+- Prefer tasks with task_type:
+  - row_segment_repair
+  - metric_year_value_alignment
+- If not enough safe row-level extract tasks exist, use only those that are deterministic and document shortage.
+- Do not fabricate values just to reach target count.
 
-1. `valid_manual_review`
-- At least 2 known repair_task_id responses.
-- decision = manual_review.
-- Expected worker status: PASS or WARN only due missing responses.
+### 2. Include mixed decision replay
+The replay file should include:
+- valid extract responses, if deterministic evidence allows;
+- manual_review responses for ambiguous cases;
+- ignore responses for clearly unsafe semantic guard cases, if present.
 
-2. `valid_ignore`
-- At least 1 known repair_task_id.
-- decision = ignore.
-- Expected: PASS/WARN, route ignore.
+Goal:
+- at least 1 extract candidate if possible;
+- at least 1 manual_review;
+- at least 1 ignore;
+- no invalid response should be included in this replay set.
 
-3. `valid_extract_if_possible`
-- Only create if exact value/year evidence can be deterministically found in a repair task.
-- decision = extract with value copied exactly from evidence.
-- If no safe extract can be built, generate a case file with metadata explaining skipped, and mark as SKIP in evaluation.
+### 3. Worker evidence and merge behavior
+Run worker with provider `offline_file` and the generated `extract_replay_responses.jsonl`.
 
-4. `unknown_task_id`
-- Response references repair_task_id not in packet.
-- Expected: validation FAIL for this case.
+Expected behavior:
+- valid extracts pass schema validation;
+- valid extracts pass evidence check;
+- valid extracts route to `ai_candidate_for_rule_validation` in merge preview;
+- manual_review routes to `manual_review_candidate`;
+- ignore routes to `ignore`;
+- missing responses safely default to manual_review with `offline_response_missing` or equivalent flag;
+- production files remain unchanged.
 
-5. `duplicate_task_id`
-- Same repair_task_id appears twice.
-- Expected: validation FAIL for this case.
-
-6. `fabricated_value`
-- Response extracts a value not present in evidence.
-- Expected: evidence check FAIL or extract demoted, and no ai_candidate_for_rule_validation.
-
-7. `invalid_decision`
-- decision outside extract/manual_review/ignore/non_target.
-- Expected: validation FAIL.
-
-8. `missing_required_fields`
-- missing decision or repair_task_id or required arrays.
-- Expected: validation FAIL.
-
-9. `malformed_json`
-- contains a syntactically invalid JSON line.
-- Expected: validation FAIL.
-
-### 3. Case runner
-Either add a CLI option to the worker or implement case orchestration in the helper.
-
-The task should run the worker against every generated case file using `--provider offline_file`.
-
-Each case should capture:
-- case_name
-- case_path
-- expected_status
-- actual_status
-- expected_failure_type
-- actual_validation_flags
-- processed_task_count
-- response_file_task_count
-- decision_counts
-- schema_validation_status
-- evidence_check_status
-- extracted_candidate_count
-- invalid_extract_candidate_count
-- production_guard_changed_count
-
-### 4. Reports 44/45
+### 4. Reports 46/47
 Generate:
-- D:\_datefac\output\delivery_package\44_stage1_ai_repair_guardrail_tests_log.md
-- D:\_datefac\output\delivery_package\44_stage1_ai_repair_guardrail_tests_log.xlsx
+- D:\_datefac\output\delivery_package\46_stage1_ai_repair_extract_replay_log.md
+- D:\_datefac\output\delivery_package\46_stage1_ai_repair_extract_replay_log.xlsx
 
-44 report must include:
+46 report must include:
 - task_title
 - started_at / finished_at
 - commands_run
 - packet_path
 - schema_path
-- guardrail_dir
-- case_files_generated
-- per_case_commands
+- extract_replay_dir
+- response_file_path
+- response_file_task_count
+- extract_response_count
+- manual_review_response_count
+- ignore_response_count
 - output_files_generated
 - production_guard_changed_count
 - safety_checks
 
 Generate:
-- D:\_datefac\output\delivery_package\45_stage1_ai_repair_guardrail_tests_evaluation.md
-- D:\_datefac\output\delivery_package\45_stage1_ai_repair_guardrail_tests_evaluation.xlsx
+- D:\_datefac\output\delivery_package\47_stage1_ai_repair_extract_replay_evaluation.md
+- D:\_datefac\output\delivery_package\47_stage1_ai_repair_extract_replay_evaluation.xlsx
 
-45 report must include:
-- guardrail_test_status: PASS / WARN / FAIL
-- total_cases
-- passed_cases
-- failed_cases
-- skipped_cases
-- per_case_result_summary
-- invalid_output_blocking_summary
-- fabricated_value_blocking_status
-- unknown_task_id_blocking_status
-- duplicate_task_id_blocking_status
-- malformed_json_blocking_status
-- missing_required_fields_blocking_status
-- invalid_decision_blocking_status
+47 report must include:
+- extract_replay_status: PASS / WARN / FAIL
+- processed_task_count
+- response_file_task_count
+- decision_counts
+- extracted_candidate_count
+- ai_candidate_for_rule_validation_count
+- manual_review_candidate_count
+- ignore_count
+- schema_validation_status
+- evidence_check_status
+- invalid_extract_count
+- value_not_in_evidence_count
+- year_not_in_evidence_count
+- merge_preview_summary
+- sample_extract_summary
+- target_metric_extract_summary
 - production_delivery_status_after
 - production_files_unchanged
 - recommended_next_step
 
 Excel sheets required:
 - summary
-- case_inventory
-- per_case_results
-- validation_flags
-- invalid_output_blocking
-- fabricated_value_tests
+- response_inventory
+- task_results
+- extracted_candidates
+- evidence_check
+- merge_preview
+- sample_extract_summary
+- target_metric_extract_summary
 - production_guard
 - safety_checks
 - next_steps
@@ -243,42 +195,50 @@ Run:
 ```bat
 D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\run_stage1_ai_repair_worker.py
 D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\build_stage1_ai_repair_guardrail_cases.py
-D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\build_stage1_ai_repair_guardrail_cases.py ^
+```
+
+If a new helper is created:
+```bat
+D:\anaconda\envs\factory_v4\python.exe -m py_compile D:\_datefac\tools\build_stage1_ai_repair_extract_replay_set.py
+D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\build_stage1_ai_repair_extract_replay_set.py ^
   --packet-jsonl D:\_datefac\output\delivery_package\37_stage1_ai_repair_input_packet.jsonl ^
   --schema-json D:\_datefac\output\delivery_package\38_stage1_ai_repair_schema.json ^
   --trial-run-root D:\_datefac\output\_stage1_safe_runner_trial\run_20260519_101315 ^
-  --delivery-dir D:\_datefac\output\delivery_package
+  --delivery-dir D:\_datefac\output\delivery_package ^
+  --max-extracts 8
+```
+
+If the existing guardrail helper is extended instead, run that helper with an explicit extract replay mode.
+
+At end run:
+```bat
 D:\anaconda\envs\factory_v4\python.exe D:\_datefac\tools\check_delivery_state.py --json
 ```
 
-If the helper invokes the worker internally for each case, do not separately run each worker command by hand unless needed for debugging.
-
 ## acceptance_criteria
 This task passes if:
-1. py_compile passes for worker and guardrail helper.
-2. Guardrail case files are generated.
-3. Worker is run against each relevant case using offline_file only.
-4. Valid manual_review/ignore cases pass or warn only for missing responses.
-5. Unknown task id is detected.
-6. Duplicate task id is detected.
-7. Fabricated value is detected and does not produce accepted candidate.
-8. Invalid decision is detected.
-9. Missing required fields are detected.
-10. Malformed JSON is detected.
-11. 44/45 reports are generated.
-12. Production 01/02/02A/06 are unchanged.
-13. Production delivery remains PASS.
-14. No factory_core/marker/surya/vision/PaddleOCR/model download occurred.
-15. Output artifacts are not committed.
+1. py_compile passes for all changed helpers.
+2. Extract replay response JSONL is generated.
+3. Worker runs offline_file with the extract replay JSONL.
+4. At least one safe extract candidate is accepted if deterministic evidence exists.
+5. If no safe extract can be built, status is WARN with exact reason, not fake PASS.
+6. Every accepted extract value passes evidence check.
+7. No invalid extract becomes `ai_candidate_for_rule_validation`.
+8. Merge preview contains valid route counts.
+9. 46/47 reports are generated.
+10. Production 01/02/02A/06 are unchanged.
+11. Production delivery remains PASS.
+12. No factory_core/marker/surya/vision/PaddleOCR/model download occurred.
+13. Output artifacts are not committed.
 
-A WARN status is acceptable if valid_extract_if_possible is skipped because no deterministic safe extract could be constructed.
+A WARN status is acceptable if safe extract coverage is limited, provided evidence checks are strict.
 
 ## update_worklog
 Update:
 - docs/codex_worklog/LATEST.md
 
 Create:
-- docs/codex_worklog/history/YYYYMMDD_HHMMSS_add_stage1_ai_repair_guardrail_tests.md
+- docs/codex_worklog/history/YYYYMMDD_HHMMSS_add_stage1_ai_repair_extract_replay.md
 
 Worklog must be English only and UTF-8.
 
@@ -292,9 +252,10 @@ Worklog must include:
 - files_read
 - files_changed
 - files_generated
-- guardrail_test_status
-- per_case_result_summary
-- validation_status_summary
+- extract_replay_status
+- decision_counts
+- extracted_candidate_count
+- evidence_check_status
 - production_delivery_status_after
 - result_summary
 - remaining_issues
@@ -303,50 +264,51 @@ Worklog must include:
 
 ## git_commit
 Allowed to commit:
-- tools/run_stage1_ai_repair_worker.py
-- tools/build_stage1_ai_repair_guardrail_cases.py
+- tools/run_stage1_ai_repair_worker.py if modified
+- tools/build_stage1_ai_repair_guardrail_cases.py if modified
+- tools/build_stage1_ai_repair_extract_replay_set.py if created
 - docs/codex_worklog/LATEST.md
 - docs/codex_worklog/history/
 
 Do not commit:
-- output/delivery_package/44_stage1_ai_repair_guardrail_tests_log.md
-- output/delivery_package/44_stage1_ai_repair_guardrail_tests_log.xlsx
-- output/delivery_package/45_stage1_ai_repair_guardrail_tests_evaluation.md
-- output/delivery_package/45_stage1_ai_repair_guardrail_tests_evaluation.xlsx
+- output/delivery_package/46_stage1_ai_repair_extract_replay_log.md
+- output/delivery_package/46_stage1_ai_repair_extract_replay_log.xlsx
+- output/delivery_package/47_stage1_ai_repair_extract_replay_evaluation.md
+- output/delivery_package/47_stage1_ai_repair_extract_replay_evaluation.xlsx
 - output/_stage1_safe_runner_trial/**
 - any output artifacts
 
 Commit:
 ```bat
-git add tools/run_stage1_ai_repair_worker.py tools/build_stage1_ai_repair_guardrail_cases.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
-git commit -m "add stage1 ai repair guardrail replay tests"
+git add tools/run_stage1_ai_repair_worker.py tools/build_stage1_ai_repair_guardrail_cases.py tools/build_stage1_ai_repair_extract_replay_set.py docs/codex_worklog/LATEST.md docs/codex_worklog/history/
+git commit -m "add stage1 ai repair extract replay set"
 git push origin main
 ```
+
+If some listed files are unchanged or missing, adjust git add accordingly.
 
 ## expected_final_response
 After completion, output:
 1. task_title
 2. worker_path
-3. guardrail_helper_path
+3. extract_replay_helper_path
 4. py_compile_status
-5. guardrail_test_status
-6. total_cases / passed_cases / failed_cases / skipped_cases
-7. per_case_result_summary
-8. fabricated_value_blocking_status
-9. unknown_task_id_blocking_status
-10. duplicate_task_id_blocking_status
-11. malformed_json_blocking_status
-12. missing_required_fields_blocking_status
-13. invalid_decision_blocking_status
-14. generated_outputs
-15. production_delivery_status_after
-16. production_files_unchanged
-17. factory_core/vision/model_download_status
-18. next_step_suggestion
-19. commit sha
+5. extract_replay_status
+6. response_file_task_count
+7. decision_counts
+8. extracted_candidate_count
+9. ai_candidate_for_rule_validation_count
+10. evidence_check_status
+11. invalid_extract_count
+12. generated_outputs
+13. production_delivery_status_after
+14. production_files_unchanged
+15. factory_core/vision/model_download_status
+16. next_step_suggestion
+17. commit sha
 
 ## safety_notes
-- This task validates guardrails only.
+- This task validates deterministic extract replay only.
 - It must not call a real model.
 - It must not write AI results into production delivery_package.
 - It must not run factory_core.py.
