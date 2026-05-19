@@ -68,6 +68,99 @@ STANDARD_METRIC_PRIORITY = [
     "净利率",
 ]
 
+AMOUNT_METRICS = {"营业收入", "归属母公司净利润", "EBITDA"}
+RATE_METRICS = {"ROE", "毛利率", "净利率"}
+VALUATION_METRICS = {"P/E", "P/B", "EV/EBITDA"}
+SEMANTIC_RISK_FLAGS = {
+    "multi_metric_row_ambiguous",
+    "ambiguous_year_value_alignment",
+    "ambiguous_multi_numeric_cell",
+    "no_year_columns",
+    "standardizer_no_metric_candidates",
+    "source_row_semantic_risk",
+    "forbidden_source_label_for_metric",
+    "broad_keyword_unsafe",
+    "duplicate_metric_year_non_preferred",
+}
+FORBIDDEN_ACCOUNT_HINTS = [
+    "管理费用",
+    "财务费用",
+    "销售费用",
+    "研发费用",
+    "应收票据",
+    "应收账款",
+    "应收和预付款项",
+    "预付款项",
+    "预收账款",
+    "存货",
+    "固定资产",
+    "无形资产",
+    "资产总计",
+    "负债合计",
+    "短期借款",
+    "应付账款",
+    "现金流量",
+    "经营活动现金流",
+    "投资收益",
+    "税金及附加",
+    "营业成本",
+    "营业税金及附加",
+]
+REVENUE_SAFE_LABEL_HINTS = [
+    "营业收入",
+    "主营业务收入",
+    "收入",
+    "合计收入",
+]
+REVENUE_UNSAFE_LABEL_HINTS = [
+    "销售收入增长率",
+    "现金流量/营业收入",
+    "应收和预付款项",
+    "预收账款",
+    "营业成本",
+    "营业税金及附加",
+]
+FORBIDDEN_SOURCE_LABEL_BY_METRIC = {
+    "营业收入": [
+        "应收和预付款项",
+        "预收账款",
+        "营业成本",
+        "营业税金及附加",
+        "销售收入增长率",
+        "现金流量/营业收入",
+    ],
+    "归属母公司净利润": [
+        "现金流量净额",
+        "经营活动现金流",
+        "其他",
+        "少数股东损益",
+    ],
+    "P/E": [
+        "每股指标",
+        "每股收益",
+        "每股经营现金",
+        "权益自由现金流",
+        "评级",
+        "投资建议",
+    ],
+    "P/B": [
+        "每股指标",
+        "每股收益",
+        "每股经营现金",
+        "权益自由现金流",
+        "评级",
+        "投资建议",
+    ],
+    "EV/EBITDA": [
+        "每股指标",
+        "每股收益",
+        "每股经营现金",
+        "权益自由现金流",
+        "评级",
+        "投资建议",
+    ],
+}
+
 SAFE_ENTRYPOINT_CANDIDATES = [
     r"D:\_datefac\tools\probe_pdf_tables.py",
     r"D:\_datefac\tools\probe_pdfplumber_profiles.py",
@@ -973,6 +1066,200 @@ def _parse_numeric(cell: str) -> Tuple[Optional[float], List[str]]:
     return None, flags
 
 
+def _split_flags(flag_text: str) -> List[str]:
+    return [x.strip() for x in _norm(flag_text).split("|") if x.strip()]
+
+
+def _join_flags(flags: List[str]) -> str:
+    return "|".join(sorted(set([x for x in flags if x])))
+
+
+def _contains_any(text: str, tokens: List[str]) -> bool:
+    t = _norm(text)
+    return any(_norm(tok) and _norm(tok) in t for tok in tokens)
+
+
+def _extract_source_label(row_values: List[str]) -> Tuple[str, int, List[str]]:
+    first_numeric_idx = -1
+    for idx, cell in enumerate(row_values):
+        val, _ = _parse_numeric(cell)
+        if val is not None:
+            first_numeric_idx = idx
+            break
+    if first_numeric_idx < 0:
+        first_numeric_idx = len(row_values)
+    source_label = ""
+    for idx in range(first_numeric_idx):
+        c = _norm(row_values[idx])
+        if c:
+            source_label = c
+            break
+    if not source_label:
+        for c in row_values:
+            c = _norm(c)
+            if c:
+                source_label = c
+                break
+    trailing_labels: List[str] = []
+    for idx in range(first_numeric_idx + 1, len(row_values)):
+        c = _norm(row_values[idx])
+        if not c:
+            continue
+        val, _ = _parse_numeric(c)
+        if val is not None:
+            continue
+        if YEAR_RE.fullmatch(c):
+            continue
+        trailing_labels.append(c)
+    return source_label, first_numeric_idx, trailing_labels
+
+
+def _metric_label_match_type(std_metric: str, source_label: str, row_text: str) -> str:
+    aliases = [_norm(x) for x in STANDARD_METRIC_MAP.get(std_metric, [std_metric]) if _norm(x)]
+    src_u = _norm(source_label).upper()
+    row_u = _norm(row_text).upper()
+    if any(src_u == a.upper() for a in aliases):
+        return "source_label_exact"
+    if any(a.upper() in src_u for a in aliases):
+        return "source_label_contains_alias"
+    if any(a.upper() in row_u for a in aliases):
+        return "row_text_alias_only"
+    return "no_alias_match"
+
+
+def _semantic_guard_flags(std_metric: str, source_label: str, row_text: str, trailing_labels: List[str]) -> List[str]:
+    flags: List[str] = []
+    src = _norm(source_label)
+    row = _norm(row_text)
+    trailing_joined = " | ".join([_norm(x) for x in trailing_labels if _norm(x)])
+    trailing_has_account = _contains_any(trailing_joined, FORBIDDEN_ACCOUNT_HINTS)
+    source_has_account = _contains_any(src, FORBIDDEN_ACCOUNT_HINTS)
+
+    if std_metric == "营业收入" and "收入" in src:
+        source_is_safe = _contains_any(src, REVENUE_SAFE_LABEL_HINTS) and not _contains_any(src, REVENUE_UNSAFE_LABEL_HINTS)
+        row_has_unsafe_pattern = _contains_any(row, REVENUE_UNSAFE_LABEL_HINTS) or ("增长率" in row) or ("现金流量" in row)
+        if not source_is_safe or row_has_unsafe_pattern:
+            flags.append("broad_keyword_unsafe")
+
+    metric_forbidden = FORBIDDEN_SOURCE_LABEL_BY_METRIC.get(std_metric, [])
+    if _contains_any(src, metric_forbidden) or _contains_any(trailing_joined, metric_forbidden):
+        flags.append("forbidden_source_label_for_metric")
+
+    if trailing_labels and (trailing_has_account or _contains_any(trailing_joined, METRIC_KEYWORDS)):
+        flags.append("source_row_semantic_risk")
+
+    if std_metric in VALUATION_METRICS:
+        aliases = [_norm(x).upper() for x in STANDARD_METRIC_MAP.get(std_metric, [std_metric]) if _norm(x)]
+        src_u = src.upper()
+        if not any(a in src_u for a in aliases):
+            flags.append("source_row_semantic_risk")
+
+    if std_metric in RATE_METRICS and source_has_account:
+        flags.append("forbidden_source_label_for_metric")
+
+    if std_metric == "归属母公司净利润" and (trailing_has_account or _contains_any(row, ["现金流量净额", "经营活动现金流", "少数股东损益"])):
+        flags.append("source_row_semantic_risk")
+
+    return sorted(set(flags))
+
+
+def _duplicate_row_score(row: Dict[str, object]) -> int:
+    score = 0
+    confidence = _norm(row.get("confidence")).lower()
+    if confidence == "high":
+        score += 40
+    elif confidence == "medium":
+        score += 20
+    else:
+        score += 5
+
+    match_type = _norm(row.get("source_label_match_type"))
+    if match_type == "source_label_exact":
+        score += 50
+    elif match_type == "source_label_contains_alias":
+        score += 25
+    elif match_type == "row_text_alias_only":
+        score += 10
+
+    flags = set(_split_flags(_norm(row.get("flags"))))
+    for hard in {"source_row_semantic_risk", "forbidden_source_label_for_metric", "broad_keyword_unsafe"}:
+        if hard in flags:
+            score -= 100
+    if "percent_value" in flags and _norm(row.get("standard_metric")) in AMOUNT_METRICS:
+        score -= 30
+    if "percent_value" in flags and _norm(row.get("standard_metric")) in RATE_METRICS:
+        score += 10
+
+    score -= len(flags)
+    return score
+
+
+def _apply_duplicate_arbitration(standardized_rows: List[Dict[str, object]]) -> Tuple[List[Dict[str, object]], List[Dict[str, object]], int]:
+    groups: Dict[Tuple[str, str, str], List[int]] = {}
+    for idx, row in enumerate(standardized_rows):
+        key = (_norm(row.get("sample_id")), _norm(row.get("standard_metric")), _norm(row.get("year")))
+        if not key[0] or not key[1] or not key[2]:
+            continue
+        groups.setdefault(key, []).append(idx)
+
+    summary: List[Dict[str, object]] = []
+    remaining_likely_duplicates = 0
+    for key, idxs in groups.items():
+        sample_id, metric, year = key
+        before_likely = sum(1 for i in idxs if _norm(standardized_rows[i].get("route_recommendation")) == "likely_core_metric_trial")
+        if len(idxs) <= 1:
+            row = standardized_rows[idxs[0]]
+            row["preferred_duplicate"] = "1"
+            row["duplicate_resolution_reason"] = "single_row"
+            row["semantic_score"] = _duplicate_row_score(row)
+            continue
+
+        scored = []
+        for i in idxs:
+            row = standardized_rows[i]
+            score = _duplicate_row_score(row)
+            row["semantic_score"] = score
+            scored.append((score, i))
+        scored.sort(key=lambda x: (-x[0], x[1]))
+        best_idx = scored[0][1]
+        reason = f"highest_semantic_score={scored[0][0]}"
+
+        for i in idxs:
+            row = standardized_rows[i]
+            existing_flags = _split_flags(_norm(row.get("flags")))
+            if "duplicate_metric_year_in_sample" not in existing_flags:
+                existing_flags.append("duplicate_metric_year_in_sample")
+            if i == best_idx:
+                row["preferred_duplicate"] = "1"
+                row["duplicate_resolution_reason"] = reason
+            else:
+                row["preferred_duplicate"] = "0"
+                row["duplicate_resolution_reason"] = f"non_preferred_vs_{best_idx}"
+                if "duplicate_metric_year_non_preferred" not in existing_flags:
+                    existing_flags.append("duplicate_metric_year_non_preferred")
+                if _norm(row.get("route_recommendation")) == "likely_core_metric_trial":
+                    row["route_recommendation"] = "manual_review_candidate"
+                    row["confidence"] = "low"
+            row["flags"] = _join_flags(existing_flags)
+
+        after_likely = sum(1 for i in idxs if _norm(standardized_rows[i].get("route_recommendation")) == "likely_core_metric_trial")
+        if after_likely > 1:
+            remaining_likely_duplicates += 1
+        summary.append(
+            {
+                "sample_id": sample_id,
+                "standard_metric": metric,
+                "year": year,
+                "duplicate_count": len(idxs),
+                "likely_count_before": before_likely,
+                "likely_count_after": after_likely,
+                "preferred_index": best_idx,
+                "preferred_reason": reason,
+            }
+        )
+    return standardized_rows, summary, remaining_likely_duplicates
+
+
 def _standardize_table_sheet(
     sample_id: str,
     asset_package: str,
@@ -996,17 +1283,12 @@ def _standardize_table_sheet(
         )
         return standardized_rows, manual_rows, diag_rows
 
-    risky_flags = {
-        "multi_metric_row_ambiguous",
-        "ambiguous_year_value_alignment",
-        "ambiguous_multi_numeric_cell",
-        "no_year_columns",
-        "standardizer_no_metric_candidates",
-    }
+    risky_flags = set(SEMANTIC_RISK_FLAGS)
 
     for ridx in range(len(df)):
         row_values = [_norm(x) for x in df.iloc[ridx].tolist()]
         row_text = _row_text(row_values)
+        source_label, _, trailing_labels = _extract_source_label(row_values)
         metric_positions: List[Tuple[int, str]] = []
         row_upper = row_text.upper()
         for std in STANDARD_METRIC_PRIORITY:
@@ -1034,6 +1316,8 @@ def _standardize_table_sheet(
                     "source_page": page,
                     "source_table_index": table_index,
                     "source_row_index": ridx + 1,
+                    "source_label": source_label,
+                    "source_label_match_type": "multi_metric_ambiguous",
                     "row_preview": row_text[:300],
                     "confidence": "low",
                     "route_recommendation": "manual_review_candidate",
@@ -1042,6 +1326,8 @@ def _standardize_table_sheet(
             )
             continue
         std_metric = metric_positions[0][1]
+        label_match_type = _metric_label_match_type(std_metric, source_label, row_text)
+        semantic_flags = _semantic_guard_flags(std_metric, source_label, row_text, trailing_labels)
 
         extracted_any = False
         ambiguous_count = 0
@@ -1059,7 +1345,7 @@ def _standardize_table_sheet(
             extracted_values += 1
             route = "likely_core_metric_trial"
             confidence = "high" if len(year_cols) >= 3 else "medium"
-            row_flags = year_flags + flags
+            row_flags = year_flags + flags + semantic_flags
             if any(f in risky_flags for f in row_flags):
                 route = "manual_review_candidate"
                 confidence = "low"
@@ -1076,6 +1362,8 @@ def _standardize_table_sheet(
                     "source_page": page,
                     "source_table_index": table_index,
                     "source_row_index": ridx + 1,
+                    "source_label": source_label,
+                    "source_label_match_type": label_match_type,
                     "row_preview": row_text[:300],
                     "confidence": confidence,
                     "route_recommendation": route,
@@ -1083,7 +1371,7 @@ def _standardize_table_sheet(
                 }
             )
         if not extracted_any:
-            flags = ["ambiguous_year_value_alignment"]
+            flags = ["ambiguous_year_value_alignment"] + semantic_flags
             if ambiguous_count > 0:
                 flags.append("non_numeric_or_mixed_cells")
             manual_rows.append(
@@ -1099,6 +1387,8 @@ def _standardize_table_sheet(
                     "source_page": page,
                     "source_table_index": table_index,
                     "source_row_index": ridx + 1,
+                    "source_label": source_label,
+                    "source_label_match_type": label_match_type,
                     "row_preview": row_text[:300],
                     "confidence": "low",
                     "route_recommendation": "manual_review_candidate",
@@ -1120,10 +1410,12 @@ def _standardize_table_sheet(
                         "source_page": page,
                         "source_table_index": table_index,
                         "source_row_index": ridx + 1,
+                        "source_label": source_label,
+                        "source_label_match_type": label_match_type,
                         "row_preview": row_text[:300],
                         "confidence": "low",
                         "route_recommendation": "manual_review_candidate",
-                        "flags": "ambiguous_year_value_alignment",
+                        "flags": _join_flags(["ambiguous_year_value_alignment"] + semantic_flags),
                     }
                 )
     return standardized_rows, manual_rows, diag_rows
@@ -1286,13 +1578,7 @@ def _run_standardizer_for_sample(asset_dir: Path, default_sample_id: str, manife
     result["manual_rows"] = len(manual_rows)
     result["ignored_rows"] = 0
     risky_count = 0
-    risky_tokens = {
-        "multi_metric_row_ambiguous",
-        "ambiguous_year_value_alignment",
-        "ambiguous_multi_numeric_cell",
-        "no_year_columns",
-        "standardizer_no_metric_candidates",
-    }
+    risky_tokens = set(SEMANTIC_RISK_FLAGS)
     for row in manual_rows + standardized_rows:
         f = {x.strip() for x in _norm(row.get("flags")).split("|") if x.strip()}
         if f & risky_tokens:
@@ -1305,9 +1591,9 @@ def _run_standardizer_for_sample(asset_dir: Path, default_sample_id: str, manife
         result["sample_status"] = "WARN_NO_METRICS"
         result["error"] = "STANDARDIZER_NO_METRIC_CANDIDATES"
     elif len(standardized_rows) == 0 and len(manual_rows) > 0:
-        result["sample_status"] = "WARN_RISKY_ALIGNMENT"
+        result["sample_status"] = "WARN_SEMANTIC_GUARD"
     elif risky_count >= max(5, len(standardized_rows) // 2):
-        result["sample_status"] = "WARN_RISKY_ALIGNMENT"
+        result["sample_status"] = "WARN_SEMANTIC_GUARD"
     elif target_count < 3:
         result["sample_status"] = "PARTIAL"
     else:
@@ -1368,6 +1654,9 @@ def _write_29_30_reports(
     manual_rows: List[Dict[str, object]],
     risky_rows: List[Dict[str, object]],
     duplicate_summary: List[Dict[str, object]],
+    duplicate_groups_before: int,
+    duplicate_groups_after: int,
+    remaining_likely_duplicates_count: int,
     promoted_likely_rows: List[Dict[str, object]],
     routed_manual_rows: List[Dict[str, object]],
     production_guard_rows: List[Dict[str, str]],
@@ -1377,7 +1666,7 @@ def _write_29_30_reports(
     changed_count = sum(1 for r in production_guard_rows if r.get("changed") == "1")
     has_fail = any(_norm(r.get("sample_status")) == "FAIL" for r in per_sample_status)
     has_partial = any(_norm(r.get("sample_status")) == "PARTIAL" for r in per_sample_status)
-    has_warn = any(_norm(r.get("sample_status")) == "WARN" for r in per_sample_status)
+    has_warn = any(_norm(r.get("sample_status")).startswith("WARN") for r in per_sample_status)
     if changed_count > 0:
         status = "FAIL"
     elif has_fail and len(per_sample_status) == sum(1 for r in per_sample_status if _norm(r.get("sample_status")) == "FAIL"):
@@ -1430,13 +1719,28 @@ def _write_29_30_reports(
         blockers.append("no_standardized_rows")
     ready_samples = [r["sample_id"] for r in per_sample_metric_rows if int(r.get("metric_rows", 0) or 0) > 0]
 
+    source_row_semantic_risk_count = 0
+    broad_keyword_unsafe_count = 0
+    forbidden_source_label_count = 0
+    duplicate_non_preferred_count = 0
+    for row in standardized_rows + manual_rows:
+        fset = set(_split_flags(_norm(row.get("flags"))))
+        if "source_row_semantic_risk" in fset:
+            source_row_semantic_risk_count += 1
+        if "broad_keyword_unsafe" in fset:
+            broad_keyword_unsafe_count += 1
+        if "forbidden_source_label_for_metric" in fset:
+            forbidden_source_label_count += 1
+        if "duplicate_metric_year_non_preferred" in fset:
+            duplicate_non_preferred_count += 1
+
     report29_md = _safe_write_text(
-        delivery_dir / "31_stage1_standardizer_alignment_fix_log.md",
+        delivery_dir / "33_stage1_standardizer_semantic_guard_log.md",
         "\n".join(
             [
-                "# Stage1 Standardizer Alignment Fix Log",
+                "# Stage1 Standardizer Semantic Guard Log",
                 "",
-                "- task_title: Harden Stage 1 sandbox standardizer alignment",
+                "- task_title: Harden Stage 1 sandbox standardizer semantic guards",
                 f"- runner_path: {runner_path}",
                 f"- started_at: {started_at}",
                 f"- finished_at: {finished_at}",
@@ -1444,6 +1748,11 @@ def _write_29_30_reports(
                 f"- command_run: {command_run}",
                 f"- production_guard_changed_count: {changed_count}",
                 f"- sandbox_standardizer_status: {status}",
+                f"- source_row_semantic_risk_count: {source_row_semantic_risk_count}",
+                f"- broad_keyword_unsafe_count: {broad_keyword_unsafe_count}",
+                f"- forbidden_source_label_count: {forbidden_source_label_count}",
+                f"- duplicate_metric_year_groups_before_after: {duplicate_groups_before}->{duplicate_groups_after}",
+                f"- remaining_likely_core_duplicates_count: {remaining_likely_duplicates_count}",
             ]
         ),
     )
@@ -1451,7 +1760,7 @@ def _write_29_30_reports(
         {
             "summary": pd.DataFrame(
                 [
-                    {"field": "task_title", "value": "Harden Stage 1 sandbox standardizer alignment"},
+                    {"field": "task_title", "value": "Harden Stage 1 sandbox standardizer semantic guards"},
                     {"field": "runner_path", "value": str(runner_path)},
                     {"field": "started_at", "value": started_at},
                     {"field": "finished_at", "value": finished_at},
@@ -1459,39 +1768,53 @@ def _write_29_30_reports(
                     {"field": "command_run", "value": command_run},
                     {"field": "sandbox_standardizer_status", "value": status},
                     {"field": "production_guard_changed_count", "value": changed_count},
+                    {"field": "source_row_semantic_risk_count", "value": source_row_semantic_risk_count},
+                    {"field": "broad_keyword_unsafe_count", "value": broad_keyword_unsafe_count},
+                    {"field": "forbidden_source_label_count", "value": forbidden_source_label_count},
+                    {"field": "duplicate_metric_year_groups_before", "value": duplicate_groups_before},
+                    {"field": "duplicate_metric_year_groups_after", "value": duplicate_groups_after},
+                    {"field": "remaining_likely_core_duplicates_count", "value": remaining_likely_duplicates_count},
                 ]
             ),
             "files_read": pd.DataFrame([{"path": p} for p in files_read]),
             "files_generated": pd.DataFrame(generated_files),
             "sample_identity_mapping": pd.DataFrame(sample_identity_rows),
-            "per_sample_trial_standardizer_status": pd.DataFrame(per_sample_status),
-            "alignment_fix_summary": pd.DataFrame(
+            "per_sample_status": pd.DataFrame(per_sample_status),
+            "semantic_guard_summary": pd.DataFrame(
                 [
                     {
                         "risky_alignment_rows_count": len(risky_rows),
-                        "duplicate_metric_year_groups": len(duplicate_summary),
+                        "duplicate_metric_year_groups_before": duplicate_groups_before,
+                        "duplicate_metric_year_groups_after": duplicate_groups_after,
                         "rows_promoted_to_likely_core_metric_trial": len(promoted_likely_rows),
                         "rows_routed_to_manual_review_candidate": len(routed_manual_rows),
+                        "duplicate_metric_year_non_preferred_count": duplicate_non_preferred_count,
                     }
                 ]
             ),
+            "duplicate_arbitration": pd.DataFrame(duplicate_summary),
             "production_guard": pd.DataFrame(production_guard_rows),
             "safety_checks": pd.DataFrame(safety_checks),
         },
-        delivery_dir / "31_stage1_standardizer_alignment_fix_log.xlsx",
+        delivery_dir / "33_stage1_standardizer_semantic_guard_log.xlsx",
     )
 
     report30_md = _safe_write_text(
-        delivery_dir / "32_stage1_standardizer_alignment_fix_evaluation.md",
+        delivery_dir / "34_stage1_standardizer_semantic_guard_evaluation.md",
         "\n".join(
             [
-                "# Stage1 Standardizer Alignment Fix Evaluation",
+                "# Stage1 Standardizer Semantic Guard Evaluation",
                 "",
                 f"- sandbox_standardizer_status: {status}",
                 f"- production_delivery_status_after: {json.dumps(production_status_after, ensure_ascii=False)}",
                 f"- sample_identity_mapping: {json.dumps(sample_identity_rows, ensure_ascii=False)}",
                 f"- risky_alignment_rows_count: {len(risky_rows)}",
-                f"- duplicate_metric_year_summary_count: {len(duplicate_summary)}",
+                f"- source_row_semantic_risk_count: {source_row_semantic_risk_count}",
+                f"- broad_keyword_unsafe_count: {broad_keyword_unsafe_count}",
+                f"- forbidden_source_label_count: {forbidden_source_label_count}",
+                f"- duplicate_metric_year_groups_before_after: {duplicate_groups_before}->{duplicate_groups_after}",
+                f"- duplicate_metric_year_non_preferred_count: {duplicate_non_preferred_count}",
+                f"- remaining_likely_core_duplicates_count: {remaining_likely_duplicates_count}",
                 f"- samples_ready_for_sandbox_delivery_trial: {','.join(ready_samples)}",
                 f"- blockers: {'|'.join(blockers) if blockers else 'none'}",
             ]
@@ -1504,7 +1827,13 @@ def _write_29_30_reports(
                     {"field": "sandbox_standardizer_status", "value": status},
                     {"field": "production_delivery_status_after", "value": json.dumps(production_status_after, ensure_ascii=False)},
                     {"field": "risky_alignment_rows_count", "value": len(risky_rows)},
-                    {"field": "duplicate_metric_year_groups", "value": len(duplicate_summary)},
+                    {"field": "source_row_semantic_risk_count", "value": source_row_semantic_risk_count},
+                    {"field": "broad_keyword_unsafe_count", "value": broad_keyword_unsafe_count},
+                    {"field": "forbidden_source_label_count", "value": forbidden_source_label_count},
+                    {"field": "duplicate_metric_year_groups_before", "value": duplicate_groups_before},
+                    {"field": "duplicate_metric_year_groups_after", "value": duplicate_groups_after},
+                    {"field": "duplicate_metric_year_non_preferred_count", "value": duplicate_non_preferred_count},
+                    {"field": "remaining_likely_core_duplicates_count", "value": remaining_likely_duplicates_count},
                     {"field": "rows_promoted_to_likely_core_metric_trial", "value": len(promoted_likely_rows)},
                     {"field": "rows_routed_to_manual_review_candidate", "value": len(routed_manual_rows)},
                     {"field": "samples_ready_for_sandbox_delivery_trial", "value": "|".join(ready_samples)},
@@ -1515,8 +1844,8 @@ def _write_29_30_reports(
             "per_sample_status": pd.DataFrame(per_sample_metric_rows),
             "standardized_trial_rows": pd.DataFrame(standardized_rows),
             "manual_review_candidates": pd.DataFrame(manual_rows),
-            "risky_alignment_rows": pd.DataFrame(risky_rows),
-            "duplicate_metric_year_summary": pd.DataFrame(duplicate_summary),
+            "semantic_risk_rows": pd.DataFrame(risky_rows),
+            "duplicate_arbitration": pd.DataFrame(duplicate_summary),
             "flags_summary": pd.DataFrame(flags_summary),
             "target_metric_coverage": pd.DataFrame(coverage_rows),
             "production_guard": pd.DataFrame(production_guard_rows),
@@ -1524,12 +1853,12 @@ def _write_29_30_reports(
             "next_steps": pd.DataFrame(
                 [
                     {
-                        "recommended_next_step": "Review risky/manual rows first; only then proceed to sandbox delivery trial for ready samples.",
+                        "recommended_next_step": "Review manual and semantic-risk rows first, then build deterministic metric-to-source rules for remaining duplicates.",
                     }
                 ]
             ),
         },
-        delivery_dir / "32_stage1_standardizer_alignment_fix_evaluation.xlsx",
+        delivery_dir / "34_stage1_standardizer_semantic_guard_evaluation.xlsx",
     )
     return report29_md, report29_xlsx, report30_md, report30_xlsx, status
 
@@ -1553,6 +1882,7 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
     sample_identity_rows: List[Dict[str, object]] = []
     standardized_all: List[Dict[str, object]] = []
     manual_all: List[Dict[str, object]] = []
+    sample_results: List[Dict[str, object]] = []
 
     trial_std_root = trial_run_root / "standardizer_trial"
     trial_std_root.mkdir(parents=True, exist_ok=True)
@@ -1595,50 +1925,33 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
             standardized_all.extend(standardized_rows)
         if isinstance(manual_rows, list):
             manual_all.extend(manual_rows)
-        generated_files.extend(_write_sample_standardizer_outputs(trial_std_root, res))
+        sample_results.append(res)
 
-    dup_map: Dict[Tuple[str, str, str], Dict[str, object]] = {}
+    dup_map_before: Dict[Tuple[str, str, str], int] = {}
     for row in standardized_all:
         key = (_norm(row.get("sample_id")), _norm(row.get("standard_metric")), _norm(row.get("year")))
-        if not key[0] or not key[1] or not key[2]:
-            continue
-        if key not in dup_map:
-            dup_map[key] = {"count": 0, "tables": set()}
-        dup_map[key]["count"] += 1
-        dup_map[key]["tables"].add(f"{_norm(row.get('source_page'))}:{_norm(row.get('source_table_index'))}")
-    duplicate_summary = []
-    duplicate_keys = {k for k, v in dup_map.items() if int(v["count"]) > 1}
-    for key, payload in dup_map.items():
-        if key not in duplicate_keys:
-            continue
-        sample_id, metric, year = key
-        duplicate_summary.append(
-            {
-                "sample_id": sample_id,
-                "standard_metric": metric,
-                "year": year,
-                "duplicate_count": int(payload["count"]),
-                "source_table_count": len(payload["tables"]),
-                "source_tables": "|".join(sorted(payload["tables"])),
-            }
-        )
-    for row in standardized_all:
-        key = (_norm(row.get("sample_id")), _norm(row.get("standard_metric")), _norm(row.get("year")))
-        if key in duplicate_keys:
-            existing_flags = [x for x in _norm(row.get("flags")).split("|") if x]
-            if "duplicate_metric_year_in_sample" not in existing_flags:
-                existing_flags.append("duplicate_metric_year_in_sample")
-            if len(dup_map[key]["tables"]) > 1 and "multiple_source_tables_for_metric_year" not in existing_flags:
-                existing_flags.append("multiple_source_tables_for_metric_year")
-            row["flags"] = "|".join(existing_flags)
+        if key[0] and key[1] and key[2]:
+            dup_map_before[key] = dup_map_before.get(key, 0) + 1
+    duplicate_groups_before = sum(1 for _, c in dup_map_before.items() if c > 1)
 
-    risky_tokens = {
-        "multi_metric_row_ambiguous",
-        "ambiguous_year_value_alignment",
-        "ambiguous_multi_numeric_cell",
-        "no_year_columns",
-        "standardizer_no_metric_candidates",
-    }
+    standardized_all, duplicate_summary, remaining_likely_duplicates = _apply_duplicate_arbitration(standardized_all)
+
+    risky_tokens = set(SEMANTIC_RISK_FLAGS)
+    for row in standardized_all:
+        flags = set(_split_flags(_norm(row.get("flags"))))
+        if flags & risky_tokens and _norm(row.get("route_recommendation")) == "likely_core_metric_trial":
+            row["route_recommendation"] = "manual_review_candidate"
+            row["confidence"] = "low"
+
+    dup_map_after: Dict[Tuple[str, str, str], int] = {}
+    for row in standardized_all:
+        if _norm(row.get("route_recommendation")) != "likely_core_metric_trial":
+            continue
+        key = (_norm(row.get("sample_id")), _norm(row.get("standard_metric")), _norm(row.get("year")))
+        if key[0] and key[1] and key[2]:
+            dup_map_after[key] = dup_map_after.get(key, 0) + 1
+    duplicate_groups_after = sum(1 for _, c in dup_map_after.items() if c > 1)
+
     risky_rows = []
     promoted_likely_rows = []
     routed_manual_rows = []
@@ -1651,6 +1964,61 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
             promoted_likely_rows.append(row)
         if route == "manual_review_candidate":
             routed_manual_rows.append(row)
+
+    per_sample_status_map = {str(r.get("sample_id")): r for r in per_sample_status}
+    for sid, srow in per_sample_status_map.items():
+        likely_cnt = sum(
+            1
+            for row in standardized_all
+            if _norm(row.get("sample_id")) == sid and _norm(row.get("route_recommendation")) == "likely_core_metric_trial"
+        )
+        manual_cnt = sum(
+            1
+            for row in standardized_all + manual_all
+            if _norm(row.get("sample_id")) == sid and _norm(row.get("route_recommendation")) == "manual_review_candidate"
+        )
+        risky_likely_cnt = sum(
+            1
+            for row in standardized_all
+            if _norm(row.get("sample_id")) == sid
+            and _norm(row.get("route_recommendation")) == "likely_core_metric_trial"
+            and (set(_split_flags(_norm(row.get("flags")))) & risky_tokens)
+        )
+        srow["metric_rows"] = likely_cnt
+        srow["manual_rows"] = manual_cnt
+        srow["risky_alignment_rows_count"] = sum(
+            1
+            for row in standardized_all + manual_all
+            if _norm(row.get("sample_id")) == sid and (set(_split_flags(_norm(row.get("flags")))) & risky_tokens)
+        )
+        if likely_cnt == 0 and manual_cnt == 0:
+            srow["sample_status"] = "WARN_NO_METRICS"
+            srow["error"] = "STANDARDIZER_NO_METRIC_CANDIDATES"
+        elif likely_cnt == 0:
+            srow["sample_status"] = "WARN_SEMANTIC_GUARD"
+        elif risky_likely_cnt > 0:
+            srow["sample_status"] = "WARN_SEMANTIC_GUARD"
+        elif manual_cnt > likely_cnt:
+            srow["sample_status"] = "WARN_SEMANTIC_GUARD"
+        else:
+            srow["sample_status"] = "PASS_SAFE_TRIAL"
+
+    for res in sample_results:
+        sid = _norm(res.get("sample_id"))
+        std_rows = [r for r in standardized_all if _norm(r.get("sample_id")) == sid]
+        manual_rows = [r for r in manual_all if _norm(r.get("sample_id")) == sid]
+        std_manual_rows = [r for r in std_rows if _norm(r.get("route_recommendation")) == "manual_review_candidate"]
+        merged_manual_rows = manual_rows + std_manual_rows
+        res["standardized_rows"] = std_rows
+        res["manual_review_rows"] = merged_manual_rows
+        if sid in per_sample_status_map:
+            status_row = per_sample_status_map[sid]
+            res["sample_status"] = status_row.get("sample_status", res.get("sample_status", ""))
+            res["metric_rows"] = status_row.get("metric_rows", len(std_rows))
+            res["manual_rows"] = status_row.get("manual_rows", len(merged_manual_rows))
+            res["risky_alignment_rows_count"] = status_row.get("risky_alignment_rows_count", 0)
+            res["error"] = status_row.get("error", res.get("error", ""))
+        generated_files.extend(_write_sample_standardizer_outputs(trial_std_root, res))
 
     after = _snapshot_files(_collect_production_guard_files(DEFAULT_DELIVERY_DIR))
     production_guard_rows = _compare_snapshot(before, after)
@@ -1680,6 +2048,9 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
         manual_rows=manual_all,
         risky_rows=risky_rows,
         duplicate_summary=duplicate_summary,
+        duplicate_groups_before=duplicate_groups_before,
+        duplicate_groups_after=duplicate_groups_after,
+        remaining_likely_duplicates_count=remaining_likely_duplicates,
         promoted_likely_rows=promoted_likely_rows,
         routed_manual_rows=routed_manual_rows,
         production_guard_rows=production_guard_rows,
@@ -1689,16 +2060,18 @@ def _run_standardize_sandbox_mode(args: argparse.Namespace, runner_path: Path) -
     print(f"runner_path: {runner_path}")
     print(f"sandbox_standardizer_status: {status}")
     print(f"trial_run_root: {trial_run_root}")
-    print(f"report_31_md: {r29m}")
-    print(f"report_31_xlsx: {r29x}")
-    print(f"report_32_md: {r30m}")
-    print(f"report_32_xlsx: {r30x}")
+    print(f"report_33_md: {r29m}")
+    print(f"report_33_xlsx: {r29x}")
+    print(f"report_34_md: {r30m}")
+    print(f"report_34_xlsx: {r30x}")
     print(f"production_delivery_status_after: {json.dumps(production_status_after, ensure_ascii=False)}")
     print(f"production_guard_changed_count: {changed_count}")
     print(f"sample_identity_mapping: {json.dumps(sample_identity_rows, ensure_ascii=False)}")
     print(f"per_sample_metric_rows: {json.dumps([{ 'sample_id': r.get('sample_id'), 'metric_rows': r.get('metric_rows', 0)} for r in per_sample_status], ensure_ascii=False)}")
     print(f"risky_alignment_rows_count: {len(risky_rows)}")
     print(f"duplicate_metric_year_summary: {json.dumps(duplicate_summary, ensure_ascii=False)}")
+    print(f"duplicate_metric_year_groups_before_after: {duplicate_groups_before}->{duplicate_groups_after}")
+    print(f"remaining_likely_core_duplicates_count: {remaining_likely_duplicates}")
     if changed_count > 0:
         return 5
     return 0 if status in {"PASS", "WARN", "PARTIAL"} else 4
