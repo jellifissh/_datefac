@@ -325,6 +325,8 @@ def _build_intake_replay_commands(
             f"  --trial-run-root {trial_run_root} ^",
             f"  --delivery-dir {delivery_dir} ^",
             f"  --raw-provider-response {raw} ^",
+            "  --input-mode real_response ^",
+            "  --no-synthetic ^",
             "  --run-offline-replay",
             "",
             "D:\\anaconda\\envs\\factory_v4\\python.exe D:\\_datefac\\tools\\check_delivery_state.py --json",
@@ -609,4 +611,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

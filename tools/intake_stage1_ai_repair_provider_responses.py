@@ -550,6 +550,9 @@ def main() -> int:
     parser.add_argument("--trial-run-root", required=True)
     parser.add_argument("--delivery-dir", required=True)
     parser.add_argument("--raw-provider-response", required=True)
+    parser.add_argument("--input-mode", choices=["real_response", "synthetic_test"], default="real_response")
+    parser.add_argument("--generate-synthetic-test-response", action="store_true")
+    parser.add_argument("--no-synthetic", action="store_true")
     parser.add_argument("--run-offline-replay", action="store_true")
     args = parser.parse_args()
 
@@ -575,11 +578,29 @@ def main() -> int:
     requests = _load_jsonl(request_batch)
     request_by_id = {_norm(r.get("request_id")): r for r in requests}
     request_to_task = {_norm(r.get("request_id")): _norm(r.get("repair_task_id")) for r in requests}
+    task_to_request: Dict[str, str] = {}
+    for req in requests:
+        rid = _norm(req.get("request_id"))
+        tid = _norm(req.get("repair_task_id"))
+        if rid and tid and tid not in task_to_request:
+            task_to_request[tid] = rid
     packet_tasks = _load_jsonl(packet_jsonl)
     task_map = {_norm(t.get("repair_task_id")): t for t in packet_tasks}
     schema_payload = json.loads(schema_json.read_text(encoding="utf-8"))
 
-    raw_provider_path, synthetic_cases = _build_synthetic_raw_responses(raw_provider_path, requests, task_map)
+    use_synthetic = False
+    if args.generate_synthetic_test_response or args.input_mode == "synthetic_test":
+        use_synthetic = True
+    if args.no_synthetic:
+        use_synthetic = False
+
+    synthetic_cases: List[Dict[str, Any]] = []
+    if use_synthetic:
+        raw_provider_path, synthetic_cases = _build_synthetic_raw_responses(raw_provider_path, requests, task_map)
+    else:
+        if not raw_provider_path.exists():
+            print("BLOCKED_REAL_RESPONSE_FILE_MISSING")
+            return 3
 
     raw_lines = raw_provider_path.read_text(encoding="utf-8").splitlines()
     raw_response_count = len(raw_lines)
@@ -603,6 +624,7 @@ def main() -> int:
         request_id = ""
         normalized: Dict[str, Any] = {}
         wrapped = False
+        request_id_autofilled = False
 
         if not line_text:
             reasons.append("empty_line")
@@ -627,6 +649,9 @@ def main() -> int:
                 missing_required_blocked = True
 
             tid = _norm(normalized.get("repair_task_id"))
+            if not request_id and tid and tid in task_to_request:
+                request_id = task_to_request[tid]
+                request_id_autofilled = True
             expected_tid = request_to_task.get(request_id, "")
             if not request_id or request_id not in request_by_id:
                 reasons.append("unknown_request_id")
@@ -683,6 +708,7 @@ def main() -> int:
                     "decision": _norm(normalized.get("decision")),
                     "reasons": "|".join(sorted(set(reasons))),
                     "wrapped_normalized": "1" if wrapped else "0",
+                    "request_id_autofilled_from_repair_task_id": "1" if request_id_autofilled else "0",
                 }
             )
             continue
@@ -699,6 +725,7 @@ def main() -> int:
                 "decision": _norm(clean_obj.get("decision")),
                 "reasons": "",
                 "wrapped_normalized": "1" if wrapped else "0",
+                "request_id_autofilled_from_repair_task_id": "1" if request_id_autofilled else "0",
             }
         )
 
@@ -756,6 +783,7 @@ def main() -> int:
                     {"field": "fabricated_value_blocking_status", "value": "PASS" if fabricated_blocked else "WARN"},
                     {"field": "malformed_json_blocking_status", "value": "PASS" if malformed_json_count > 0 else "WARN"},
                     {"field": "missing_required_fields_blocking_status", "value": "PASS" if missing_required_blocked else "WARN"},
+                    {"field": "input_mode", "value": "synthetic_test" if use_synthetic else "real_response"},
                 ]
             ),
             "rejection_reason_summary": pd.DataFrame([{"reason": k, "count": v} for k, v in sorted(rejection_counts.items())]),
@@ -786,20 +814,20 @@ def main() -> int:
         provider_intake_status = "FAIL"
     elif replay_status == "FAIL":
         provider_intake_status = "FAIL"
-    elif len(clean_rows) == 0 or len(rejected_rows) == 0:
+    elif len(clean_rows) == 0:
         provider_intake_status = "WARN"
 
     safety_checks = [
         {"check_name": "factory_core_not_run", "status": "PASS", "detail": "intake helper only"},
         {"check_name": "vision_or_ocr_not_triggered", "status": "PASS", "detail": "no OCR/vision invocation"},
-        {"check_name": "no_real_ai_call", "status": "PASS", "detail": "synthetic local response only"},
+        {"check_name": "no_real_ai_call", "status": "PASS", "detail": "intake only; no model invocation"},
         {"check_name": "no_secret_check", "status": no_secret_status, "detail": "raw/clean/rejected scanned"},
         {"check_name": "production_files_unchanged", "status": "PASS" if production_files_unchanged else "FAIL", "detail": f"changed={production_changed_count}"},
     ]
 
     commands_run = [
         f"{sys.executable} -m py_compile {intake_helper}",
-        f"{sys.executable} {intake_helper} --request-batch {request_batch} --schema-json {schema_json} --packet-jsonl {packet_jsonl} --trial-run-root {trial_run_root} --delivery-dir {delivery_dir} --raw-provider-response {raw_provider_path} --run-offline-replay",
+        f"{sys.executable} {intake_helper} --request-batch {request_batch} --schema-json {schema_json} --packet-jsonl {packet_jsonl} --trial-run-root {trial_run_root} --delivery-dir {delivery_dir} --raw-provider-response {raw_provider_path} --input-mode {'synthetic_test' if use_synthetic else 'real_response'} {'--generate-synthetic-test-response' if use_synthetic else '--no-synthetic'} --run-offline-replay",
         f"{sys.executable} D:/_datefac/tools/check_delivery_state.py --json",
     ]
     generated_outputs = [
@@ -995,4 +1023,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
