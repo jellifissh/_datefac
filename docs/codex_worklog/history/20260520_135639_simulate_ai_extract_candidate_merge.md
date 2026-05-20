@@ -1,4 +1,4 @@
-# Codex Worklog - Latest
+# Codex Worklog - History
 
 ## task_title
 Simulate accepted AI extract candidate merge
