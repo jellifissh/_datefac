@@ -1,4 +1,4 @@
-# Codex Worklog - Latest
+# Codex Worklog - History
 
 ## task_title
 Dry-run apply safe AI extract candidates to sandbox copy
