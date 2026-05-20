@@ -519,7 +519,7 @@ def main() -> int:
     output_06_unchanged = snap_before["06"] == snap_after["06"]
     delivery_status = _run_delivery_check()
 
-    stage2c_reconciliation_pass = bool(
+    business_value_equivalence_pass = bool(
         value_mismatch_count == 0
         and unit_mismatch_count == 0
         and missing_in_rebuilt_count == 0
@@ -527,6 +527,20 @@ def main() -> int:
         and dup_counts["resolved_output_duplicate_count"] == 0
         and dup_counts["true_conflict_duplicate_count"] == 0
         and override_records_present
+    )
+    metadata_warning_count = int(source_only_mismatch_count + review_only_mismatch_count)
+    input_duplicate_warning_count = int(dup_counts["input_duplicate_before_priority_resolution_count"])
+    hard_blocker_count = int(
+        value_mismatch_count
+        + unit_mismatch_count
+        + missing_in_rebuilt_count
+        + extra_in_rebuilt_count
+        + dup_counts["resolved_output_duplicate_count"]
+        + dup_counts["true_conflict_duplicate_count"]
+    )
+    stage2c_rebuild_business_equivalence_pass = bool(business_value_equivalence_pass)
+    stage2c_reconciliation_pass = bool(
+        business_value_equivalence_pass
         and production_files_unchanged
         and output_06_unchanged
         and delivery_status.get("overall_status") == "PASS"
@@ -544,6 +558,11 @@ def main() -> int:
         "resolved_output_duplicate_count": dup_counts["resolved_output_duplicate_count"],
         "true_conflict_duplicate_count": dup_counts["true_conflict_duplicate_count"],
         "override_records_present_in_rebuilt_06": bool(override_records_present),
+        "business_value_equivalence_pass": bool(business_value_equivalence_pass),
+        "metadata_warning_count": metadata_warning_count,
+        "input_duplicate_warning_count": input_duplicate_warning_count,
+        "hard_blocker_count": hard_blocker_count,
+        "stage2c_rebuild_business_equivalence_pass": bool(stage2c_rebuild_business_equivalence_pass),
         "production_files_unchanged": bool(production_files_unchanged),
         "output_06_unchanged": bool(output_06_unchanged),
         "ai_called": False,
@@ -590,6 +609,11 @@ def main() -> int:
         f"- resolved_output_duplicate_count: {dup_counts['resolved_output_duplicate_count']}",
         f"- true_conflict_duplicate_count: {dup_counts['true_conflict_duplicate_count']}",
         f"- override_records_present_in_rebuilt_06: {override_records_present}",
+        f"- business_value_equivalence_pass: {business_value_equivalence_pass}",
+        f"- metadata_warning_count: {metadata_warning_count}",
+        f"- input_duplicate_warning_count: {input_duplicate_warning_count}",
+        f"- hard_blocker_count: {hard_blocker_count}",
+        f"- stage2c_rebuild_business_equivalence_pass: {stage2c_rebuild_business_equivalence_pass}",
         f"- production_files_unchanged: {production_files_unchanged}",
         f"- output_06_unchanged: {output_06_unchanged}",
         f"- delivery_status_after: {summary['delivery_status_after']}",
@@ -624,6 +648,11 @@ def main() -> int:
     print(f"resolved_output_duplicate_count: {dup_counts['resolved_output_duplicate_count']}")
     print(f"true_conflict_duplicate_count: {dup_counts['true_conflict_duplicate_count']}")
     print(f"override_records_present_in_rebuilt_06: {override_records_present}")
+    print(f"business_value_equivalence_pass: {business_value_equivalence_pass}")
+    print(f"metadata_warning_count: {metadata_warning_count}")
+    print(f"input_duplicate_warning_count: {input_duplicate_warning_count}")
+    print(f"hard_blocker_count: {hard_blocker_count}")
+    print(f"stage2c_rebuild_business_equivalence_pass: {stage2c_rebuild_business_equivalence_pass}")
     print(f"production_files_unchanged: {production_files_unchanged}")
     print(f"output_06_unchanged: {output_06_unchanged}")
     print(f"delivery_status_after: {summary['delivery_status_after']}")
