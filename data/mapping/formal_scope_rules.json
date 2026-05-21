@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0",
+  "rule_family": "formal_scope_rules",
+  "description": "Formal scope applicability rules for financial standardization.",
+  "rules": {
+    "FS_ALIAS_归属母公司净利润_001": {
+      "existing_rule_id": "FS_ALIAS_归属母公司净利润_001",
+      "standard_metric": "归属母公司净利润",
+      "existing_scope": "GLOBAL_ALIAS_MATCH_ONLY",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "INCLUDE_05_STANDARDIZED_TO_01/06_FINAL"
+      ],
+      "promoted_scope_fix_ids": [
+        "S4E-SCOPE-0001",
+        "S4E-SCOPE-0002",
+        "S4E-SCOPE-0003",
+        "S4E-SCOPE-0004"
+      ],
+      "promoted_issue_ids": [
+        "S4A-0096",
+        "S4A-0097",
+        "S4A-0098",
+        "S4A-0099"
+      ],
+      "asset_packages": [
+        "9c7dd6a029d063bb0a8792e4f31591c7_加水印_资产包"
+      ],
+      "statement_types": [
+        "主要财务指标"
+      ],
+      "promotion_status": "PROMOTED_STAGE4H"
+    },
+    "FS_ALIAS_归属母公司净利润_002": {
+      "existing_rule_id": "FS_ALIAS_归属母公司净利润_002",
+      "standard_metric": "归属母公司净利润",
+      "existing_scope": "GLOBAL_ALIAS_MATCH_ONLY",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "INCLUDE_05_STANDARDIZED_TO_01/06_FINAL"
+      ],
+      "promoted_scope_fix_ids": [
+        "S4E-SCOPE-0012",
+        "S4E-SCOPE-0013",
+        "S4E-SCOPE-0014",
+        "S4E-SCOPE-0015"
+      ],
+      "promoted_issue_ids": [
+        "S4A-0179",
+        "S4A-0180",
+        "S4A-0181",
+        "S4A-0182"
+      ],
+      "asset_packages": [
+        "H3_AP202605141822318060_1_资产包"
+      ],
+      "statement_types": [
+        "财务三表混合表"
+      ],
+      "promotion_status": "PROMOTED_STAGE4H"
+    },
+    "FS_ALIAS_归属母公司净利润_003": {
+      "existing_rule_id": "FS_ALIAS_归属母公司净利润_003",
+      "standard_metric": "归属母公司净利润",
+      "existing_scope": "GLOBAL_ALIAS_MATCH_ONLY",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "INCLUDE_05_STANDARDIZED_TO_01/06_FINAL"
+      ],
+      "promoted_scope_fix_ids": [
+        "S4E-SCOPE-0009",
+        "S4E-SCOPE-0010",
+        "S4E-SCOPE-0011"
+      ],
+      "promoted_issue_ids": [
+        "S4A-0165",
+        "S4A-0167",
+        "S4A-0168"
+      ],
+      "asset_packages": [
+        "H3_AP202605141822317484_1_资产包"
+      ],
+      "statement_types": [
+        "财务比率表"
+      ],
+      "promotion_status": "PROMOTED_STAGE4H"
+    },
+    "FS_ALIAS_每股收益_001": {
+      "existing_rule_id": "FS_ALIAS_每股收益_001",
+      "standard_metric": "每股收益",
+      "existing_scope": "GLOBAL_ALIAS_MATCH_ONLY",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "INCLUDE_05_STANDARDIZED_TO_01/06_FINAL"
+      ],
+      "promoted_scope_fix_ids": [
+        "S4E-SCOPE-0005",
+        "S4E-SCOPE-0006",
+        "S4E-SCOPE-0007",
+        "S4E-SCOPE-0008"
+      ],
+      "promoted_issue_ids": [
+        "S4A-0100",
+        "S4A-0101",
+        "S4A-0102",
+        "S4A-0103"
+      ],
+      "asset_packages": [
+        "9c7dd6a029d063bb0a8792e4f31591c7_加水印_资产包"
+      ],
+      "statement_types": [
+        "利润表"
+      ],
+      "promotion_status": "PROMOTED_STAGE4H"
+    }
+  }
+}
