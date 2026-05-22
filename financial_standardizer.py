@@ -39,6 +39,7 @@ STANDARD_METRIC_ALIASES: Dict[str, List[str]] = {
         "摊薄每股收益",
         "基本每股收益",
         "稀释每股收益",
+        "每股收益(最新摊薄)",
     ],
     "P/E": ["P/E", "PE"],
     "P/B": ["P/B", "PB"],
