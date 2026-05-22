@@ -31,7 +31,7 @@ AI 自动数据分析与报告生成系统（数据工厂修复治理模块）
 - `06_最终核心财务指标.xlsx`：最终核心财务指标交付表
 - `data/mapping/formal_scope_rules.json`：正式 scope 规则层
 
-> 架构图待补充：`docs/assets/data_factory_pipeline_architecture_stage1_4.png`
+![数据工厂 Pipeline 架构图](docs/assets/data_factory_pipeline_architecture_stage1_4.png)
 
 ## 当前阶段成果（Stage 1 ~ Stage 4）
 - Stage 1（AI extract-positive safe repair）：

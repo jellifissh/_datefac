@@ -4,7 +4,7 @@
 本项目的目标不是“手工修几格 Excel”，而是建立可追溯、可重建、可审计的数据修复治理链路。  
 Stage 1 到 Stage 4 的重点是把修复动作从临时补丁，升级为可复现的工程流程。
 
-> 架构图待补充：`docs/assets/data_factory_pipeline_architecture_stage1_4.png`
+![数据工厂 Pipeline 架构图](docs/assets/data_factory_pipeline_architecture_stage1_4.png)
 
 ## 阶段总览表
 | Stage | 目标 | 输入 | 输出 | 是否修改生产数据 | 关键结果 | 状态 |
