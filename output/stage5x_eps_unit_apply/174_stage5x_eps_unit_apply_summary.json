@@ -1,0 +1,103 @@
+{
+  "stage": "stage5x_eps_unit_apply",
+  "mode": "real_apply_limited_scope",
+  "based_on_stage5w_commit": "dd533f9e2e3eb6e5e3385de0701574a71a13ea10",
+  "stage5w_summary_file": "D:\\_datefac\\output\\stage5w_eps_unit_conflict_review\\173_stage5w_eps_unit_conflict_summary.json",
+  "target_metric_scope": [
+    "EPS",
+    "每股收益"
+  ],
+  "target_conflict_count": 5,
+  "applied_count": 5,
+  "updated_existing_count": 0,
+  "inserted_new_count": 5,
+  "skipped_count": 0,
+  "blocker_count": 0,
+  "recommended_unit": "元/股",
+  "formal_rules_modified": false,
+  "official_02b_modified": false,
+  "production_01_unchanged": true,
+  "production_02_unchanged": true,
+  "production_02a_unchanged": true,
+  "production_05_unchanged": true,
+  "production_06_modified": true,
+  "production_06_row_count_before": 114,
+  "production_06_row_count_after": 119,
+  "eps_rows": [
+    {
+      "metric_name": "每股收益",
+      "year": "2024A",
+      "value": "0.1",
+      "unit_before": "",
+      "unit_after": "元/股",
+      "action": "INSERT_NEW",
+      "value_same": true,
+      "source_evidence": [
+        "candidate_units=ratio | 元; candidate_sources=H3_AP202605121822223662_1|p3|t1|pdfplumber:r24:y2024A | H3_AP202605121822223662_1|p3|t1|pdfplumber:r46:y2024A; existing_source=; prod05_detail_rows=8"
+      ],
+      "status": "APPLIED"
+    },
+    {
+      "metric_name": "每股收益",
+      "year": "2025A",
+      "value": "-0.17",
+      "unit_before": "",
+      "unit_after": "元/股",
+      "action": "INSERT_NEW",
+      "value_same": true,
+      "source_evidence": [
+        "candidate_units=ratio | 元; candidate_sources=H3_AP202605121822223662_1|p3|t1|pdfplumber:r24:y2025A | H3_AP202605121822223662_1|p3|t1|pdfplumber:r46:y2025A; existing_source=; prod05_detail_rows=8"
+      ],
+      "status": "APPLIED"
+    },
+    {
+      "metric_name": "每股收益",
+      "year": "2026E",
+      "value": "0.2",
+      "unit_before": "",
+      "unit_after": "元/股",
+      "action": "INSERT_NEW",
+      "value_same": true,
+      "source_evidence": [
+        "candidate_units=ratio | 元; candidate_sources=H3_AP202605121822223662_1|p3|t1|pdfplumber:r24:y2026E | H3_AP202605121822223662_1|p3|t1|pdfplumber:r46:y2026E; existing_source=; prod05_detail_rows=8"
+      ],
+      "status": "APPLIED"
+    },
+    {
+      "metric_name": "每股收益",
+      "year": "2027E",
+      "value": "0.1",
+      "unit_before": "",
+      "unit_after": "元/股",
+      "action": "INSERT_NEW",
+      "value_same": true,
+      "source_evidence": [
+        "candidate_units=ratio | 元; candidate_sources=H3_AP202605121822223662_1|p3|t1|pdfplumber:r24:y2027E | H3_AP202605121822223662_1|p3|t1|pdfplumber:r46:y2027E; existing_source=; prod05_detail_rows=8"
+      ],
+      "status": "APPLIED"
+    },
+    {
+      "metric_name": "每股收益",
+      "year": "2028E",
+      "value": "0.14",
+      "unit_before": "",
+      "unit_after": "元/股",
+      "action": "INSERT_NEW",
+      "value_same": true,
+      "source_evidence": [
+        "candidate_units=ratio | 元; candidate_sources=H3_AP202605121822223662_1|p3|t1|pdfplumber:r24:y2028E | H3_AP202605121822223662_1|p3|t1|pdfplumber:r46:y2028E; existing_source=; prod05_detail_rows=8"
+      ],
+      "status": "APPLIED"
+    }
+  ],
+  "post_apply_checks": {
+    "duplicate_key_count": 0,
+    "value_mismatch_count": 0,
+    "unit_conflict_count": 0,
+    "year_conflict_count": 0,
+    "eps_unit_conflict_remaining_count": 0,
+    "check_delivery_state_overall_status": "PASS",
+    "rollback_possible": true
+  },
+  "ready_for_next_stage": true
+}
