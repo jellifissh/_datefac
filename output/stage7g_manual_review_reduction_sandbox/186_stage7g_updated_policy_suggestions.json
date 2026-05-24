@@ -1,0 +1,31 @@
+{
+  "stage": "stage7g_manual_review_reduction",
+  "mode": "sandbox_analysis_only",
+  "policy_source_reference": "184_stage7e_resolution_policy_draft.json",
+  "new_deterministic_suggestions": [
+    {
+      "id": "metric_section_alignment",
+      "description": "If the key has exactly one candidate value appearing in the numeric section immediately following raw_metric_name in source_text_excerpt, auto-select it.",
+      "applies_to": "manual queue true_value_conflict rows",
+      "safety": "high"
+    },
+    {
+      "id": "ambiguous_multi_match_keep_manual",
+      "description": "If multiple candidates match the metric section (or none match), keep the key in manual review queue.",
+      "applies_to": "high-ambiguity conflicts",
+      "safety": "high"
+    },
+    {
+      "id": "eps_unit_guard",
+      "description": "Keep EPS/每股收益 unit out of ratio in preview outputs.",
+      "applies_to": "EPS rows",
+      "safety": "high"
+    }
+  ],
+  "manual_review_reason_counts": {
+    "year_semantics_uncertain": 82
+  },
+  "auto_resolvable_candidate_rows": 25,
+  "remaining_manual_review_rows": 57,
+  "note": "Suggestion only. No formal policy/rule file changed in Stage 7G."
+}
