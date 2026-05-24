@@ -1,0 +1,12 @@
+{
+  "provider": "openai_compatible",
+  "model": "glm-4.7",
+  "selected_review_request_count": 5,
+  "real_api_response_count": 0,
+  "total_prompt_tokens": 0,
+  "total_completion_tokens": 0,
+  "total_tokens": 0,
+  "avg_latency_ms": 0.0,
+  "total_latency_ms": 0,
+  "note": "Cost estimation not available without provider billing metadata."
+}

@@ -1,0 +1,40 @@
+{
+  "stage": "stage7k_real_ai_api_sandbox_dry_run",
+  "mode": "real_api_small_sample_sandbox",
+  "based_on_stage7j_commit": "e5ac4ce45dd4bafcd549edf19c6d463307123e0d",
+  "provider": "openai_compatible",
+  "model": "glm-4.7",
+  "external_api_called": true,
+  "api_key_committed": false,
+  "api_key_logged": false,
+  "selected_review_request_count": 5,
+  "real_api_response_count": 0,
+  "schema_valid_response_count": 0,
+  "schema_invalid_response_count": 5,
+  "validated_suggestion_count": 0,
+  "rejected_suggestion_count": 5,
+  "requires_human_approval_count": 5,
+  "eps_case_included": false,
+  "bad_eps_ratio_count": 0,
+  "hallucinated_value_count": 0,
+  "invalid_source_row_reference_count": 0,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "ready_for_stage7l_ai_output_evaluation": true,
+  "selection_meta": {
+    "selection_strategy": "metric_diversity_plus_ambiguity",
+    "selected_metrics": [
+      "毛利率",
+      "营业收入",
+      "归属母公司净利润",
+      "P/B",
+      "P/E"
+    ],
+    "eps_case_included": false,
+    "note": "Stage7I request pool has no EPS/unit_semantics_uncertain/amount_vs_ratio labels; selected representative ambiguity groups."
+  }
+}
