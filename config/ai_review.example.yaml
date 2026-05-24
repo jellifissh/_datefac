@@ -1,0 +1,21 @@
+# Stage7J example config (NO real secrets)
+provider: "disabled"
+base_url: "${AI_REVIEW_BASE_URL}"
+api_key_env: "AI_REVIEW_API_KEY"
+model: "${AI_REVIEW_MODEL}"
+timeout_seconds: 30
+max_retries: 2
+max_requests_per_run: 5
+max_tokens_per_request: 2000
+temperature: 0
+response_format: "json_schema"
+external_api_enabled: false
+require_human_approval: true
+allow_real_apply: false
+budget:
+  max_total_tokens_per_run: 10000
+  max_total_cost_usd_per_run: 2.0
+logging:
+  log_requests: true
+  log_responses: true
+  redact_sensitive_fields: true

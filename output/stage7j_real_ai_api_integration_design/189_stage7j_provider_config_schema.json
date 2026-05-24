@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AIReviewProviderConfig",
+  "type": "object",
+  "required": [
+    "provider",
+    "base_url",
+    "api_key_env",
+    "model",
+    "timeout_seconds",
+    "max_retries",
+    "max_requests_per_run",
+    "max_tokens_per_request",
+    "temperature",
+    "response_format",
+    "external_api_enabled",
+    "require_human_approval",
+    "allow_real_apply"
+  ],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": [
+        "disabled",
+        "mock",
+        "openai_compatible",
+        "deepseek_compatible",
+        "qwen_compatible"
+      ]
+    },
+    "base_url": {
+      "type": "string"
+    },
+    "api_key_env": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120
+    },
+    "max_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "max_requests_per_run": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "max_tokens_per_request": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 2.0
+    },
+    "response_format": {
+      "type": "string",
+      "enum": [
+        "json_schema",
+        "json_object"
+      ]
+    },
+    "external_api_enabled": {
+      "type": "boolean",
+      "const": false
+    },
+    "require_human_approval": {
+      "type": "boolean",
+      "const": true
+    },
+    "allow_real_apply": {
+      "type": "boolean",
+      "const": false
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "max_total_tokens_per_run": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_total_cost_usd_per_run": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "log_requests": {
+          "type": "boolean"
+        },
+        "log_responses": {
+          "type": "boolean"
+        },
+        "redact_sensitive_fields": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
