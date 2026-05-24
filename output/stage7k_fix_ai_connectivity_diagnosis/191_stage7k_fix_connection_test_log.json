@@ -1,0 +1,15 @@
+{
+  "provider": "openai_compatible",
+  "model": "glm-4.7",
+  "api_key_present": true,
+  "api_key_logged": false,
+  "base_url_present": true,
+  "model_present": true,
+  "test_call_count": 1,
+  "max_test_calls": 1,
+  "endpoint_tested": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+  "http_status": null,
+  "error_type": "CONNECTION_ERROR",
+  "error_summary": "HTTPSConnectionPool(host='open.bigmodel.cn', port=443): Max retries exceeded with url: /api/paas/v4/chat/completions (Caused by NewConnectionError(\"HTTPSConnection(host='open.bigmodel.cn', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+  "latency_ms": 25
+}
