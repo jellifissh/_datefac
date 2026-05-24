@@ -1,0 +1,18 @@
+{
+  "stage": "stage6c_repository_hygiene_audit",
+  "mode": "read_only_hygiene_audit",
+  "based_on_stage6b_commit": "6de1ef5",
+  "check_delivery_state_overall_status": "PASS",
+  "release_zip_exists": true,
+  "release_manifest_exists": true,
+  "ready_for_external_delivery": true,
+  "production_06_row_count": 119,
+  "eps_row_count": 5,
+  "eps_unit": "元/股",
+  "conflict_counts": "0/0/0/0",
+  "untracked_files": [
+    "tools/update_stage5v_production_06_safe_rows.py"
+  ],
+  "untracked_files_excluded_from_release": true,
+  "repository_ready_for_handoff": true
+}
