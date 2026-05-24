@@ -316,11 +316,6 @@ def main() -> int:
     }
     _write_json(OUT_HASH_MANIFEST, manifest)
 
-    summary["summary_hash"] = _sha256(OUT_SUMMARY)
-    summary["report_hash"] = _sha256(OUT_REPORT)
-    summary["hash_manifest_hash"] = _sha256(OUT_HASH_MANIFEST)
-    _write_json(OUT_SUMMARY, summary)
-
     print(f"stage6a_summary_json: {OUT_SUMMARY}")
     print(f"stage6a_report_md: {OUT_REPORT}")
     print(f"stage6a_hash_manifest_json: {OUT_HASH_MANIFEST}")

@@ -36,8 +36,5 @@
   ],
   "eps_year_labels_ok": true,
   "eps_rule_id": "FS_ALIAS_每股收益_001",
-  "hash_manifest_path": "D:\\_datefac\\output\\stage6a_final_delivery_freeze\\178_stage6a_delivery_file_hash_manifest.json",
-  "summary_hash": "ca48fc0deef882705fa65aa791b71566a3573ea64e41915ede475d1267aff9f4",
-  "report_hash": "a4dc07017d7bc8781f6dc2dbcb9983bf56b62c9e0b25532f9975327115c1f90b",
-  "hash_manifest_hash": "71b050c5eaa70eda42bfe9759f3bbf5d5e22bad723938d2fc2384ebcbbbfcfdf"
+  "hash_manifest_path": "D:\\_datefac\\output\\stage6a_final_delivery_freeze\\178_stage6a_delivery_file_hash_manifest.json"
 }
