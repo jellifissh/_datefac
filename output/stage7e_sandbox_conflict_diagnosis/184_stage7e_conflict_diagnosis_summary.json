@@ -1,0 +1,32 @@
+{
+  "stage": "stage7e_sandbox_conflict_diagnosis",
+  "mode": "sandbox_diagnosis_only",
+  "based_on_stage7d_commit": "efefde274bf07af30a3021e395c3b359c55c2a90",
+  "input_core_metrics_candidate_rows": 131,
+  "input_sandbox_06_preview_rows": 131,
+  "duplicate_key_count_before": 63,
+  "value_mismatch_count_before": 43,
+  "unit_conflict_count_before": 12,
+  "year_conflict_count_before": 13,
+  "auto_resolvable_conflict_count": 12,
+  "manual_review_required_count": 31,
+  "resolved_06_preview_generated": true,
+  "duplicate_key_count_after_dry_run": 0,
+  "value_mismatch_count_after_dry_run": 0,
+  "unit_conflict_count_after_dry_run": 0,
+  "year_conflict_count_after_dry_run": 0,
+  "eps_detected_count": 5,
+  "bad_eps_ratio_count": 0,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "ready_for_stage7f_core_metrics_policy_apply_sandbox": true,
+  "conflict_category_distribution": {
+    "true_value_conflict": 82,
+    "amount_vs_ratio_collision": 16,
+    "unit_inference_error": 8
+  }
+}

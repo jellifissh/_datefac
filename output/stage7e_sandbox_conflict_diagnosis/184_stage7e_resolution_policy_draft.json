@@ -1,0 +1,51 @@
+{
+  "version": "stage7e_draft_v1",
+  "metric_priority": {
+    "amount_metrics": [
+      "income_statement",
+      "financial_data_and_valuation",
+      "balance_sheet",
+      "cash_flow_statement",
+      "financial_ratios",
+      "valuation_metrics",
+      "per_share_metrics"
+    ],
+    "ratio_metrics": [
+      "financial_ratios",
+      "financial_data_and_valuation",
+      "income_statement",
+      "valuation_metrics",
+      "per_share_metrics"
+    ],
+    "per_share_metrics": [
+      "per_share_metrics",
+      "financial_data_and_valuation",
+      "income_statement",
+      "financial_ratios"
+    ],
+    "valuation_metrics": [
+      "valuation_metrics",
+      "financial_data_and_valuation",
+      "financial_ratios",
+      "income_statement"
+    ]
+  },
+  "unit_policy": {
+    "每股收益": "元/股",
+    "valuation_metrics": "倍",
+    "ratio_metrics": "%",
+    "amount_metrics": "百万元/亿元/万元"
+  },
+  "merge_rules": [
+    "same key + same value + same unit => merge as same_metric_same_value_duplicate",
+    "if source contains 增长率/同比 and metric is amount metric, deprioritize for core 06 preview",
+    "if unit group mismatches metric expected group, mark unit_inference_error"
+  ],
+  "tie_breakers": [
+    "higher statement priority wins",
+    "higher extraction_confidence wins",
+    "higher classification_confidence wins",
+    "earlier page/row wins when still tied"
+  ],
+  "manual_review_trigger": "top two candidates score gap < 0.5 and conflicting values"
+}
