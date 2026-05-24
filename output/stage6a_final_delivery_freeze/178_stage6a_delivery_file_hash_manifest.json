@@ -1,0 +1,42 @@
+{
+  "production_01": {
+    "path": "D:\\_datefac\\output\\delivery_package\\01_自动可信核心指标.xlsx",
+    "sha256": "3ca1c6c0aec1f95c15adc039a7ae9fc3476a6e4e8d94e59a006edf236be4cb51"
+  },
+  "production_02": {
+    "path": "D:\\_datefac\\output\\delivery_package\\02_人工复核指标队列.xlsx",
+    "sha256": "cb5255f817a18b72866fea9aff1ab0b5b783f8eb864bce963933ba88f4dcf041"
+  },
+  "production_02A": {
+    "path": "D:\\_datefac\\output\\delivery_package\\02A_人工年份修正覆盖表.xlsx",
+    "sha256": "102bd2c8bf9c781c67120f4c804a401c8d828e6c0022a909ff6e732646936db5"
+  },
+  "production_05": {
+    "path": "D:\\_datefac\\output\\delivery_package\\05_表格区域截图索引.xlsx",
+    "sha256": "4ddb16caa830192e3040d04302e9857e2eb99ee6b191bdd9bb7b1f25cbbf7982"
+  },
+  "production_06": {
+    "path": "D:\\_datefac\\output\\delivery_package\\06_最终核心财务指标.xlsx",
+    "sha256": "c87af09bcd01374f2900f0ecb80810bbd7cd12ba9998c5950905ecd9e28b0b63"
+  },
+  "official_02B": {
+    "path": "D:\\_datefac\\data\\overrides\\02B_ai_repair_override.xlsx",
+    "sha256": "ccf92cb0cef2b683f2d3c42e47db5774c44bcb18bedc32910200c7c40753a39d"
+  },
+  "formal_rules": {
+    "path": "D:\\_datefac\\data\\mapping\\formal_scope_rules.json",
+    "sha256": "b394e252b37e9e871d9d01ce5460ff8a67e4f99f0b71bdf7a9f4e963914b09fa"
+  },
+  "financial_standardizer": {
+    "path": "D:\\_datefac\\financial_standardizer.py",
+    "sha256": "0a653ae52a126e9ac24157ce6233c6cd867bfebc1283fd64ee59056d44c1e147"
+  },
+  "stage6a_summary": {
+    "path": "D:\\_datefac\\output\\stage6a_final_delivery_freeze\\178_stage6a_final_delivery_freeze_summary.json",
+    "sha256": "ca48fc0deef882705fa65aa791b71566a3573ea64e41915ede475d1267aff9f4"
+  },
+  "stage6a_report": {
+    "path": "D:\\_datefac\\output\\stage6a_final_delivery_freeze\\178_stage6a_final_delivery_freeze_report.md",
+    "sha256": "a4dc07017d7bc8781f6dc2dbcb9983bf56b62c9e0b25532f9975327115c1f90b"
+  }
+}
