@@ -88,6 +88,7 @@
     "FS_ALIAS_每股收益_001": {
       "existing_rule_id": "FS_ALIAS_每股收益_001",
       "standard_metric": "每股收益",
+      "standard_unit": "元/股",
       "existing_scope": "GLOBAL_ALIAS_MATCH_ONLY",
       "scope_applicability": [
         "GLOBAL_ALIAS_MATCH_ONLY",
