@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage7HAIReviewRequest",
+  "type": "object",
+  "required": [
+    "review_id",
+    "source_pdf",
+    "conflict_group_id",
+    "manual_review_reason",
+    "candidate_rows",
+    "current_policy_context",
+    "known_rules"
+  ],
+  "properties": {
+    "review_id": {
+      "type": "string"
+    },
+    "source_pdf": {
+      "type": "string"
+    },
+    "conflict_group_id": {
+      "type": "string"
+    },
+    "manual_review_reason": {
+      "type": "string"
+    },
+    "candidate_rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "row_id",
+          "statement_type",
+          "raw_metric_name",
+          "normalized_metric_name",
+          "year",
+          "value",
+          "unit",
+          "source_page",
+          "source_table_id",
+          "source_text_excerpt",
+          "extraction_confidence",
+          "unit_confidence",
+          "classification_confidence"
+        ],
+        "properties": {
+          "row_id": {
+            "type": "string"
+          },
+          "statement_type": {
+            "type": "string"
+          },
+          "raw_metric_name": {
+            "type": "string"
+          },
+          "normalized_metric_name": {
+            "type": "string"
+          },
+          "year": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "source_page": {
+            "type": "string"
+          },
+          "source_table_id": {
+            "type": "string"
+          },
+          "source_text_excerpt": {
+            "type": "string"
+          },
+          "extraction_confidence": {
+            "type": "string"
+          },
+          "unit_confidence": {
+            "type": "string"
+          },
+          "classification_confidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "current_policy_context": {
+      "type": "object"
+    },
+    "known_rules": {
+      "type": "object",
+      "required": [
+        "eps_unit",
+        "do_not_use_ratio_for_eps"
+      ],
+      "properties": {
+        "eps_unit": {
+          "type": "string",
+          "const": "元/股"
+        },
+        "do_not_use_ratio_for_eps": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    }
+  }
+}

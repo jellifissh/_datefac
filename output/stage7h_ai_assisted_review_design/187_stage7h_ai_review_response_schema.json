@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage7HAIReviewResponse",
+  "type": "object",
+  "required": [
+    "review_id",
+    "suggested_action",
+    "suggested_row_ids",
+    "suggested_metric_name",
+    "suggested_year",
+    "suggested_value",
+    "suggested_unit",
+    "confidence",
+    "reasoning_summary",
+    "risk_flags",
+    "requires_human_approval"
+  ],
+  "properties": {
+    "review_id": {
+      "type": "string"
+    },
+    "suggested_action": {
+      "type": "string",
+      "enum": [
+        "accept_one",
+        "merge_same_value",
+        "split_metric",
+        "exclude",
+        "keep_manual_review"
+      ]
+    },
+    "suggested_row_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "suggested_metric_name": {
+      "type": "string"
+    },
+    "suggested_year": {
+      "type": "string"
+    },
+    "suggested_value": {
+      "type": "string"
+    },
+    "suggested_unit": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "reasoning_summary": {
+      "type": "string"
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requires_human_approval": {
+      "type": "boolean"
+    }
+  }
+}
