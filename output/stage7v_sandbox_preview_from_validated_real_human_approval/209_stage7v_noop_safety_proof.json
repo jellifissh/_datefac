@@ -1,0 +1,10 @@
+{
+  "no_op_due_to_zero_candidates": true,
+  "sandbox_preview_candidate_count": 0,
+  "sandbox_apply_attempt_count": 0,
+  "sandbox_apply_success_count": 0,
+  "fabricated_candidate_count": 0,
+  "real_apply_executed": false,
+  "production_write_executed": false,
+  "notes": "Stage7V safely handled zero-candidate path without apply actions."
+}
