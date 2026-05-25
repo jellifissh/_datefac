@@ -1,0 +1,20 @@
+{
+  "blocked_value_mismatch_rows": [
+    {
+      "queue_item_id": "stage7p_queue_001",
+      "suggestion_id": "stage7i_review_0001",
+      "value_mismatch": "true",
+      "human_decision": "REQUIRE_SECOND_REVIEW",
+      "allowed_to_auto_apply": false
+    },
+    {
+      "queue_item_id": "stage7p_queue_002",
+      "suggestion_id": "stage7i_review_0005",
+      "value_mismatch": "true",
+      "human_decision": "REQUIRE_SECOND_REVIEW",
+      "allowed_to_auto_apply": false
+    }
+  ],
+  "blocked_value_mismatch_auto_apply_count": 0,
+  "value_mismatch_forced_second_review_or_needs_more_info_count": 2
+}

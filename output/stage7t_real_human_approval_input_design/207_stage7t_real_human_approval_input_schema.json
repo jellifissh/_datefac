@@ -1,0 +1,64 @@
+{
+  "schema_version": "stage7t_real_human_approval_input_v1",
+  "immutable_fields": [
+    "queue_item_id",
+    "suggestion_id",
+    "source_pdf",
+    "source_page",
+    "source_row_reference",
+    "statement_type",
+    "fiscal_year",
+    "original_metric_name",
+    "suggested_metric_name",
+    "suggested_value",
+    "suggested_unit",
+    "existing_metric_name",
+    "existing_value",
+    "existing_unit",
+    "conflict_type",
+    "value_mismatch",
+    "duplicate_key",
+    "eps_related",
+    "ai_confidence",
+    "ai_rationale",
+    "prior_stage_status",
+    "immutable_row_hash"
+  ],
+  "human_fillable_fields": [
+    "schema_version",
+    "reviewer_id",
+    "reviewer_role",
+    "human_decision",
+    "decision_reason_code",
+    "reviewer_notes",
+    "evidence_checked",
+    "source_row_confirmed",
+    "fiscal_year_confirmed",
+    "unit_confirmed",
+    "value_confirmed",
+    "corrected_metric_name",
+    "corrected_value",
+    "corrected_unit",
+    "corrected_fiscal_year",
+    "needs_more_info_question",
+    "second_review_required",
+    "second_reviewer_id",
+    "second_review_notes",
+    "reviewed_at_utc"
+  ],
+  "human_decision_enum": [
+    "APPROVE_FOR_SANDBOX_PREVIEW",
+    "NEEDS_MORE_INFO",
+    "REJECT",
+    "REQUIRE_SECOND_REVIEW"
+  ],
+  "forbidden_decisions": [
+    "APPROVE_FOR_REAL_APPLY"
+  ],
+  "forbidden_manual_fields": [
+    "safe_to_apply",
+    "real_apply",
+    "write_production"
+  ],
+  "notes": "safe_to_apply is derived downstream and never editable in human input"
+}

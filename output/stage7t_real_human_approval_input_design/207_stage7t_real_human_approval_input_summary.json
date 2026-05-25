@@ -1,0 +1,23 @@
+{
+  "stage": "7T",
+  "external_api_called": false,
+  "real_apply_executed": false,
+  "human_approval_template_generated": true,
+  "approval_validation_rules_generated": true,
+  "approval_input_schema_version": "stage7t_real_human_approval_input_v1",
+  "real_human_input_supported": true,
+  "mock_approval_required": false,
+  "blocked_value_mismatch_auto_apply_count": 0,
+  "value_mismatch_forced_second_review_or_needs_more_info_count": 2,
+  "sandbox_preview_candidate_count": 0,
+  "needs_more_info_count": 3,
+  "require_second_review_count": 2,
+  "invalid_approval_input_count": 0,
+  "ready_for_stage7u_real_human_approval_validation": true,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS"
+}

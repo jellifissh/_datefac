@@ -1,0 +1,80 @@
+{
+  "schema_version_required": "stage7t_real_human_approval_input_v1",
+  "required_fields": {
+    "general": [
+      "schema_version",
+      "queue_item_id",
+      "suggestion_id",
+      "reviewer_id",
+      "reviewer_role",
+      "human_decision",
+      "reviewer_notes",
+      "reviewed_at_utc"
+    ],
+    "reject": [
+      "decision_reason_code",
+      "reviewer_notes"
+    ],
+    "needs_more_info": [
+      "needs_more_info_question",
+      "reviewer_notes"
+    ],
+    "require_second_review": [
+      "second_review_required",
+      "reviewer_notes"
+    ]
+  },
+  "enum": {
+    "human_decision": [
+      "APPROVE_FOR_SANDBOX_PREVIEW",
+      "NEEDS_MORE_INFO",
+      "REJECT",
+      "REQUIRE_SECOND_REVIEW"
+    ]
+  },
+  "immutable_validation": {
+    "immutable_fields_must_not_change": [
+      "queue_item_id",
+      "suggestion_id",
+      "source_pdf",
+      "source_page",
+      "source_row_reference",
+      "statement_type",
+      "fiscal_year",
+      "original_metric_name",
+      "suggested_metric_name",
+      "suggested_value",
+      "suggested_unit",
+      "existing_metric_name",
+      "existing_value",
+      "existing_unit",
+      "conflict_type",
+      "value_mismatch",
+      "duplicate_key",
+      "eps_related",
+      "ai_confidence",
+      "ai_rationale",
+      "prior_stage_status"
+    ],
+    "immutable_row_hash_must_match": true
+  },
+  "approve_rules": {
+    "required_true_flags": [
+      "evidence_checked",
+      "source_row_confirmed",
+      "fiscal_year_confirmed",
+      "unit_confirmed",
+      "value_confirmed"
+    ],
+    "forbid_when_value_mismatch": true,
+    "forbid_when_true_value_conflict": true,
+    "forbid_when_prior_stage_blocked": true,
+    "forbid_when_corrected_fields_present": true
+  },
+  "forced_rules": {
+    "value_mismatch_or_true_value_conflict_requires": [
+      "NEEDS_MORE_INFO",
+      "REQUIRE_SECOND_REVIEW"
+    ]
+  }
+}
