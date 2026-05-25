@@ -1,0 +1,83 @@
+{
+  "negative_tests": [
+    {
+      "case": "missing_reviewer_id",
+      "expected_error": "reviewer_id_missing",
+      "errors": [
+        "reviewer_id_missing"
+      ],
+      "detected": true
+    },
+    {
+      "case": "invalid_decision_enum",
+      "expected_error": "invalid_human_decision_enum",
+      "errors": [
+        "invalid_human_decision_enum",
+        "mismatch_or_true_conflict_must_not_be_approved"
+      ],
+      "detected": true
+    },
+    {
+      "case": "immutable_field_tamper",
+      "expected_error": "immutable_field_changed:source_page",
+      "errors": [
+        "immutable_field_changed:source_page",
+        "immutable_row_hash_recompute_mismatch"
+      ],
+      "detected": true
+    },
+    {
+      "case": "immutable_hash_mismatch",
+      "expected_error": "immutable_row_hash_changed",
+      "errors": [
+        "immutable_row_hash_changed",
+        "immutable_row_hash_recompute_mismatch"
+      ],
+      "detected": true
+    },
+    {
+      "case": "approve_with_value_mismatch",
+      "expected_error": "approve_forbidden_value_mismatch",
+      "errors": [
+        "approve_forbidden_value_mismatch",
+        "approve_forbidden_true_value_conflict",
+        "approve_forbidden_prior_stage_blocked",
+        "mismatch_or_true_conflict_must_not_be_approved"
+      ],
+      "detected": true
+    },
+    {
+      "case": "approve_with_corrected_value",
+      "expected_error": "approve_forbidden_corrected_fields_filled",
+      "errors": [
+        "immutable_field_changed:value_mismatch",
+        "immutable_row_hash_recompute_mismatch",
+        "approve_forbidden_true_value_conflict",
+        "approve_forbidden_prior_stage_blocked",
+        "approve_forbidden_corrected_fields_filled",
+        "mismatch_or_true_conflict_must_not_be_approved"
+      ],
+      "detected": true
+    },
+    {
+      "case": "approve_for_real_apply_attempt",
+      "expected_error": "invalid_human_decision_enum",
+      "errors": [
+        "invalid_human_decision_enum",
+        "forbidden_human_decision",
+        "mismatch_or_true_conflict_must_not_be_approved"
+      ],
+      "detected": true
+    },
+    {
+      "case": "duplicate_suggestion_id",
+      "expected_error": "duplicate_suggestion_id",
+      "errors_first": [],
+      "errors_second": [
+        "duplicate_suggestion_id",
+        "original_queue_item_not_found"
+      ],
+      "detected": true
+    }
+  ]
+}
