@@ -1,0 +1,63 @@
+{
+  "stage": "stage7o_five_case_new_model_batch_test",
+  "mode": "real_api_five_case_new_model_strict_schema",
+  "based_on_stage7n_batch_commit": "84cffe155a8f8fb4bb0700bb24049149beb150f0",
+  "external_api_called": true,
+  "provider": "openai_compatible",
+  "model": "gpt-5.4-pro",
+  "base_url_sanitized": "https://geek.tm2.xin/v1",
+  "api_key_present": true,
+  "api_key_logged": false,
+  "selected_review_request_count": 5,
+  "real_api_response_count": 4,
+  "schema_valid_response_count": 3,
+  "schema_invalid_response_count": 2,
+  "missing_required_fields_total": [],
+  "validated_suggestion_count": 3,
+  "rejected_suggestion_count": 2,
+  "requires_human_approval_count": 4,
+  "rate_limited_count": 0,
+  "timeout_count": 0,
+  "hallucinated_value_count": 0,
+  "invalid_source_row_reference_count": 0,
+  "bad_eps_ratio_count": 0,
+  "eps_case_available": false,
+  "avg_latency_seconds": 6.103,
+  "max_latency_seconds": 8.814,
+  "api_key_committed": false,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "new_model_five_case_test_pass": false,
+  "failure_reason": "schema_invalid",
+  "recommended_next_step": "fix_schema_invalid_and_retry_stage7o",
+  "selection_meta": {
+    "request_source_priority": "stage7m_slim_then_stage7i_lightweight",
+    "pool_size": 31,
+    "slim_pool_size": 3,
+    "selected_count": 5,
+    "selected_metrics": [
+      "归属母公司净利润",
+      "P/B",
+      "P/E",
+      "毛利率",
+      "EV/EBITDA"
+    ],
+    "selected_candidate_rows": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "manual_review_reasons_in_pool": [
+      "year_semantics_uncertain"
+    ],
+    "unit_or_amount_ratio_case_available": false,
+    "eps_case_available_in_pool": false
+  },
+  "stage7n_batch_pass": true
+}
