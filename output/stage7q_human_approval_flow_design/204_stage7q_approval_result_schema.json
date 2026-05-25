@@ -1,0 +1,48 @@
+{
+  "schema_name": "stage7q_human_approval_result",
+  "type": "object",
+  "required": [
+    "queue_id",
+    "review_id",
+    "approval_status",
+    "human_decision",
+    "human_comment",
+    "approved_by",
+    "approved_at"
+  ],
+  "properties": {
+    "queue_id": {
+      "type": "string"
+    },
+    "review_id": {
+      "type": "string"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "reject",
+        "needs_more_info"
+      ]
+    },
+    "human_decision": {
+      "type": "string"
+    },
+    "human_comment": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "description": "ISO-like datetime string"
+    }
+  },
+  "forbidden_values": [
+    "auto_apply",
+    "real_apply",
+    "write_production"
+  ],
+  "empty_status_behavior": "pending_human_review"
+}
