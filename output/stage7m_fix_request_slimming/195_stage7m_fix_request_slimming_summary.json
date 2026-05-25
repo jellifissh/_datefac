@@ -1,0 +1,55 @@
+{
+  "stage": "stage7m_fix_request_slimming",
+  "mode": "analysis_only_no_api_call",
+  "based_on_stage7m_commit": "363a43832dd79bc92930bb6e159837d232b7c569",
+  "external_api_called": false,
+  "stage7m_selected_request_count": 3,
+  "stage7m_timeout_count": 1,
+  "timeout_request_identified": true,
+  "timeout_probable_reason": "high_candidate_row_count_plus_long_prompt_context",
+  "timeout_request_ids": [
+    "stage7i_review_0025"
+  ],
+  "original_max_prompt_chars": 2219,
+  "slim_max_prompt_chars": 1068,
+  "prompt_reduction_rate": 0.518702,
+  "slim_selected_request_count": 3,
+  "eps_case_available": false,
+  "request_pool_missing_categories": [
+    "unit_semantics_uncertain",
+    "amount_vs_ratio_collision"
+  ],
+  "stage7i_manual_review_reason_set": [
+    "year_semantics_uncertain"
+  ],
+  "stage7g_manual_review_reason_set": [
+    "year_semantics_uncertain"
+  ],
+  "stage7g_conflict_category_set": [
+    "true_value_conflict"
+  ],
+  "stage7m2_recommended": true,
+  "recommended_timeout_seconds": 120,
+  "recommended_max_tokens": 700,
+  "recommended_request_interval_seconds": 15,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "selection_meta": {
+    "lightweight_pool_count": 26,
+    "lightweight_threshold_candidate_rows": 5,
+    "selected_metrics": [
+      "归属母公司净利润",
+      "P/B",
+      "P/E"
+    ],
+    "selected_candidate_rows": [
+      1,
+      1,
+      1
+    ]
+  }
+}
