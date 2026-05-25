@@ -1,0 +1,15 @@
+{
+  "duplicate_key_count": 0,
+  "value_mismatch_count": 2,
+  "unit_conflict_count": 0,
+  "year_conflict_count": 0,
+  "bad_eps_ratio_count": 0,
+  "blocked_review_ids": [
+    "stage7i_review_0001",
+    "stage7i_review_0005"
+  ],
+  "blocked_queue_ids": [
+    "stage7p_queue_001",
+    "stage7p_queue_002"
+  ]
+}
