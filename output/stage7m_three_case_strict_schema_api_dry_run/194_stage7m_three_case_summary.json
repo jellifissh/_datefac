@@ -1,0 +1,45 @@
+{
+  "stage": "stage7m_three_case_strict_schema_api_dry_run",
+  "mode": "real_api_three_case_strict_schema_sandbox",
+  "based_on_stage7l_commit": "c53cd037fb918ce15cda26795731f4bdaea5c46b",
+  "external_api_called": true,
+  "provider": "openai_compatible",
+  "model": "GLM-4.7",
+  "selected_review_request_count": 3,
+  "real_api_response_count": 0,
+  "schema_valid_response_count": 0,
+  "schema_invalid_response_count": 1,
+  "validated_suggestion_count": 0,
+  "rejected_suggestion_count": 1,
+  "requires_human_approval_count": 0,
+  "rate_limited_count": 0,
+  "timeout_count": 1,
+  "hallucinated_value_count": 0,
+  "invalid_source_row_reference_count": 0,
+  "bad_eps_ratio_count": 0,
+  "api_key_committed": false,
+  "api_key_logged": false,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "ready_for_stage7n_ai_assisted_review_batch_policy": false,
+  "selection_meta": {
+    "input_request_count": 31,
+    "manual_review_reason_distribution": {
+      "year_semantics_uncertain": 31
+    },
+    "requested_reason_available_counts": {
+      "true_value_conflict": 0,
+      "unit_semantics_uncertain": 0,
+      "amount_vs_ratio_collision": 0
+    },
+    "requested_reason_constraints_fully_met": false,
+    "eps_case_available_count": 0,
+    "eps_case_included": false,
+    "selection_note": "No true_value_conflict/unit_semantics_uncertain/amount_vs_ratio_collision in Stage7I pool; selected 3 representative ambiguity groups."
+  },
+  "stage7l_recommended_next_stage": "stage7m_three_case_strict_schema_api_dry_run"
+}
