@@ -1,0 +1,14 @@
+{
+  "provider": "openai_compatible",
+  "model": "GLM-4.7",
+  "selected_review_request_count": 3,
+  "executed_request_count": 3,
+  "stop_reason": "timeout",
+  "rate_limited_count": 0,
+  "timeout_count": 1,
+  "total_prompt_tokens": 943,
+  "total_completion_tokens": 3484,
+  "total_tokens": 4427,
+  "avg_latency_ms": 71204.0,
+  "total_latency_ms": 213612
+}
