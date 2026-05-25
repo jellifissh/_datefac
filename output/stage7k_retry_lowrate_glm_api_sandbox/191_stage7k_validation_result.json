@@ -1,0 +1,31 @@
+{
+  "review_id": "stage7i_review_0001",
+  "schema_errors": [
+    "missing_required:review_id",
+    "missing_required:suggested_row_ids",
+    "missing_required:suggested_metric_name",
+    "missing_required:suggested_year",
+    "missing_required:suggested_value",
+    "missing_required:suggested_unit",
+    "missing_required:confidence",
+    "missing_required:reasoning_summary",
+    "missing_required:risk_flags",
+    "confidence_not_numeric"
+  ],
+  "logic_errors": [
+    "missing_required:review_id",
+    "missing_required:suggested_row_ids",
+    "missing_required:suggested_metric_name",
+    "missing_required:suggested_year",
+    "missing_required:suggested_value",
+    "missing_required:suggested_unit",
+    "missing_required:confidence",
+    "missing_required:reasoning_summary",
+    "missing_required:risk_flags",
+    "confidence_not_numeric"
+  ],
+  "validation_pass": false,
+  "hallucinated_value_count": 0,
+  "invalid_source_row_reference_count": 0,
+  "bad_eps_ratio_count": 0
+}

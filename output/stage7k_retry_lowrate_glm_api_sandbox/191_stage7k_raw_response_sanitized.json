@@ -1,0 +1,14 @@
+{
+  "timestamp_utc": "2026-05-25T07:30:13.390683+00:00",
+  "external_api_called": true,
+  "http_status": 200,
+  "rate_limited": false,
+  "timeout": false,
+  "parse_method": "raw_json",
+  "response_json_parse_success": true,
+  "response_obj": {
+    "suggested_action": "keep_manual_review",
+    "requires_human_approval": true
+  },
+  "error": ""
+}
