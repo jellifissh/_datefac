@@ -1,0 +1,9 @@
+{
+  "api_key_present": true,
+  "api_key_logged": false,
+  "base_url_present": true,
+  "model_present": true,
+  "model_value": "GLM-4.7",
+  "base_url_sanitized": "https://open.bigmodel.cn/api/paas/v4/",
+  "base_url_likely_web_root": false
+}

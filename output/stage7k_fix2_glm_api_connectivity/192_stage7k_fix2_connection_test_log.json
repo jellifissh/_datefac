@@ -1,0 +1,27 @@
+{
+  "test_call_limit": 2,
+  "calls": [
+    {
+      "name": "web_root_test",
+      "url": "https://open.bigmodel.cn/api/paas/v4/",
+      "http_status": null,
+      "latency_ms": 18,
+      "content_type": "",
+      "response_looks_like_html": false,
+      "error": "HTTPSConnectionPool(host='open.bigmodel.cn', port=443): Max retries exceeded with url: /api/paas/v4/ (Caused by NewConnectionError(\"HTTPSConnection(host='open.bigmodel.cn', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "error_type": "WINERROR_10013_POLICY_DENIED"
+    },
+    {
+      "name": "chat_completions_test",
+      "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+      "http_status": null,
+      "latency_ms": 17,
+      "response_looks_like_html": false,
+      "response_json_parse_success": false,
+      "error_type": "WINERROR_10013_POLICY_DENIED",
+      "error": "HTTPSConnectionPool(host='open.bigmodel.cn', port=443): Max retries exceeded with url: /api/paas/v4/chat/completions (Caused by NewConnectionError(\"HTTPSConnection(host='open.bigmodel.cn', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))"
+    }
+  ],
+  "api_key_logged": false,
+  "base_url_sanitized": "https://open.bigmodel.cn/api/paas/v4/"
+}
