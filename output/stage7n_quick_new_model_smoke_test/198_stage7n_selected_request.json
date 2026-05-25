@@ -1,0 +1,23 @@
+{
+  "review_id": "stage7i_review_0019",
+  "source_pdf": "D:\\_datefac\\input\\stage7a_regression_pdfs\\H3_AP202605141822317484_1.pdf",
+  "conflict_group_id": "H3_AP202605141822317484_1_stage7d_sandbox||归属母公司净利润||2026E",
+  "manual_review_reason": "year_semantics_uncertain",
+  "candidate_rows": [
+    {
+      "row_id": "stage7i_review_0019_row_01",
+      "statement_type": "income_statement",
+      "normalized_metric_name": "归属母公司净利润",
+      "raw_metric_name": "归属母公司股东净利润",
+      "year": "2026E",
+      "value": "198.73",
+      "unit": "百万元",
+      "source_page": "5",
+      "source_text_excerpt": "归属母公司股东净利润 | 264.94 | 294.37 | 328.75 | 368.11 | 现金流量净额 | 138.24 | 198.73 | 273.23 | 278.57"
+    }
+  ],
+  "known_rules": {
+    "eps_unit": "元/股",
+    "do_not_use_ratio_for_eps": true
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "review_id": "stage7i_review_0019",
+  "schema_errors": [],
+  "missing_required_fields": [],
+  "logic_errors": [],
+  "validation_pass": true,
+  "hallucinated_value_count": 0,
+  "invalid_source_row_reference_count": 0,
+  "bad_eps_ratio_count": 0,
+  "requires_human_approval": true
+}

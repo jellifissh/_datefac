@@ -1,0 +1,33 @@
+{
+  "external_api_called": true,
+  "socket_host": "geek.tm2.xin",
+  "socket_ok": true,
+  "http_status": 200,
+  "rate_limited": false,
+  "timeout": false,
+  "latency_seconds": 7.213,
+  "parse_method": "raw_json",
+  "response_json_parse_success": true,
+  "response_obj": {
+    "review_id": "stage7i_review_0019",
+    "suggested_action": "keep_manual_review",
+    "suggested_row_ids": [
+      "stage7i_review_0019_row_01"
+    ],
+    "suggested_metric_name": "归属母公司净利润",
+    "suggested_year": "2026E",
+    "suggested_value": "198.73",
+    "suggested_unit": "百万元",
+    "confidence": 0.18,
+    "reasoning_summary": "候选行的normalized_metric_name为“归属母公司净利润”，但source_text_excerpt中该指标后对应数列为“264.94 | 294.37 | 328.75 | 368.11”，而198.73出现在紧随其后的“现金流量净额”数列中，存在明显列值错位或年份语义不确定，无法可靠判断198.73是否属于该指标。根据不得编造规则，保留候选行ID但建议继续人工复核。",
+    "risk_flags": [
+      "year_semantics_uncertain",
+      "value_metric_misalignment",
+      "source_excerpt_contains_multiple_metrics",
+      "cannot_reliably_assign_value"
+    ],
+    "requires_human_approval": true
+  },
+  "error_type": "",
+  "error_summary": ""
+}
