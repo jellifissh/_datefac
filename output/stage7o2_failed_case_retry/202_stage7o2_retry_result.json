@@ -1,0 +1,57 @@
+{
+  "retry_policy": {
+    "stage": "stage7o_fix_failure_analysis",
+    "policy_name": "stage7o_retry_policy_draft",
+    "retry_rules": {
+      "http_503": {
+        "allow_retry": true,
+        "max_retry": 1,
+        "interval_seconds": 10,
+        "scope": "failed_cases_only"
+      },
+      "http_429": {
+        "allow_retry": false,
+        "action": "stop_sample_expansion_immediately"
+      },
+      "timeout": {
+        "allow_retry": false,
+        "action": "route_to_later_retry_queue_or_manual_review"
+      },
+      "schema_invalid": {
+        "allow_retry": true,
+        "max_retry": 1,
+        "pre_step": "safe_schema_repair_attempt"
+      }
+    },
+    "post_retry_guards": [
+      "all suggestions must keep requires_human_approval=true",
+      "deterministic validation must pass",
+      "no production write-back"
+    ],
+    "recommended_scope": "failed_cases_only",
+    "failed_case_review_ids": [
+      "stage7i_review_0001",
+      "stage7i_review_0013"
+    ]
+  },
+  "results": [
+    {
+      "review_id": "stage7i_review_0001",
+      "retry_mode": "http_503_retry",
+      "http_status": 200,
+      "response_json_parse_success": true,
+      "validation_pass": true,
+      "error_type": "",
+      "error_summary": ""
+    },
+    {
+      "review_id": "stage7i_review_0013",
+      "retry_mode": "schema_invalid_retry",
+      "http_status": 200,
+      "response_json_parse_success": true,
+      "validation_pass": true,
+      "error_type": "",
+      "error_summary": ""
+    }
+  ]
+}
