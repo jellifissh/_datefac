@@ -1,0 +1,18 @@
+{
+  "stage": "stage7s_blocked_approved_suggestion_review",
+  "policy": "do_not_auto_override_existing_preview_on_value_mismatch",
+  "reviewed_blocked_review_ids": [
+    "stage7i_review_0001",
+    "stage7i_review_0005"
+  ],
+  "recommended_workflow": [
+    "move_blocked_approved_to_needs_more_info",
+    "require_second_human_review_for_each_blocked_case",
+    "perform_source_evidence_compare_between_existing_preview_and_suggested_value",
+    "keep_no_real_apply_until_human_reconfirm"
+  ],
+  "requires_second_human_review_count": 2,
+  "recommended_needs_more_info_count": 2,
+  "auto_resolvable_count": 0,
+  "apply_override_allowed": false
+}

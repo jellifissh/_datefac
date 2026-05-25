@@ -1,0 +1,21 @@
+{
+  "stage": "stage7s_blocked_approved_suggestion_review",
+  "mode": "review_only_no_api_call_no_apply",
+  "based_on_stage7r_commit": "f19df7055d1bdf07cf3e6305c93faa99ff69ab4e",
+  "external_api_called": false,
+  "blocked_apply_count": 2,
+  "value_mismatch_count": 2,
+  "reviewed_blocked_suggestion_count": 2,
+  "auto_resolvable_count": 0,
+  "requires_second_human_review_count": 2,
+  "recommended_needs_more_info_count": 2,
+  "apply_policy_correctly_blocked_count": 2,
+  "real_apply_executed": false,
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "ready_for_stage7t_real_human_approval_input_design": true
+}
