@@ -1,0 +1,26 @@
+{
+  "timestamp_utc": "2026-05-25T07:44:36.522970+00:00",
+  "external_api_called": true,
+  "http_status": 200,
+  "rate_limited": false,
+  "timeout": false,
+  "parse_method": "raw_json",
+  "response_json_parse_success": true,
+  "response_obj": {
+    "review_id": "stage7i_review_0001",
+    "suggested_action": "keep_manual_review",
+    "suggested_row_ids": [],
+    "suggested_metric_name": "",
+    "suggested_year": "",
+    "suggested_value": "",
+    "suggested_unit": "",
+    "confidence": 0.0,
+    "reasoning_summary": "年份语义不确定，且源摘录中的PB值（4.23等）与候选行值（4.0）不匹配，无法自动判断。",
+    "risk_flags": [
+      "year_semantics_uncertain",
+      "value_mismatch"
+    ],
+    "requires_human_approval": true
+  },
+  "error": ""
+}

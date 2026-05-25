@@ -1,0 +1,63 @@
+{
+  "review_id": "stage7i_review_0001",
+  "source_pdf": "D:\\_datefac\\input\\stage7a_regression_pdfs\\H3_AP202605091822098939_1.pdf",
+  "conflict_group_id": "H3_AP202605091822098939_1_stage7d_sandbox||P/B||2025A",
+  "manual_review_reason": "year_semantics_uncertain",
+  "candidate_rows": [
+    {
+      "row_id": "stage7i_review_0001_row_01",
+      "statement_type": "valuation_metrics",
+      "raw_metric_name": "PB",
+      "normalized_metric_name": "P/B",
+      "year": "2025A",
+      "value": "4.0",
+      "unit": "倍",
+      "source_page": "2",
+      "source_table_id": "H3_AP202605091822098939_1|p2|t1|pdfplumber",
+      "source_text_excerpt": "预付款项 4 | 11 | 16 | 20 | PB | 4.23 | 3.76 | 3.26 | 2.76",
+      "extraction_confidence": "0.86",
+      "unit_confidence": "0.82",
+      "classification_confidence": "0.93"
+    }
+  ],
+  "current_policy_context": {
+    "stage": "stage7g",
+    "runtime_mode": "mock_no_external_api_call",
+    "validation_context": {
+      "version": "stage7h-v1",
+      "ai_runtime_call_enabled": false,
+      "deterministic_checks": [
+        "review_id must match request.review_id",
+        "suggested_action must be one of allowed enum",
+        "suggested_row_ids must be subset of request.candidate_rows.row_id",
+        "accept_one must contain exactly one suggested_row_id",
+        "merge_same_value must contain one or more suggested_row_ids",
+        "suggested_value/unit/year must match selected candidate row(s) when action is accept_one",
+        "EPS/每股收益 suggested_unit must not be ratio or %",
+        "confidence must be in [0,1]",
+        "requires_human_approval must be true for true_value_conflict/high-risk ambiguity",
+        "if no valid evidence, action must be keep_manual_review"
+      ],
+      "fallback_rules": [
+        "validation failure => keep_manual_review",
+        "low confidence (<0.60) => keep_manual_review",
+        "conflicting evidence without clear priority => keep_manual_review"
+      ],
+      "audit_log_fields": [
+        "review_id",
+        "conflict_group_id",
+        "input_candidate_row_count",
+        "suggested_action",
+        "suggested_row_ids",
+        "validation_pass",
+        "validation_errors",
+        "requires_human_approval",
+        "timestamp"
+      ]
+    }
+  },
+  "known_rules": {
+    "eps_unit": "元/股",
+    "do_not_use_ratio_for_eps": true
+  }
+}
