@@ -1,0 +1,13 @@
+{
+  "provider": "openai_compatible",
+  "model": "gpt-5.4-pro",
+  "selected_review_request_count": 3,
+  "executed_request_count": 3,
+  "rate_limited_count": 0,
+  "timeout_count": 0,
+  "avg_latency_seconds": 6.825,
+  "max_latency_seconds": 7.78,
+  "total_prompt_tokens": 1012,
+  "total_completion_tokens": 657,
+  "total_tokens": 1669
+}
