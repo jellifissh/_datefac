@@ -1,0 +1,26 @@
+{
+  "stage": "stage7o_fix_failure_analysis",
+  "policy_name": "stage7o_safe_schema_repair_policy_draft",
+  "safe_repairs_allowed": [
+    "confidence: numeric-string -> float",
+    "suggested_row_ids: single string -> string array",
+    "risk_flags: single string -> string array",
+    "requires_human_approval: 'true'/'false' string -> boolean, then force true",
+    "suggested_value: null -> ''",
+    "suggested_unit: null -> ''"
+  ],
+  "safe_repairs_forbidden": [
+    "fabricate suggested_value",
+    "fabricate suggested_row_ids",
+    "reference non-existent row_id",
+    "auto-accept true_value_conflict into clean preview",
+    "EPS mapped to ratio",
+    "modify source candidate raw values",
+    "modify production files",
+    "auto-repair suggested_metric_name null/type mismatch without evidence"
+  ],
+  "current_failed_schema_cases": [
+    "stage7i_review_0013"
+  ],
+  "current_schema_repairable_case_count": 0
+}

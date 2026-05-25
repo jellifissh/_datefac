@@ -1,0 +1,29 @@
+{
+  "stage": "stage7o_fix_failure_analysis",
+  "mode": "analysis_only_no_api_call",
+  "based_on_stage7o_commit": "c540c4c11081f66cdedd355ce578781a711c009a",
+  "external_api_called": false,
+  "stage7o_selected_review_request_count": 5,
+  "stage7o_validated_suggestion_count": 3,
+  "stage7o_rejected_suggestion_count": 2,
+  "http_503_case_count": 1,
+  "schema_invalid_case_count": 1,
+  "schema_invalid_missing_required_fields": [],
+  "schema_invalid_type_error_fields": [
+    "suggested_metric_name"
+  ],
+  "schema_repairable_case_count": 0,
+  "schema_repair_policy_generated": true,
+  "retry_policy_generated": true,
+  "hallucinated_value_count": 0,
+  "invalid_source_row_reference_count": 0,
+  "bad_eps_ratio_count": 0,
+  "recommended_stage7o2_retry_scope": "failed_cases_only",
+  "production_files_modified": false,
+  "official_02b_modified": false,
+  "formal_rules_modified": false,
+  "standardizer_modified": false,
+  "release_package_modified": false,
+  "check_delivery_state_overall_status": "PASS",
+  "ready_for_stage7o2_failed_case_retry": true
+}
