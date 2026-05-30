@@ -38,13 +38,14 @@ def main() -> int:
     print(f"parsed_report_count: {summary.get('parsed_report_count', 0)}")
     print(f"failed_report_count: {summary.get('failed_report_count', 0)}")
     print(f"total_table_asset_count: {summary.get('total_table_asset_count', 0)}")
-    print(f"image_path_coverage_rate: {summary.get('image_path_coverage_rate', 0)}")
+    print(f"image_path_raw_coverage_rate: {summary.get('image_path_raw_coverage_rate', 0)}")
+    print(f"image_path_resolved_exists_rate: {summary.get('image_path_resolved_exists_rate', 0)}")
     print(f"bbox_coverage_rate: {summary.get('bbox_coverage_rate', 0)}")
     print(f"core_table_detected_rate: {summary.get('core_table_detected_rate', 0)}")
+    print(f"unknown_table_rate_before_or_current: {summary.get('unknown_table_rate_before_or_current', 0)}")
     print(f"parser_decision: {summary.get('parser_decision', '')}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

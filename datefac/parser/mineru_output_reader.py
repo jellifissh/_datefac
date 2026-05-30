@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from datefac.classification.table_role_classifier import classify_table_role
 from datefac.domain.table_asset import MineruSourceFile, TableAsset, TableAssetWarning, make_source_file
 
 
@@ -18,14 +19,38 @@ class MineruReadResult:
 
     def summary(self) -> Dict[str, Any]:
         role_counts: Dict[str, int] = {}
+        core_signal_hit_count = 0
+        image_raw_count = 0
+        image_resolved_exists_count = 0
+        image_path_resolve_failed_count = 0
+        image_path_missing_count = 0
         for asset in self.table_assets:
-            role_counts[asset.table_role_guess] = role_counts.get(asset.table_role_guess, 0) + 1
+            role = _norm(asset.extra.get("role_category") or asset.table_role_guess or "UNKNOWN_TABLE")
+            role_counts[role] = role_counts.get(role, 0) + 1
+            if bool(asset.extra.get("core_signal_hit", False)):
+                core_signal_hit_count += 1
+            if _norm(asset.extra.get("image_path_raw")):
+                image_raw_count += 1
+            if bool(asset.extra.get("image_exists", False)):
+                image_resolved_exists_count += 1
+            if _norm(asset.extra.get("image_path_raw")) and not bool(asset.extra.get("image_exists", False)):
+                image_path_resolve_failed_count += 1
+            if not _norm(asset.extra.get("image_path_raw")):
+                image_path_missing_count += 1
+
+        total = len(self.table_assets)
         return {
             "source_root": self.source_root,
-            "table_asset_count": len(self.table_assets),
+            "table_asset_count": total,
             "warning_count": len(self.warnings),
             "source_file_count": len(self.source_files),
             "role_counts": role_counts,
+            "core_signal_hit_count": core_signal_hit_count,
+            "core_signal_hit_rate": float(core_signal_hit_count / total) if total > 0 else 0.0,
+            "table_image_missing_count": image_path_missing_count,
+            "image_path_resolve_failed_count": image_path_resolve_failed_count,
+            "image_path_raw_coverage_rate": float(image_raw_count / total) if total > 0 else 0.0,
+            "image_path_resolved_exists_rate": float(image_resolved_exists_count / total) if total > 0 else 0.0,
         }
 
 
@@ -93,8 +118,7 @@ def _extract_text_like(data: Dict[str, Any], keys: Iterable[str]) -> str:
     if isinstance(value, list):
         return " ".join(_norm(x) for x in value if _norm(x))
     if isinstance(value, dict):
-        # common nested path format {"text": "..."}
-        for k in ("text", "content", "value", "caption"):
+        for k in ("text", "content", "value", "caption", "html", "markdown"):
             if k in value:
                 return _norm(value[k])
     return _norm(value)
@@ -108,7 +132,6 @@ def _is_table_block(data: Dict[str, Any]) -> bool:
     bt = _extract_block_type(data)
     if "table" in bt:
         return True
-    # fallback: has explicit table-like fields
     keys = set(data.keys())
     return bool({"table", "table_body", "table_rows"} & keys)
 
@@ -119,7 +142,7 @@ def _text_from_neighbor_block(obj: Any) -> str:
     return _extract_text_like(obj, ("text", "content", "html", "markdown", "caption", "title", "footnote"))
 
 
-def _nearby_text_from_siblings(siblings: List[Any], idx: int, radius: int = 1) -> str:
+def _nearby_text_from_siblings(siblings: List[Any], idx: int, radius: int = 3) -> str:
     nearby: List[str] = []
     for j in range(max(0, idx - radius), min(len(siblings), idx + radius + 1)):
         if j == idx:
@@ -130,51 +153,96 @@ def _nearby_text_from_siblings(siblings: List[Any], idx: int, radius: int = 1) -
     return " ".join(nearby).strip()
 
 
-def _resolve_image_path(raw_image: str, source_file: Path, root: Path, image_dirs: List[Path]) -> str:
-    value = _norm(raw_image)
-    if not value:
-        return ""
-    p = Path(value)
-    if p.is_absolute():
-        return str(p)
-    cands = [source_file.parent / p, root / p]
-    for img_dir in image_dirs:
-        cands.append(img_dir / p)
-        cands.append(img_dir / p.name)
-    for cand in cands:
-        if cand.exists():
-            return str(cand.resolve())
-    return str((source_file.parent / p).resolve())
-
-
-def _guess_table_role(caption: str, footnote: str, nearby_text: str) -> Tuple[str, str]:
-    text = f"{caption} {footnote} {nearby_text}".lower()
-    keyword_sets: List[Tuple[str, List[str]]] = [
-        ("financial_statement_table", ["资产负债表", "利润表", "现金流量表", "合并利润", "balance sheet", "income statement", "cash flow"]),
-        ("valuation_table", ["估值", "pe", "p/e", "pb", "p/b", "ev/ebitda", "倍", "valuation"]),
-        ("core_metric_table", ["营业收入", "归母净利润", "毛利率", "roe", "每股收益", "eps", "revenue", "net profit", "gross margin"]),
-        ("forecast_table", ["预测", "展望", "forecast", "预计", "2025e", "2026e"]),
-    ]
-    for role, words in keyword_sets:
-        for w in words:
-            if w in text:
-                return role, f"matched_keyword:{w}"
-    return "general_table", "default_no_keyword_match"
-
-
 def _flatten_for_json(value: Any) -> Any:
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
     if isinstance(value, dict):
         out: Dict[str, Any] = {}
         for k, v in value.items():
-            if len(out) >= 12:
+            if len(out) >= 16:
                 break
             out[_norm(k)] = _flatten_for_json(v)
         return out
     if isinstance(value, list):
-        return [_flatten_for_json(x) for x in value[:12]]
+        return [_flatten_for_json(x) for x in value[:16]]
     return _norm(value)
+
+
+def _collect_candidate_image_paths(block: Dict[str, Any]) -> List[str]:
+    candidates: List[str] = []
+    direct_keys = ["img_path", "image_path", "image", "img", "table_image", "crop_image"]
+    for k in direct_keys:
+        if _norm(block.get(k)):
+            candidates.append(_norm(block.get(k)))
+
+    content = block.get("content")
+    if isinstance(content, dict):
+        for k in ("img_path", "image_path", "image"):
+            if _norm(content.get(k)):
+                candidates.append(_norm(content.get(k)))
+        image_source = content.get("image_source")
+        if isinstance(image_source, dict):
+            for k in ("path", "relative_path"):
+                if _norm(image_source.get(k)):
+                    candidates.append(_norm(image_source.get(k)))
+
+    if isinstance(block.get("images"), list):
+        for item in block["images"][:4]:
+            if _norm(item):
+                candidates.append(_norm(item))
+
+    # keep order, remove duplicates
+    out: List[str] = []
+    seen = set()
+    for c in candidates:
+        if c not in seen:
+            out.append(c)
+            seen.add(c)
+    return out
+
+
+def resolve_mineru_image_path(
+    raw_image_path: str,
+    source_file: Path,
+    root: Path,
+    image_dirs: List[Path],
+) -> Tuple[str, bool]:
+    raw = _norm(raw_image_path)
+    if not raw:
+        return "", False
+
+    normalized = raw.replace("\\", "/")
+    p = Path(normalized)
+    cands: List[Path] = []
+
+    if p.is_absolute():
+        cands.append(p)
+    else:
+        cands.append(source_file.parent / p)
+        cands.append(root / p)
+        if normalized.startswith("./"):
+            cands.append(source_file.parent / normalized[2:])
+            cands.append(root / normalized[2:])
+        for img_dir in image_dirs:
+            cands.append(img_dir / p)
+            cands.append(img_dir / p.name)
+
+    # raw maybe windows absolute but with backslash replaced to slash
+    if re.match(r"^[a-zA-Z]:/", normalized):
+        cands.append(Path(normalized))
+        cands.append(Path(normalized.replace("/", "\\")))
+
+    for cand in cands:
+        try:
+            if cand.exists():
+                return str(cand.resolve()), True
+        except Exception:
+            continue
+
+    # unresolved fallback
+    if cands:
+        return str(cands[0]), False
+    return "", False
 
 
 def discover_mineru_sources(source_root: Path) -> Tuple[List[Path], List[Path], List[Path], List[MineruSourceFile], List[TableAssetWarning]]:
@@ -196,7 +264,6 @@ def discover_mineru_sources(source_root: Path) -> Tuple[List[Path], List[Path], 
         source_files.append(make_source_file(p, "images_dir"))
 
     if not content_v2 and not content_v1:
-        # fallback: tolerate non-standard json naming
         generic_jsons = sorted(
             [
                 p
@@ -242,16 +309,34 @@ def _extract_assets_from_json(
                 bbox = _to_bbox(_extract_first(node, ("bbox", "box", "bounding_box", "rect", "polygon")))
                 if bbox is None and isinstance(node.get("position"), dict):
                     bbox = _to_bbox(node["position"].get("bbox"))
-                image_raw = _extract_text_like(node, ("image_path", "img_path", "image", "img", "table_image", "crop_image"))
-                if not image_raw and isinstance(node.get("images"), list) and node["images"]:
-                    image_raw = _norm(node["images"][0])
-                image_path = _resolve_image_path(image_raw, source_file, root, image_dirs) if image_raw else ""
+
+                image_candidates = _collect_candidate_image_paths(node)
+                image_raw = image_candidates[0] if image_candidates else ""
+                image_resolved, image_exists = resolve_mineru_image_path(
+                    raw_image_path=image_raw,
+                    source_file=source_file,
+                    root=root,
+                    image_dirs=image_dirs,
+                )
+
                 caption = _extract_text_like(node, ("caption", "title", "table_caption"))
                 footnote = _extract_text_like(node, ("footnote", "notes", "table_footnote"))
                 nearby_text = _extract_text_like(node, ("nearby_text", "context", "surrounding_text", "text_before_after"))
                 if not nearby_text and siblings is not None and sibling_idx >= 0:
-                    nearby_text = _nearby_text_from_siblings(siblings, sibling_idx)
-                role, reason = _guess_table_role(caption, footnote, nearby_text)
+                    nearby_text = _nearby_text_from_siblings(siblings, sibling_idx, radius=3)
+                html_preview = _extract_text_like(node, ("html", "table_html"))
+                if isinstance(node.get("content"), dict):
+                    html_preview = html_preview or _extract_text_like(node["content"], ("html", "table_html"))
+                html_preview = html_preview[:800]
+
+                role_res = classify_table_role(
+                    caption=caption,
+                    nearby_text=nearby_text,
+                    table_html_preview=html_preview,
+                    md_nearby_lines="",
+                    file_context=source_file.stem,
+                    page_context=f"page_{page_idx}" if page_idx is not None else "",
+                )
 
                 block_counter += 1
                 asset = TableAsset(
@@ -261,16 +346,26 @@ def _extract_assets_from_json(
                     block_index=block_counter,
                     page_idx=page_idx,
                     bbox=bbox,
-                    image_path=image_path,
+                    image_path=image_resolved,
                     caption=caption,
                     footnote=footnote,
                     nearby_text=nearby_text,
-                    table_role_guess=role,
-                    table_role_reason=reason,
+                    table_role_guess=role_res.role,
+                    table_role_reason=role_res.reason,
                     raw_block_type=_norm(_extract_first(node, ("block_type", "type", "category", "kind"))),
                     raw_block_id=_norm(_extract_first(node, ("id", "block_id", "uuid"))),
                     source_doc_id=doc_id,
-                    extra={"raw_block": _flatten_for_json(node)},
+                    extra={
+                        "raw_block": _flatten_for_json(node),
+                        "image_path_raw": image_raw,
+                        "image_path_resolved": image_resolved,
+                        "image_exists": image_exists,
+                        "role_category": role_res.role,
+                        "role_confidence": role_res.confidence,
+                        "core_signal_hit": role_res.is_core_signal,
+                        "role_signal_hits": role_res.signal_hits,
+                        "table_html_preview": html_preview,
+                    },
                 )
                 assets.append(asset)
 
@@ -294,12 +389,22 @@ def _extract_assets_from_json(
                             block_id=asset.raw_block_id,
                         )
                     )
-                if not asset.image_path:
+                if not image_raw:
                     warnings.append(
                         TableAssetWarning(
                             source_file=str(source_file),
-                            warning_code="missing_image_path",
-                            warning_message="table block 缺少 image_path。",
+                            warning_code="IMAGE_PATH_MISSING",
+                            warning_message="table block 无可用 image_path raw 字段。",
+                            block_index=asset.block_index,
+                            block_id=asset.raw_block_id,
+                        )
+                    )
+                elif not image_exists:
+                    warnings.append(
+                        TableAssetWarning(
+                            source_file=str(source_file),
+                            warning_code="IMAGE_PATH_RESOLVE_FAILED",
+                            warning_message="table block image_path raw 存在但解析后的文件不存在。",
                             block_index=asset.block_index,
                             block_id=asset.raw_block_id,
                         )
@@ -346,15 +451,31 @@ def _extract_assets_from_markdown(
                 if s:
                     caption = s
                     break
-            nearby = " ".join(_norm(x) for x in lines[max(0, start - 2) : min(len(lines), end + 2)] if _norm(x))
+            nearby = " ".join(_norm(x) for x in lines[max(0, start - 3) : min(len(lines), end + 3)] if _norm(x))
+
             image_raw = ""
             for j in range(max(0, start - 4), min(len(lines), end + 4)):
                 m = re.search(r"!\[[^\]]*\]\(([^)]+)\)", lines[j])
                 if m:
                     image_raw = m.group(1)
                     break
-            image_path = _resolve_image_path(image_raw, md_file, root, image_dirs) if image_raw else ""
-            role, reason = _guess_table_role(caption, "", nearby)
+            image_resolved, image_exists = resolve_mineru_image_path(
+                raw_image_path=image_raw,
+                source_file=md_file,
+                root=root,
+                image_dirs=image_dirs,
+            )
+
+            html_preview = "\n".join(lines[start:end])[:800]
+            role_res = classify_table_role(
+                caption=caption,
+                nearby_text=nearby,
+                table_html_preview=html_preview,
+                md_nearby_lines=nearby,
+                file_context=md_file.stem,
+                page_context="",
+            )
+
             assets.append(
                 TableAsset(
                     source_root=str(root),
@@ -363,26 +484,54 @@ def _extract_assets_from_markdown(
                     block_index=block_counter,
                     page_idx=None,
                     bbox=None,
-                    image_path=image_path,
+                    image_path=image_resolved,
                     caption=caption,
                     footnote="",
                     nearby_text=nearby,
-                    table_role_guess=role,
-                    table_role_reason=reason,
+                    table_role_guess=role_res.role,
+                    table_role_reason=role_res.reason,
                     raw_block_type="markdown_table",
                     raw_block_id=f"md_table_{block_counter}",
                     source_doc_id=md_file.stem,
-                    extra={"line_range": [start + 1, end]},
+                    extra={
+                        "line_range": [start + 1, end],
+                        "image_path_raw": image_raw,
+                        "image_path_resolved": image_resolved,
+                        "image_exists": image_exists,
+                        "role_category": role_res.role,
+                        "role_confidence": role_res.confidence,
+                        "core_signal_hit": role_res.is_core_signal,
+                        "role_signal_hits": role_res.signal_hits,
+                        "table_html_preview": html_preview,
+                    },
                 )
             )
             warnings.append(
                 TableAssetWarning(
                     source_file=str(md_file),
                     warning_code="markdown_table_missing_layout_fields",
-                    warning_message="Markdown 表格缺少 page_idx/bbox，已按弱结构记录。",
+                    warning_message="Markdown 表格缺少 page_idx/bbox，按弱结构记录。",
                     block_index=block_counter,
                 )
             )
+            if not image_raw:
+                warnings.append(
+                    TableAssetWarning(
+                        source_file=str(md_file),
+                        warning_code="IMAGE_PATH_MISSING",
+                        warning_message="markdown table 未匹配到邻近 image path。",
+                        block_index=block_counter,
+                    )
+                )
+            elif not image_exists:
+                warnings.append(
+                    TableAssetWarning(
+                        source_file=str(md_file),
+                        warning_code="IMAGE_PATH_RESOLVE_FAILED",
+                        warning_message="markdown table image path raw 存在但解析后文件不存在。",
+                        block_index=block_counter,
+                    )
+                )
             i = end
             continue
         i += 1
@@ -459,7 +608,7 @@ def read_mineru_output(source_root: Path | str) -> MineruReadResult:
             TableAssetWarning(
                 source_file=str(root),
                 warning_code="no_table_blocks_extracted",
-                warning_message="未提取到 table block，请检查 MinerU 输出格式是否兼容。",
+                warning_message="未提取到 table block，请检查 MinerU 输出格式兼容性。",
             )
         )
 
