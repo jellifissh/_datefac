@@ -24,6 +24,11 @@ class MetricCandidate:
     unit_source: str
     currency: Optional[str]
     confidence: float
+    year_source: str = "INFERRED_SEQUENCE"
+    smoke_check_status: str = "UNKNOWN"
+    smoke_check_source: str = ""
+    table_title: Optional[str] = None
+    table_unit: Optional[str] = None
     risk_tags: List[str] = field(default_factory=list)
     split_decision: str = "review_required_preview"
     split_reason: str = ""

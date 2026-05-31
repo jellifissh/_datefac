@@ -81,10 +81,16 @@ def _metric_counts(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _build_blocked_output(input_dir: Path, output_dir: Path, blocked_code: str, blocked_message: str) -> Dict[str, Any]:
+def _count_risk(df: pd.DataFrame, tag: str) -> int:
+    if df.empty:
+        return 0
+    return int(df["risk_tags"].astype(str).str.contains(rf"(?:^|\|){tag}(?:$|\|)", regex=True).sum())
+
+
+def _build_blocked_output(input_dir: Path, previous_mapping_dir: Path | None, output_dir: Path, blocked_code: str, blocked_message: str) -> Dict[str, Any]:
     summary = {
         "source_candidate_count": 0,
-        "normalized_candidate_count": 0,
+        "context_enriched_candidate_count": 0,
         "trusted_preview_count": 0,
         "review_required_preview_count": 0,
         "rejected_preview_count": 0,
@@ -94,38 +100,49 @@ def _build_blocked_output(input_dir: Path, output_dir: Path, blocked_code: str, 
         "invalid_year_count": 0,
         "value_missing_count": 0,
         "unit_unknown_count": 0,
+        "year_inferred_count": 0,
+        "table_header_year_count": 0,
+        "smoke_context_year_count": 0,
+        "smoke_verified_candidate_count": 0,
+        "row_text_only_trusted_count": 0,
+        "repaired_trusted_count": 0,
         "risk_tag_counts": {},
         "sandbox_mapping_decision": blocked_code,
         "blocked_message": blocked_message,
         "input_dir": str(input_dir),
+        "previous_mapping_dir": str(previous_mapping_dir) if previous_mapping_dir else "",
     }
     summary_df = pd.DataFrame([{"metric": k, "value": v if not isinstance(v, dict) else json.dumps(v, ensure_ascii=False)} for k, v in summary.items()])
-    empty_norm = pd.DataFrame()
-    excel_path = output_dir / "row_text_mapping_320d.xlsx"
+    empty_df = pd.DataFrame()
+    excel_path = output_dir / "row_text_mapping_320d2.xlsx"
     _write_excel(
         excel_path,
         {
             "summary": summary_df,
-            "normalized_candidates": empty_norm,
-            "trusted_preview": empty_norm,
-            "review_required_preview": empty_norm,
-            "rejected_preview": empty_norm,
-            "duplicates": empty_norm,
-            "conflicts": empty_norm,
+            "context_enriched_candidates": empty_df,
+            "trusted_preview": empty_df,
+            "review_required_preview": empty_df,
+            "rejected_preview": empty_df,
+            "context_propagation_audit": empty_df,
+            "trust_gate_audit": empty_df,
+            "smoke_verified_candidates": empty_df,
+            "duplicates": empty_df,
+            "conflicts": empty_df,
             "risk_tag_counts": pd.DataFrame(columns=["risk_tag", "count"]),
             "metric_counts": pd.DataFrame(columns=["metric_code", "count"]),
-            "source_candidate_rows": empty_norm,
-            "mapping_audit": empty_norm,
+            "source_candidate_rows": empty_df,
+            "mapping_audit": empty_df,
         },
     )
-    _json_dump(output_dir / "row_text_mapping_320d_summary.json", summary)
-    report = output_dir / "row_text_mapping_320d_report.md"
+    _json_dump(output_dir / "row_text_mapping_320d2_summary.json", summary)
+    report = output_dir / "row_text_mapping_320d2_report.md"
     report.write_text(
         "\n".join(
             [
-                "# 320D Row-Text Candidates to Sandbox Mapping",
+                "# 320D2 Context Propagation and Trust Gate Calibration",
                 "",
                 f"- input_dir: `{input_dir}`",
+                f"- previous_mapping_dir: `{previous_mapping_dir}`" if previous_mapping_dir else "- previous_mapping_dir: ``",
                 f"- sandbox_mapping_decision: `{blocked_code}`",
                 f"- blocked_message: {blocked_message}",
             ]
@@ -136,12 +153,25 @@ def _build_blocked_output(input_dir: Path, output_dir: Path, blocked_code: str, 
     return {"summary": summary, "excel_path": str(excel_path), "report_md_path": str(report)}
 
 
-def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
+def run_320d2_mapping(input_dir: Path, output_dir: Path, previous_mapping_dir: Path | None = None) -> Dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if previous_mapping_dir is not None:
+        prev_summary = previous_mapping_dir / "row_text_mapping_320d_summary.json"
+        if not prev_summary.exists():
+            return _build_blocked_output(
+                input_dir=input_dir,
+                previous_mapping_dir=previous_mapping_dir,
+                output_dir=output_dir,
+                blocked_code="BLOCKED_MISSING_320D_INPUT",
+                blocked_message=f"missing previous mapping summary: {prev_summary}",
+            )
+
     src = load_320c4_sources(input_dir)
     if src["blocked"]:
         return _build_blocked_output(
             input_dir=input_dir,
+            previous_mapping_dir=previous_mapping_dir,
             output_dir=output_dir,
             blocked_code=src["blocked_code"],
             blocked_message=src["blocked_message"],
@@ -149,7 +179,19 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
 
     source_df = src["source_candidate_rows_df"]
     smoke_ids = src["smoke_passed_candidate_ids"]
-    mapped, mapping_audit_rows = map_row_text_candidates(source_df)
+    smoke_metric_codes = src["smoke_passed_metric_codes"]
+    table_title = src["table_title"]
+    table_unit = src["table_unit"]
+    table_header_years = set(src["table_header_years"])
+
+    mapped, mapping_audit_rows, context_audit_rows = map_row_text_candidates(
+        source_candidate_rows_df=source_df,
+        table_title=table_title,
+        table_unit=table_unit,
+        table_header_years=table_header_years,
+        smoke_passed_candidate_ids=smoke_ids,
+        smoke_passed_metric_codes=smoke_metric_codes,
+    )
     dedup = resolve_duplicates_and_conflicts(mapped)
     canonical = dedup["canonical_candidates"]
     split = split_candidates_for_sandbox_preview(
@@ -157,10 +199,13 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
         smoke_passed_candidate_source_ids=smoke_ids,
     )
 
-    normalized_df = candidates_to_dataframe(canonical)
+    context_enriched_df = candidates_to_dataframe(canonical)
     trusted_df = candidates_to_dataframe(split["trusted_preview"])
     review_df = candidates_to_dataframe(split["review_required_preview"])
     rejected_df = candidates_to_dataframe(split["rejected_preview"])
+    smoke_verified_df = context_enriched_df[context_enriched_df["smoke_check_status"].astype(str) == "PASSED"].copy() if not context_enriched_df.empty else pd.DataFrame()
+    context_audit_df = pd.DataFrame(context_audit_rows)
+    trust_gate_audit_df = pd.DataFrame(split.get("trust_gate_audit_rows", []))
     duplicates_df = pd.DataFrame(dedup["duplicates_rows"])
     conflicts_df = pd.DataFrame(dedup["conflicts_rows"])
     mapping_audit_df = pd.DataFrame(mapping_audit_rows)
@@ -169,45 +214,50 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
         duplicates_df = pd.DataFrame(columns=["group_key", "kept_candidate_id", "dropped_candidate_id", "metric_code", "year", "normalized_value", "drop_reason"])
     if conflicts_df.empty:
         conflicts_df = pd.DataFrame(columns=["group_key", "candidate_id", "metric_code", "year", "normalized_value", "confidence", "risk_tags"])
+    if context_audit_df.empty:
+        context_audit_df = pd.DataFrame(columns=["candidate_id", "metric_code", "year", "year_source", "unit", "unit_source", "table_title", "table_unit", "smoke_check_status", "smoke_check_source", "risk_tags"])
+    if trust_gate_audit_df.empty:
+        trust_gate_audit_df = pd.DataFrame(columns=["candidate_id", "metric_code", "year", "confidence", "year_source", "unit_source", "smoke_check_status", "decision", "reason", "risk_tags"])
+    if smoke_verified_df.empty:
+        smoke_verified_df = pd.DataFrame(columns=context_enriched_df.columns.tolist() if not context_enriched_df.empty else [])
 
-    risk_counts_df = _risk_tag_counts(normalized_df)
-    metric_counts_df = _metric_counts(normalized_df)
-    risk_tag_counts = {}
-    if not risk_counts_df.empty:
-        risk_tag_counts = {str(r["risk_tag"]): int(r["count"]) for _, r in risk_counts_df.iterrows()}
-
-    def _count_risk(tag: str) -> int:
-        if normalized_df.empty:
-            return 0
-        return int(normalized_df["risk_tags"].astype(str).str.contains(rf"(?:^|\|){tag}(?:$|\|)", regex=True).sum())
+    risk_counts_df = _risk_tag_counts(context_enriched_df)
+    metric_counts_df = _metric_counts(context_enriched_df)
+    risk_tag_counts = {str(r["risk_tag"]): int(r["count"]) for _, r in risk_counts_df.iterrows()} if not risk_counts_df.empty else {}
 
     source_candidate_count = int(len(source_df))
-    normalized_candidate_count = int(len(normalized_df))
+    context_enriched_candidate_count = int(len(context_enriched_df))
     trusted_preview_count = int(len(trusted_df))
     review_required_preview_count = int(len(review_df))
     rejected_preview_count = int(len(rejected_df))
     duplicate_same_value_count = int(dedup["duplicate_same_value_count"])
     conflict_count = int(dedup["conflict_count"])
-    unknown_metric_code_count = _count_risk("UNKNOWN_METRIC_CODE")
-    invalid_year_count = _count_risk("INVALID_YEAR") + _count_risk("YEAR_MISSING")
-    value_missing_count = _count_risk("VALUE_MISSING")
-    unit_unknown_count = _count_risk("UNIT_UNKNOWN")
-    noise_leak_count = _count_risk("NOISE_LEAK_BBOX_HTML")
+    unknown_metric_code_count = _count_risk(context_enriched_df, "UNKNOWN_METRIC_CODE")
+    invalid_year_count = _count_risk(context_enriched_df, "INVALID_YEAR") + _count_risk(context_enriched_df, "YEAR_MISSING")
+    value_missing_count = _count_risk(context_enriched_df, "VALUE_MISSING")
+    unit_unknown_count = _count_risk(context_enriched_df, "UNIT_UNKNOWN")
+    year_inferred_count = int((context_enriched_df["year_source"].astype(str) == "INFERRED_SEQUENCE").sum()) if not context_enriched_df.empty else 0
+    table_header_year_count = int((context_enriched_df["year_source"].astype(str) == "TABLE_HEADER").sum()) if not context_enriched_df.empty else 0
+    smoke_context_year_count = int((context_enriched_df["year_source"].astype(str) == "SMOKE_CHECK_CONTEXT").sum()) if not context_enriched_df.empty else 0
+    smoke_verified_candidate_count = int(len(smoke_verified_df))
+    row_text_only_trusted_count = _count_risk(trusted_df, "ROW_TEXT_ONLY")
+    repaired_trusted_count = _count_risk(trusted_df, "ROW_REPAIRED_CONTINUATION") + _count_risk(trusted_df, "ROW_REPAIRED_VALUES_BEFORE_LABEL")
+    noise_leak_count = _count_risk(context_enriched_df, "NOISE_LEAK_BBOX_HTML")
 
     if noise_leak_count > 0:
         decision = "MAPPING_FAILED_NOISE_LEAK"
     elif conflict_count > 0:
         decision = "MAPPING_READY_WITH_REVIEW_REQUIRED_CONFLICTS"
-    elif normalized_candidate_count >= 50 and trusted_preview_count >= 30 and rejected_preview_count == 0:
+    elif context_enriched_candidate_count >= 50 and trusted_preview_count >= 50 and rejected_preview_count == 0 and conflict_count == 0:
         decision = "ROW_TEXT_MAPPING_READY_FOR_320E_SANDBOX_INTEGRATION"
-    elif normalized_candidate_count >= 20 and review_required_preview_count > 0:
-        decision = "ROW_TEXT_MAPPING_USABLE_NEEDS_REVIEW_GATE"
+    elif trusted_preview_count > 0 and review_required_preview_count > 0:
+        decision = "ROW_TEXT_MAPPING_TRUST_GATE_CALIBRATED_NEEDS_REVIEW_QUEUE"
     else:
-        decision = "ROW_TEXT_MAPPING_NOT_READY"
+        decision = "ROW_TEXT_MAPPING_CONTEXT_PROPAGATION_NOT_READY"
 
     summary_payload = {
         "source_candidate_count": source_candidate_count,
-        "normalized_candidate_count": normalized_candidate_count,
+        "context_enriched_candidate_count": context_enriched_candidate_count,
         "trusted_preview_count": trusted_preview_count,
         "review_required_preview_count": review_required_preview_count,
         "rejected_preview_count": rejected_preview_count,
@@ -217,6 +267,12 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
         "invalid_year_count": invalid_year_count,
         "value_missing_count": value_missing_count,
         "unit_unknown_count": unit_unknown_count,
+        "year_inferred_count": year_inferred_count,
+        "table_header_year_count": table_header_year_count,
+        "smoke_context_year_count": smoke_context_year_count,
+        "smoke_verified_candidate_count": smoke_verified_candidate_count,
+        "row_text_only_trusted_count": row_text_only_trusted_count,
+        "repaired_trusted_count": repaired_trusted_count,
         "risk_tag_counts": risk_tag_counts,
         "sandbox_mapping_decision": decision,
     }
@@ -224,15 +280,18 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
         [{"metric": k, "value": v if not isinstance(v, dict) else json.dumps(v, ensure_ascii=False)} for k, v in summary_payload.items()]
     )
 
-    excel_path = output_dir / "row_text_mapping_320d.xlsx"
+    excel_path = output_dir / "row_text_mapping_320d2.xlsx"
     _write_excel(
         excel_path,
         {
             "summary": summary_df,
-            "normalized_candidates": normalized_df,
+            "context_enriched_candidates": context_enriched_df,
             "trusted_preview": trusted_df,
             "review_required_preview": review_df,
             "rejected_preview": rejected_df,
+            "context_propagation_audit": context_audit_df,
+            "trust_gate_audit": trust_gate_audit_df,
+            "smoke_verified_candidates": smoke_verified_df,
             "duplicates": duplicates_df,
             "conflicts": conflicts_df,
             "risk_tag_counts": risk_counts_df,
@@ -242,23 +301,25 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
         },
     )
 
-    summary_json = output_dir / "row_text_mapping_320d_summary.json"
+    summary_json = output_dir / "row_text_mapping_320d2_summary.json"
     _json_dump(summary_json, summary_payload)
 
-    report_path = output_dir / "row_text_mapping_320d_report.md"
+    report_path = output_dir / "row_text_mapping_320d2_report.md"
     report_lines = [
-        "# 320D Row-Text Candidates to Sandbox Mapping",
+        "# 320D2 Context Propagation and Trust Gate Calibration",
         "",
         f"- input_dir: `{input_dir}`",
+        f"- previous_mapping_dir: `{previous_mapping_dir}`" if previous_mapping_dir else "- previous_mapping_dir: ``",
         f"- source_candidate_count: {source_candidate_count}",
-        f"- normalized_candidate_count: {normalized_candidate_count}",
+        f"- context_enriched_candidate_count: {context_enriched_candidate_count}",
         f"- trusted_preview_count: {trusted_preview_count}",
         f"- review_required_preview_count: {review_required_preview_count}",
         f"- rejected_preview_count: {rejected_preview_count}",
-        f"- duplicate_same_value_count: {duplicate_same_value_count}",
-        f"- conflict_count: {conflict_count}",
-        f"- unknown_metric_code_count: {unknown_metric_code_count}",
         f"- unit_unknown_count: {unit_unknown_count}",
+        f"- year_inferred_count: {year_inferred_count}",
+        f"- smoke_verified_candidate_count: {smoke_verified_candidate_count}",
+        f"- row_text_only_trusted_count: {row_text_only_trusted_count}",
+        f"- repaired_trusted_count: {repaired_trusted_count}",
         f"- sandbox_mapping_decision: {decision}",
         "",
         "## Output",
@@ -269,7 +330,7 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
     report_path.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
 
     for name, df in [
-        ("normalized_candidates.jsonl", normalized_df),
+        ("context_enriched_candidates.jsonl", context_enriched_df),
         ("trusted_preview.jsonl", trusted_df),
         ("review_required_preview.jsonl", review_df),
     ]:
@@ -287,25 +348,32 @@ def run_320d_mapping(input_dir: Path, output_dir: Path) -> Dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Map 320C4 row-text candidates into sandbox metric mapping (320D).")
+    parser = argparse.ArgumentParser(description="Run 320D2 context propagation and trust gate calibration.")
     parser.add_argument("--input-dir", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--previous-mapping-dir", required=False, default="")
     args = parser.parse_args()
 
-    result = run_320d_mapping(Path(args.input_dir), Path(args.output_dir))
+    prev = Path(args.previous_mapping_dir) if _norm(args.previous_mapping_dir) else None
+    result = run_320d2_mapping(
+        input_dir=Path(args.input_dir),
+        output_dir=Path(args.output_dir),
+        previous_mapping_dir=prev,
+    )
     s = result["summary"]
     print(f"row_text_mapping_excel: {result['excel_path']}")
     print(f"row_text_mapping_summary_json: {result.get('summary_json_path', '')}")
     print(f"row_text_mapping_report_md: {result['report_md_path']}")
     print(f"source_candidate_count: {s.get('source_candidate_count', 0)}")
-    print(f"normalized_candidate_count: {s.get('normalized_candidate_count', 0)}")
+    print(f"context_enriched_candidate_count: {s.get('context_enriched_candidate_count', 0)}")
     print(f"trusted_preview_count: {s.get('trusted_preview_count', 0)}")
     print(f"review_required_preview_count: {s.get('review_required_preview_count', 0)}")
     print(f"rejected_preview_count: {s.get('rejected_preview_count', 0)}")
-    print(f"duplicate_same_value_count: {s.get('duplicate_same_value_count', 0)}")
-    print(f"conflict_count: {s.get('conflict_count', 0)}")
-    print(f"unknown_metric_code_count: {s.get('unknown_metric_code_count', 0)}")
     print(f"unit_unknown_count: {s.get('unit_unknown_count', 0)}")
+    print(f"year_inferred_count: {s.get('year_inferred_count', 0)}")
+    print(f"smoke_verified_candidate_count: {s.get('smoke_verified_candidate_count', 0)}")
+    print(f"row_text_only_trusted_count: {s.get('row_text_only_trusted_count', 0)}")
+    print(f"repaired_trusted_count: {s.get('repaired_trusted_count', 0)}")
     print(f"sandbox_mapping_decision: {s.get('sandbox_mapping_decision', '')}")
     return 0
 

@@ -48,15 +48,14 @@ KNOWN_METRIC_MAP: Dict[str, str] = {
 
 PERCENT_METRICS = {"roe", "gross_margin", "revenue_growth", "net_profit_growth", "debt_ratio"}
 MULTIPLE_METRICS = {"pe", "pb", "ev_ebitda"}
-UNIT_MATTERS_METRICS = {
-    "eps",
-    "revenue",
+MONETARY_METRICS = {
     "net_profit",
     "asset_impairment_provision",
     "depreciation_amortization",
     "fair_value_change_loss",
     "finance_expense",
     "working_capital_change",
+    "other_operating_cf",
     "operating_cash_flow",
     "capex",
     "other_investing_cash_flow",
@@ -71,12 +70,14 @@ UNIT_MATTERS_METRICS = {
     "cash_ending_balance",
     "free_cash_flow_firm",
     "free_cash_flow_equity",
+    "revenue",
 }
-
 MEANINGLESS_RAW_VALUES = {"", "--", "—", "N/A", "NA", "nan", "None"}
 YEAR_RULE = re.compile(r"^(20\d{2})([AE])?$", re.IGNORECASE)
 PERCENT_RULE = re.compile(r"^\(?-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%\)?$")
 NUMERIC_RULE = re.compile(r"^\(?-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?\)?$")
+HEADER_YEAR_RULE = re.compile(r"\b20\d{2}[AEae]?\b")
+CASHFLOW_TITLE_RULE = re.compile(r"现金流量表", re.IGNORECASE)
 
 
 def _norm(v: Any) -> str:
@@ -123,7 +124,6 @@ def _normalize_value(raw_value: str) -> Tuple[Optional[float], Optional[str], Li
         unit = "%"
     else:
         unit = None
-
     if is_percent and unit is None:
         unit = "%"
 
@@ -155,35 +155,6 @@ def _year_and_period(year_raw: str) -> Tuple[str, str, List[str]]:
     if suffix == "A":
         return f"{year_base}A", "actual", tags
     return year_base, "actual", tags
-
-
-def _infer_unit_and_currency(metric_code: str, source_row_text: str, unit_from_value: Optional[str]) -> Tuple[Optional[str], str, Optional[str], List[str]]:
-    tags: List[str] = []
-    txt = _norm(source_row_text)
-    txt_low = txt.lower()
-    currency: Optional[str] = None
-    if "人民币" in txt or "rmb" in txt_low or "cny" in txt_low:
-        currency = "CNY"
-
-    if unit_from_value:
-        return unit_from_value, "value_token", currency, tags
-    if metric_code in PERCENT_METRICS:
-        return "%", "metric_semantic", currency, tags
-    if metric_code in MULTIPLE_METRICS:
-        return "x", "metric_semantic", currency, tags
-    if metric_code == "eps":
-        return "yuan_per_share", "metric_semantic", currency, tags
-
-    if "百万元" in txt:
-        return "百万元", "source_context", currency, tags
-    if "万元" in txt:
-        return "万元", "source_context", currency, tags
-    if "元" in txt:
-        return "元", "source_context", currency, tags
-
-    if metric_code in UNIT_MATTERS_METRICS:
-        tags.append("UNIT_UNKNOWN")
-    return None, "unknown", currency, tags
 
 
 def _build_candidate_id(source_stage: str, source_file: str, source_table_id: str, row_index: Any, metric_code: str, year: str, raw_value: str) -> str:
@@ -219,6 +190,38 @@ def _is_noise_leak(row_text: str) -> bool:
     return False
 
 
+def _read_sheet_safe(path: Path, name: str) -> pd.DataFrame:
+    try:
+        return pd.read_excel(path, sheet_name=name)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _detect_table_context(in_excel: Path) -> Dict[str, Any]:
+    cleaned_df = _read_sheet_safe(in_excel, "cleaned_row_texts")
+    table_header_years: Set[str] = set()
+    table_title = ""
+    table_unit = ""
+
+    if not cleaned_df.empty and "row_text_cleaned" in cleaned_df.columns:
+        for txt in cleaned_df["row_text_cleaned"].astype(str).tolist():
+            if CASHFLOW_TITLE_RULE.search(txt):
+                if not table_title:
+                    table_title = txt
+                for y in HEADER_YEAR_RULE.findall(txt):
+                    table_header_years.add(_norm(y).upper())
+            if "百万元" in txt:
+                table_unit = "百万元"
+            elif not table_unit and "万元" in txt:
+                table_unit = "万元"
+
+    return {
+        "table_title": table_title,
+        "table_unit": table_unit,
+        "table_header_years": sorted(table_header_years),
+    }
+
+
 def load_320c4_sources(input_dir: Path) -> Dict[str, Any]:
     in_excel = input_dir / "legacy_ppstructure_row_text_320c4.xlsx"
     if not in_excel.exists():
@@ -228,40 +231,105 @@ def load_320c4_sources(input_dir: Path) -> Dict[str, Any]:
             "blocked_message": f"missing input workbook: {in_excel}",
             "source_candidate_rows_df": pd.DataFrame(),
             "smoke_passed_candidate_ids": set(),
+            "smoke_passed_metric_codes": set(),
+            "table_title": "",
+            "table_unit": "",
+            "table_header_years": [],
         }
 
-    source_candidate_rows_df = pd.read_excel(in_excel, sheet_name="metric_candidate_preview")
+    source_candidate_rows_df = _read_sheet_safe(in_excel, "metric_candidate_preview")
+    evs_df = _read_sheet_safe(in_excel, "expected_vs_actual_matrix")
     smoke_passed_candidate_ids: Set[str] = set()
-    try:
-        evs_df = pd.read_excel(in_excel, sheet_name="expected_vs_actual_matrix")
+    smoke_passed_metric_codes: Set[str] = set()
+    if not evs_df.empty:
         for _, row in evs_df.iterrows():
             if _norm(row.get("pass_fail")).upper() != "PASS":
                 continue
+            metric_code = _norm(row.get("expected_metric_code"))
+            if metric_code:
+                smoke_passed_metric_codes.add(metric_code)
             ids = _norm(row.get("matched_candidate_row_ids"))
-            if not ids:
-                continue
-            for cid in ids.split("|"):
-                c = _norm(cid)
-                if c:
-                    smoke_passed_candidate_ids.add(c)
-    except Exception:
-        pass
+            if ids:
+                for cid in ids.split("|"):
+                    c = _norm(cid)
+                    if c:
+                        smoke_passed_candidate_ids.add(c)
 
+    ctx = _detect_table_context(in_excel)
     return {
         "blocked": False,
         "blocked_code": "",
         "blocked_message": "",
         "source_candidate_rows_df": source_candidate_rows_df,
         "smoke_passed_candidate_ids": smoke_passed_candidate_ids,
+        "smoke_passed_metric_codes": smoke_passed_metric_codes,
+        "table_title": ctx["table_title"],
+        "table_unit": ctx["table_unit"],
+        "table_header_years": ctx["table_header_years"],
     }
 
 
-def map_row_text_candidates(source_candidate_rows_df: pd.DataFrame) -> Tuple[List[MetricCandidate], List[Dict[str, Any]]]:
+def _infer_unit_and_currency(
+    metric_code: str,
+    source_row_text: str,
+    unit_from_value: Optional[str],
+    table_title: str,
+    table_unit: str,
+) -> Tuple[Optional[str], str, Optional[str], List[str]]:
+    tags: List[str] = []
+    txt = _norm(source_row_text)
+    txt_low = txt.lower()
+    title_low = _norm(table_title).lower()
+    currency: Optional[str] = None
+    if ("人民币" in txt) or ("人民币" in table_title) or ("rmb" in txt_low) or ("cny" in txt_low):
+        currency = "CNY"
+
+    if unit_from_value:
+        return unit_from_value, "VALUE_TOKEN", currency, tags
+    if metric_code in PERCENT_METRICS:
+        return "%", "METRIC_SEMANTIC", currency, tags
+    if metric_code in MULTIPLE_METRICS:
+        return "x", "METRIC_SEMANTIC", currency, tags
+    if metric_code == "eps":
+        return "yuan_per_share", "METRIC_SEMANTIC", currency, tags
+
+    if metric_code in MONETARY_METRICS:
+        if "百万元" in txt or "百万元" in table_title or table_unit == "百万元":
+            return "百万元", "TABLE_TITLE", currency, tags
+        if "万元" in txt or "万元" in table_title or table_unit == "万元":
+            return "万元", "TABLE_TITLE", currency, tags
+        if "元" in txt or "元" in table_title:
+            return "元", "TABLE_TITLE", currency, tags
+        tags.append("UNIT_UNKNOWN")
+        return None, "UNKNOWN", currency, tags
+    return None, "UNKNOWN", currency, tags
+
+
+def _determine_year_source(year_norm: str, table_header_years: Set[str], smoke_passed: bool) -> str:
+    yn = _norm(year_norm).upper()
+    if yn in table_header_years:
+        return "TABLE_HEADER"
+    if yn.endswith("A") and yn[:-1] in table_header_years:
+        return "TABLE_HEADER"
+    if smoke_passed:
+        return "SMOKE_CHECK_CONTEXT"
+    return "INFERRED_SEQUENCE"
+
+
+def map_row_text_candidates(
+    source_candidate_rows_df: pd.DataFrame,
+    table_title: str,
+    table_unit: str,
+    table_header_years: Set[str],
+    smoke_passed_candidate_ids: Set[str],
+    smoke_passed_metric_codes: Set[str],
+) -> Tuple[List[MetricCandidate], List[Dict[str, Any]], List[Dict[str, Any]]]:
     candidates: List[MetricCandidate] = []
     mapping_audit_rows: List[Dict[str, Any]] = []
+    context_audit_rows: List[Dict[str, Any]] = []
 
     if source_candidate_rows_df.empty:
-        return candidates, mapping_audit_rows
+        return candidates, mapping_audit_rows, context_audit_rows
 
     known_cols = {
         "candidate_row_id",
@@ -291,9 +359,19 @@ def map_row_text_candidates(source_candidate_rows_df: pd.DataFrame) -> Tuple[Lis
         year_norm, period_type, year_tags = _year_and_period(_norm(row_dict.get("year")))
         raw_value = _norm(row_dict.get("raw_value"))
         value_norm, value_unit, value_tags = _normalize_value(raw_value)
-        unit, unit_source, currency, unit_tags = _infer_unit_and_currency(metric_code, source_row_text, value_unit)
         confidence = _parse_confidence(row_dict.get("confidence"))
         risk_tags = _split_risk_tags(row_dict.get("risk_tags"))
+
+        source_candidate_row_id = _norm(row_dict.get("candidate_row_id"))
+        smoke_passed = (source_candidate_row_id in smoke_passed_candidate_ids) or (metric_code in smoke_passed_metric_codes)
+        year_source = _determine_year_source(year_norm=year_norm, table_header_years=table_header_years, smoke_passed=smoke_passed)
+        unit, unit_source, currency, unit_tags = _infer_unit_and_currency(
+            metric_code=metric_code,
+            source_row_text=source_row_text,
+            unit_from_value=value_unit,
+            table_title=table_title,
+            table_unit=table_unit,
+        )
 
         if confidence < 0.8:
             risk_tags.append("LOW_CONFIDENCE")
@@ -307,6 +385,15 @@ def map_row_text_candidates(source_candidate_rows_df: pd.DataFrame) -> Tuple[Lis
         risk_tags.extend(year_tags)
         risk_tags.extend(value_tags)
         risk_tags.extend(unit_tags)
+        if smoke_passed:
+            risk_tags.append("SMOKE_VERIFIED_ROW")
+        else:
+            risk_tags.append("SMOKE_CHECK_FAILED")
+
+        if year_source in {"TABLE_HEADER", "SMOKE_CHECK_CONTEXT"}:
+            risk_tags = [x for x in risk_tags if x != "YEAR_INFERRED"]
+        if unit_source == "TABLE_TITLE":
+            risk_tags = [x for x in risk_tags if x != "UNIT_UNKNOWN"]
         risk_tags = sorted(set([x for x in risk_tags if x]))
 
         source_file = _norm(row_dict.get("source_file"))
@@ -325,11 +412,18 @@ def map_row_text_candidates(source_candidate_rows_df: pd.DataFrame) -> Tuple[Lis
         for k, v in row_dict.items():
             if k not in known_cols:
                 extra_meta[k] = v
+
         provenance = {
-            "source_candidate_row_id": _norm(row_dict.get("candidate_row_id")),
+            "source_candidate_row_id": source_candidate_row_id,
             "alignment_status": _norm(row_dict.get("alignment_status")),
             "raw_row": row_dict,
             "source_meta_json": extra_meta,
+            "year_source": year_source,
+            "unit_source": unit_source,
+            "table_title": table_title,
+            "table_unit": table_unit,
+            "smoke_check_status": "PASSED" if smoke_passed else "FAILED",
+            "smoke_check_source": "320C4_EXPECTED_VS_ACTUAL" if smoke_passed else "",
         }
 
         c = MetricCandidate(
@@ -351,6 +445,11 @@ def map_row_text_candidates(source_candidate_rows_df: pd.DataFrame) -> Tuple[Lis
             unit_source=unit_source,
             currency=currency,
             confidence=confidence,
+            year_source=year_source,
+            smoke_check_status="PASSED" if smoke_passed else "FAILED",
+            smoke_check_source="320C4_EXPECTED_VS_ACTUAL" if smoke_passed else "",
+            table_title=table_title or None,
+            table_unit=table_unit or None,
             risk_tags=risk_tags,
             split_decision="review_required_preview",
             split_reason="PENDING_SPLIT",
@@ -369,7 +468,22 @@ def map_row_text_candidates(source_candidate_rows_df: pd.DataFrame) -> Tuple[Lis
                 "risk_tags": "|".join(c.risk_tags),
             }
         )
-    return candidates, mapping_audit_rows
+        context_audit_rows.append(
+            {
+                "candidate_id": c.candidate_id,
+                "metric_code": c.metric_code,
+                "year": c.year,
+                "year_source": c.year_source,
+                "unit": c.unit,
+                "unit_source": c.unit_source,
+                "table_title": c.table_title or "",
+                "table_unit": c.table_unit or "",
+                "smoke_check_status": c.smoke_check_status,
+                "smoke_check_source": c.smoke_check_source,
+                "risk_tags": "|".join(c.risk_tags),
+            }
+        )
+    return candidates, mapping_audit_rows, context_audit_rows
 
 
 def resolve_duplicates_and_conflicts(candidates: List[MetricCandidate]) -> Dict[str, Any]:
