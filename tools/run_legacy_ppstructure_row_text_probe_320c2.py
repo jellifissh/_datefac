@@ -13,8 +13,9 @@ PROJECT_ROOT = CURRENT_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from datefac.extraction.row_text_metric_extractor import extract_metric_candidates_from_row_text
-from datefac.parser.mineru_output_reader import read_mineru_output
+from datefac.extraction.row_text_cleaner import clean_row_texts
+from datefac.extraction.row_text_metric_extractor import extract_metric_candidates_from_repaired_rows
+from datefac.extraction.row_text_repair import repair_row_fragments
 from datefac.recognition.legacy_ppstructure_result_reader import read_legacy_ppstructure_results
 
 
@@ -58,220 +59,221 @@ def _json_dump(path: Path, payload: Dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _selection_only_from_mineru(mineru_output_root: Path) -> Dict[str, Any]:
-    roles = {
-        "CORE_METRIC_TABLE",
-        "FINANCIAL_FORECAST_VALUATION",
-        "BALANCE_SHEET",
-        "INCOME_STATEMENT",
-        "CASH_FLOW_STATEMENT",
-        "BUSINESS_ASSUMPTION",
-    }
-    selected_rows: List[Dict[str, Any]] = []
-    parse_warnings: List[Dict[str, Any]] = []
-    for rd in sorted([p for p in mineru_output_root.iterdir() if p.is_dir()]):
-        res = read_mineru_output(rd)
-        for w in res.warnings:
-            parse_warnings.append(
+def _build_raw_rows_from_extracted(extracted_tables: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for t in extracted_tables:
+        row_texts = t.get("row_texts", [])
+        if not isinstance(row_texts, list) or len(row_texts) == 0:
+            row_texts = [x.get("text", "") for x in t.get("cells", []) if int(x.get("col", 0)) == 0]
+            row_texts = [x for x in row_texts if _norm(x)]
+        if not row_texts and _norm(t.get("raw_text")):
+            row_texts = [x.strip() for x in _norm(t.get("raw_text")).splitlines() if x.strip()]
+
+        for i, rt in enumerate(row_texts):
+            rows.append(
                 {
-                    "source_file": _norm(w.source_file),
-                    "warning_code": _norm(w.warning_code),
-                    "warning_message": _norm(w.warning_message),
+                    "source_file": _norm(t.get("source_doc_name")),
+                    "extracted_table_id": _norm(t.get("extracted_table_id")),
+                    "row_index": i,
+                    "row_text": _norm(rt),
+                    "recognition_status": _norm(t.get("recognition_status")),
                 }
             )
-        for a in res.table_assets:
-            ad = a.to_dict()
-            extra = ad.get("extra", {}) if isinstance(ad.get("extra"), dict) else {}
-            role = _norm(extra.get("role_category") or ad.get("table_role_guess"))
-            if role in roles:
-                selected_rows.append(
-                    {
-                        "source_file": _norm(ad.get("source_file")),
-                        "table_asset_id": f"{rd.name}__{_norm(ad.get('source_doc_id'))}__{ad.get('block_index')}",
-                        "source_doc_name": _norm(ad.get("source_doc_id")) or rd.name,
-                        "table_role_guess": role,
-                        "row_text": "",
-                        "recognition_status": "SKIPPED_SELECTION_ONLY",
-                    }
-                )
-    return {"selected_rows": selected_rows, "parse_warnings": parse_warnings}
+    return rows
 
 
-def run_probe(
-    output_dir: Path,
-    ppstructure_result_dir: Path | None = None,
-    mineru_output_root: Path | None = None,
-    selection_only: bool = False,
-) -> Dict[str, Any]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    extracted_tables_rows: List[Dict[str, Any]] = []
-    row_text_rows: List[Dict[str, Any]] = []
-    source_files_rows: List[Dict[str, Any]] = []
-    parse_warnings_rows: List[Dict[str, Any]] = []
-
-    if selection_only and mineru_output_root is not None:
-        probe = _selection_only_from_mineru(mineru_output_root)
-        selected_rows = probe["selected_rows"]
-        parse_warnings_rows.extend(probe["parse_warnings"])
-
-        metric_candidate_preview_rows: List[Dict[str, Any]] = []
-        unmatched_rows: List[Dict[str, Any]] = selected_rows
-        summary_payload = {
-            "source_result_file_count": 0,
-            "extracted_table_count": 0,
-            "recognized_row_text_count": 0,
-            "recognized_grid_count": 0,
-            "total_row_text_count": 0,
-            "metric_candidate_count": 0,
-            "matched_metric_row_count": 0,
-            "unmatched_row_count": len(unmatched_rows),
-            "year_inferred_count": 0,
-            "numeric_count_mismatch_count": 0,
-            "row_text_probe_decision": "NEED_MORE_ROW_TEXT_SAMPLES",
-        }
-    else:
-        if ppstructure_result_dir is None:
-            raise ValueError("ppstructure_result_dir is required unless selection_only mode is enabled.")
-
-        rr = read_legacy_ppstructure_results(ppstructure_result_dir)
-        source_files_rows.extend(rr.source_files)
-        for w in rr.warnings:
-            parse_warnings_rows.append(
-                {
-                    "source_file": _norm(w.get("source_file")),
-                    "warning_code": _norm(w.get("warning_code")),
-                    "warning_message": _norm(w.get("warning_message")),
-                }
-            )
-
-        for et in rr.extracted_tables:
-            ed = et.to_dict()
-            extracted_tables_rows.append(
-                {
-                    "extracted_table_id": ed["extracted_table_id"],
-                    "table_asset_id": ed["table_asset_id"],
-                    "source_doc_name": ed["source_doc_name"],
-                    "source_file": ed["source_doc_name"],
-                    "recognizer_name": ed["recognizer_name"],
-                    "recognizer_version": ed["recognizer_version"],
-                    "recognition_status": ed["recognition_status"],
-                    "row_count": ed["row_count"],
-                    "col_count": ed["col_count"],
-                    "cell_count": ed["cell_count"],
-                    "non_empty_cell_count": ed["non_empty_cell_count"],
-                    "raw_text": ed["raw_text"][:8000],
-                    "warnings": "|".join(ed.get("warnings", [])),
-                }
-            )
-            row_texts = ed.get("row_texts", None)
-            if not isinstance(row_texts, list) or len(row_texts) == 0:
-                row_texts = [x.get("text", "") for x in ed.get("cells", []) if int(x.get("col", 0)) == 0]
-                row_texts = [x for x in row_texts if _norm(x)]
-            for i, rt in enumerate(row_texts):
-                row_text_rows.append(
-                    {
-                        "source_file": ed["source_doc_name"],
-                        "extracted_table_id": ed["extracted_table_id"],
-                        "row_index": i,
-                        "row_text": _norm(rt),
-                    }
-                )
-
-        extractor_out = extract_metric_candidates_from_row_text(rr.extracted_tables)
-        metric_candidate_preview_rows = extractor_out["metric_candidate_preview"]
-        unmatched_rows = extractor_out["unmatched_rows"]
-        parse_warnings_rows.extend(extractor_out["parse_warnings"])
-
-        source_result_file_count = len(source_files_rows)
-        extracted_table_count = len(rr.extracted_tables)
-        recognized_row_text_count = sum(1 for x in rr.extracted_tables if x.recognition_status == "RECOGNIZED_ROW_TEXT")
-        recognized_grid_count = sum(1 for x in rr.extracted_tables if x.recognition_status in {"RECOGNIZED_GRID", "RECOGNIZED_GRID_WEAK"})
-        total_row_text_count = extractor_out["total_row_text_count"]
-        metric_candidate_count = len(metric_candidate_preview_rows)
-        matched_metric_row_count = extractor_out["matched_metric_row_count"]
-        unmatched_row_count = len(unmatched_rows)
-        year_inferred_count = extractor_out["year_inferred_count"]
-        numeric_count_mismatch_count = extractor_out["numeric_count_mismatch_count"]
-
-        mismatch_ratio = float(numeric_count_mismatch_count / max(metric_candidate_count, 1))
-        if metric_candidate_count >= 20 and mismatch_ratio <= 0.30:
-            decision = "ROW_TEXT_RECOGNITION_READY_FOR_320D_CANDIDATE_MAPPING"
-        elif recognized_row_text_count > 0 and metric_candidate_count < 20:
-            decision = "ROW_TEXT_AVAILABLE_NEEDS_RULE_CALIBRATION"
-        elif total_row_text_count == 0:
-            decision = "LEGACY_PPSTRUCTURE_RESULT_PARSE_FAILED"
-        else:
-            decision = "NEED_MORE_ROW_TEXT_SAMPLES"
-
-        if any(_norm(x.get("warning_code")) == "BLOCKED_MISSING_PPSTRUCTURE_RESULT_DIR" for x in parse_warnings_rows):
-            decision = "BLOCKED_MISSING_PPSTRUCTURE_RESULT_DIR"
-
-        summary_payload = {
-            "source_result_file_count": source_result_file_count,
-            "extracted_table_count": extracted_table_count,
-            "recognized_row_text_count": recognized_row_text_count,
-            "recognized_grid_count": recognized_grid_count,
-            "total_row_text_count": total_row_text_count,
-            "metric_candidate_count": metric_candidate_count,
-            "matched_metric_row_count": matched_metric_row_count,
-            "unmatched_row_count": unmatched_row_count,
-            "year_inferred_count": year_inferred_count,
-            "numeric_count_mismatch_count": numeric_count_mismatch_count,
-            "row_text_probe_decision": decision,
-        }
-
-    # export
-    extracted_df = pd.DataFrame(extracted_tables_rows)
-    row_text_df = pd.DataFrame(row_text_rows)
-    metric_df = pd.DataFrame(metric_candidate_preview_rows)
-    parse_warnings_df = pd.DataFrame(parse_warnings_rows)
-    unmatched_df = pd.DataFrame(unmatched_rows)
-    source_files_df = pd.DataFrame(source_files_rows)
-
-    if extracted_df.empty:
-        extracted_df = pd.DataFrame(columns=["extracted_table_id", "table_asset_id", "source_doc_name", "recognition_status", "row_count", "col_count", "cell_count", "non_empty_cell_count", "raw_text", "warnings"])
-    if row_text_df.empty:
-        row_text_df = pd.DataFrame(columns=["source_file", "extracted_table_id", "row_index", "row_text"])
+def _expected_smoke_check(metric_df: pd.DataFrame) -> Dict[str, Any]:
+    # soft smoke set for known sample; no hardcoding of output rows, only check presence patterns
+    expected = [
+        ("net_profit", "2024", "1974"),
+        ("net_profit", "2028E", "4526"),
+        ("depreciation_amortization", "2024", "1083"),
+        ("operating_cash_flow", "2024", "3537"),
+        ("investing_cash_flow", "2025", "-2705"),
+        ("financing_cash_flow", "2024", "-967"),
+        ("net_cash_change", "2024", "2828"),
+        ("free_cash_flow_firm", "2027E", "4312"),
+    ]
+    passed = 0
+    details: List[Dict[str, Any]] = []
     if metric_df.empty:
-        metric_df = pd.DataFrame(columns=["source_file", "extracted_table_id", "row_index", "row_text", "metric_code", "raw_metric_name", "year", "raw_value", "normalized_value", "raw_unit", "alignment_status", "risk_tags", "confidence"])
-    if parse_warnings_df.empty:
-        parse_warnings_df = pd.DataFrame(columns=["source_file", "warning_code", "warning_message"])
+        for e in expected:
+            details.append({"metric_code": e[0], "year": e[1], "expected_value": e[2], "passed": False})
+        return {
+            "smoke_check_expected_row_count": len(expected),
+            "smoke_check_passed_row_count": 0,
+            "smoke_check_failed_row_count": len(expected),
+            "details": details,
+        }
+
+    for metric_code, year, exp_value in expected:
+        cond = (
+            (metric_df["metric_code"].astype(str) == metric_code)
+            & (metric_df["year"].astype(str) == year)
+            & (metric_df["normalized_value"].astype(str).str.replace(",", "", regex=False) == exp_value)
+        )
+        ok = bool(cond.any())
+        if ok:
+            passed += 1
+        details.append({"metric_code": metric_code, "year": year, "expected_value": exp_value, "passed": ok})
+    return {
+        "smoke_check_expected_row_count": len(expected),
+        "smoke_check_passed_row_count": passed,
+        "smoke_check_failed_row_count": len(expected) - passed,
+        "details": details,
+    }
+
+
+def run_calibration(ppstructure_result_dir: Path, output_dir: Path) -> Dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rr = read_legacy_ppstructure_results(ppstructure_result_dir)
+
+    extracted_tables = [x.to_dict() for x in rr.extracted_tables]
+    raw_rows = _build_raw_rows_from_extracted(extracted_tables)
+    raw_row_text_count = len(raw_rows)
+
+    cleaned = clean_row_texts(raw_rows)
+    cleaned_rows = cleaned["cleaned_rows"]
+    rejected_rows = cleaned["rejected_rows"]
+    cleaner_warnings = cleaned["warnings"]
+
+    repaired = repair_row_fragments(cleaned_rows, expected_year_count=5)
+    repaired_rows = repaired["repaired_rows"]
+    repair_warnings = repaired["warnings"]
+
+    extracted = extract_metric_candidates_from_repaired_rows(repaired_rows, expected_year_count=5)
+    metric_candidates = extracted["metric_candidate_preview"]
+    parse_warnings = extracted["parse_warnings"]
+    unmatched_rows = extracted["unmatched_rows"]
+    numeric_split = extracted["numeric_tokenizer_split_1974_detected"]
+
+    # merge warnings
+    warnings_all = []
+    warnings_all.extend(rr.warnings)
+    warnings_all.extend(cleaner_warnings)
+    warnings_all.extend(repair_warnings)
+    warnings_all.extend(parse_warnings)
+
+    metric_df = pd.DataFrame(metric_candidates)
+    if metric_df.empty:
+        metric_df = pd.DataFrame(
+            columns=[
+                "source_file",
+                "extracted_table_id",
+                "row_index",
+                "row_text",
+                "metric_code",
+                "raw_metric_name",
+                "year",
+                "raw_value",
+                "normalized_value",
+                "raw_unit",
+                "alignment_status",
+                "risk_tags",
+                "confidence",
+            ]
+        )
+
+    smoke = _expected_smoke_check(metric_df)
+    bbox_or_html_leak = False
+    if not metric_df.empty:
+        for rt in metric_df["row_text"].astype(str).tolist():
+            low = rt.lower()
+            if "cell_bbox" in low or low.strip().startswith("{") or "<table" in low or "<td" in low:
+                bbox_or_html_leak = True
+                break
+
+    cleaned_human_row_text_count = len(cleaned_rows)
+    repaired_row_count = len([r for r in repaired_rows if _norm(r.get("repair_tags")) != ""])
+    high_conf = int((metric_df["confidence"] == "high").sum()) if not metric_df.empty else 0
+    med_conf = int((metric_df["confidence"] == "medium").sum()) if not metric_df.empty else 0
+    low_conf = int((metric_df["confidence"] == "low").sum()) if not metric_df.empty else 0
+    numeric_count_mismatch_count = int(extracted["numeric_count_mismatch_count"])
+
+    if bbox_or_html_leak:
+        decision = "ROW_TEXT_CALIBRATION_FAILED_NOISE_LEAK"
+    elif numeric_split:
+        decision = "ROW_TEXT_CALIBRATION_FAILED_NUMERIC_TOKENIZER"
+    elif smoke["smoke_check_passed_row_count"] >= 8 and numeric_count_mismatch_count <= 3:
+        decision = "ROW_TEXT_CALIBRATION_READY_FOR_320D"
+    elif repaired_row_count > 0 and smoke["smoke_check_passed_row_count"] < 8:
+        decision = "ROW_TEXT_REPAIR_NEEDS_MORE_CALIBRATION"
+    else:
+        decision = "ROW_TEXT_CALIBRATION_NOT_READY"
+
+    summary_payload = {
+        "source_result_file_count": len(rr.source_files),
+        "raw_row_text_count": raw_row_text_count,
+        "cleaned_human_row_text_count": cleaned_human_row_text_count,
+        "skipped_raw_bbox_count": int(cleaned["skipped_raw_bbox_count"]),
+        "skipped_raw_html_count": int(cleaned["skipped_raw_html_count"]),
+        "repaired_row_count": repaired_row_count,
+        "metric_candidate_count": int(len(metric_df)),
+        "high_confidence_candidate_count": high_conf,
+        "medium_confidence_candidate_count": med_conf,
+        "low_confidence_candidate_count": low_conf,
+        "numeric_count_mismatch_count": numeric_count_mismatch_count,
+        "smoke_check_expected_row_count": int(smoke["smoke_check_expected_row_count"]),
+        "smoke_check_passed_row_count": int(smoke["smoke_check_passed_row_count"]),
+        "smoke_check_failed_row_count": int(smoke["smoke_check_failed_row_count"]),
+        "row_text_calibration_decision": decision,
+    }
+
+    cleaned_df = pd.DataFrame(cleaned_rows)
+    repaired_df = pd.DataFrame(repaired_rows)
+    warning_df = pd.DataFrame(warnings_all)
+    rejected_df = pd.DataFrame(rejected_rows)
+    unmatched_df = pd.DataFrame(unmatched_rows)
+    source_files_df = pd.DataFrame(rr.source_files)
+    smoke_df = pd.DataFrame(smoke["details"])
+    summary_df = pd.DataFrame([{"metric": k, "value": v} for k, v in summary_payload.items()])
+
+    if cleaned_df.empty:
+        cleaned_df = pd.DataFrame(columns=["source_file", "extracted_table_id", "row_index", "row_text_raw", "row_text_category", "row_text_cleaned"])
+    if repaired_df.empty:
+        repaired_df = pd.DataFrame(columns=["source_file", "extracted_table_id", "row_index", "row_text_repaired", "repaired_label", "repaired_values", "repair_tags"])
+    if warning_df.empty:
+        warning_df = pd.DataFrame(columns=["source_file", "warning_code", "warning_message"])
+    if rejected_df.empty:
+        rejected_df = pd.DataFrame(columns=["source_file", "row_text_raw", "row_text_category"])
     if unmatched_df.empty:
         unmatched_df = pd.DataFrame(columns=["source_file", "extracted_table_id", "row_index", "row_text"])
     if source_files_df.empty:
         source_files_df = pd.DataFrame(columns=["source_file", "source_kind"])
 
-    summary_df = pd.DataFrame([{"metric": k, "value": v} for k, v in summary_payload.items()])
-
-    out_excel = output_dir / "legacy_ppstructure_row_text_320c2.xlsx"
+    out_excel = output_dir / "legacy_ppstructure_row_text_320c3.xlsx"
     _write_excel(
         out_excel,
         {
             "summary": summary_df,
-            "extracted_tables": extracted_df,
-            "row_texts": row_text_df,
+            "cleaned_row_texts": cleaned_df,
+            "repaired_rows": repaired_df,
             "metric_candidate_preview": metric_df,
-            "parse_warnings": parse_warnings_df,
+            "expected_value_smoke_check": smoke_df,
+            "parse_warnings": warning_df,
+            "rejected_noise_rows": rejected_df,
             "unmatched_rows": unmatched_df,
             "source_files": source_files_df,
         },
     )
 
-    out_summary = output_dir / "legacy_ppstructure_row_text_320c2_summary.json"
+    out_summary = output_dir / "legacy_ppstructure_row_text_320c3_summary.json"
     _json_dump(out_summary, summary_payload)
 
-    out_report = output_dir / "legacy_ppstructure_row_text_320c2_report.md"
+    out_report = output_dir / "legacy_ppstructure_row_text_320c3_report.md"
     report_lines = [
-        "# 320C2 Legacy PPStructure Row-Text Probe",
+        "# 320C3 Row-Text Candidate Calibration",
         "",
-        f"- source_result_file_count: {summary_payload.get('source_result_file_count', 0)}",
-        f"- extracted_table_count: {summary_payload.get('extracted_table_count', 0)}",
-        f"- recognized_row_text_count: {summary_payload.get('recognized_row_text_count', 0)}",
-        f"- recognized_grid_count: {summary_payload.get('recognized_grid_count', 0)}",
-        f"- metric_candidate_count: {summary_payload.get('metric_candidate_count', 0)}",
-        f"- numeric_count_mismatch_count: {summary_payload.get('numeric_count_mismatch_count', 0)}",
-        f"- row_text_probe_decision: {summary_payload.get('row_text_probe_decision', '')}",
+        f"- source_result_file_count: {summary_payload['source_result_file_count']}",
+        f"- raw_row_text_count: {summary_payload['raw_row_text_count']}",
+        f"- cleaned_human_row_text_count: {summary_payload['cleaned_human_row_text_count']}",
+        f"- skipped_raw_bbox_count: {summary_payload['skipped_raw_bbox_count']}",
+        f"- skipped_raw_html_count: {summary_payload['skipped_raw_html_count']}",
+        f"- repaired_row_count: {summary_payload['repaired_row_count']}",
+        f"- metric_candidate_count: {summary_payload['metric_candidate_count']}",
+        f"- numeric_count_mismatch_count: {summary_payload['numeric_count_mismatch_count']}",
+        f"- smoke_check_passed_row_count: {summary_payload['smoke_check_passed_row_count']}",
+        f"- row_text_calibration_decision: {summary_payload['row_text_calibration_decision']}",
         "",
         "## Output",
         f"- excel: `{out_excel}`",
@@ -280,8 +282,11 @@ def run_probe(
     ]
     out_report.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
 
-    with (output_dir / "extracted_tables.jsonl").open("w", encoding="utf-8") as f:
-        for _, r in extracted_df.iterrows():
+    with (output_dir / "cleaned_row_texts.jsonl").open("w", encoding="utf-8") as f:
+        for _, r in cleaned_df.iterrows():
+            f.write(json.dumps(r.to_dict(), ensure_ascii=False) + "\n")
+    with (output_dir / "repaired_rows.jsonl").open("w", encoding="utf-8") as f:
+        for _, r in repaired_df.iterrows():
             f.write(json.dumps(r.to_dict(), ensure_ascii=False) + "\n")
     with (output_dir / "metric_candidate_preview.jsonl").open("w", encoding="utf-8") as f:
         for _, r in metric_df.iterrows():
@@ -292,37 +297,32 @@ def run_probe(
         "summary_json_path": str(out_summary),
         "report_md_path": str(out_report),
         "summary": summary_payload,
-        "warning_summary_df": parse_warnings_df,
+        "warning_df": warning_df,
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run legacy PPStructure row-text probe 320C2.")
-    parser.add_argument("--ppstructure-result-dir", default="")
-    parser.add_argument("--mineru-output-root", default="")
+    parser = argparse.ArgumentParser(description="Run 320C3 row text candidate calibration.")
+    parser.add_argument("--ppstructure-result-dir", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--selection-only", action="store_true")
     args = parser.parse_args()
 
-    pp_dir = Path(args.ppstructure_result_dir) if _norm(args.ppstructure_result_dir) else None
-    mineru_root = Path(args.mineru_output_root) if _norm(args.mineru_output_root) else None
-
-    result = run_probe(
+    result = run_calibration(
+        ppstructure_result_dir=Path(args.ppstructure_result_dir),
         output_dir=Path(args.output_dir),
-        ppstructure_result_dir=pp_dir,
-        mineru_output_root=mineru_root,
-        selection_only=bool(args.selection_only),
     )
     s = result["summary"]
-    print(f"legacy_row_text_probe_excel: {result['excel_path']}")
-    print(f"legacy_row_text_probe_summary_json: {result['summary_json_path']}")
-    print(f"legacy_row_text_probe_report_md: {result['report_md_path']}")
-    print(f"source_result_file_count: {s.get('source_result_file_count', 0)}")
-    print(f"extracted_table_count: {s.get('extracted_table_count', 0)}")
-    print(f"recognized_row_text_count: {s.get('recognized_row_text_count', 0)}")
+    print(f"legacy_row_text_calibration_excel: {result['excel_path']}")
+    print(f"legacy_row_text_calibration_summary_json: {result['summary_json_path']}")
+    print(f"legacy_row_text_calibration_report_md: {result['report_md_path']}")
+    print(f"cleaned_human_row_text_count: {s.get('cleaned_human_row_text_count', 0)}")
+    print(f"skipped_raw_bbox_count: {s.get('skipped_raw_bbox_count', 0)}")
+    print(f"skipped_raw_html_count: {s.get('skipped_raw_html_count', 0)}")
+    print(f"repaired_row_count: {s.get('repaired_row_count', 0)}")
     print(f"metric_candidate_count: {s.get('metric_candidate_count', 0)}")
     print(f"numeric_count_mismatch_count: {s.get('numeric_count_mismatch_count', 0)}")
-    print(f"row_text_probe_decision: {s.get('row_text_probe_decision', '')}")
+    print(f"smoke_check_passed_row_count: {s.get('smoke_check_passed_row_count', 0)}")
+    print(f"row_text_calibration_decision: {s.get('row_text_calibration_decision', '')}")
     return 0
 
 
