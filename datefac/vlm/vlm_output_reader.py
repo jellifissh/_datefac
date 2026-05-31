@@ -69,18 +69,26 @@ class VLMValueCell:
 @dataclass
 class VLMRow:
     row_index: int
+    source_row_index: Optional[int]
     row_name: Optional[str]
     metric_name_raw: Optional[str]
     metric_name_cn: Optional[str]
+    confidence: Optional[float] = None
+    uncertain: bool = False
+    warnings: List[str] = field(default_factory=list)
     values: List[VLMValueCell] = field(default_factory=list)
     schema_errors: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "row_index": self.row_index,
+            "source_row_index": self.source_row_index,
             "row_name": self.row_name,
             "metric_name_raw": self.metric_name_raw,
             "metric_name_cn": self.metric_name_cn,
+            "confidence": self.confidence,
+            "uncertain": self.uncertain,
+            "warnings": list(self.warnings),
             "values": [v.to_dict() for v in self.values],
             "schema_errors": list(self.schema_errors),
         }
@@ -92,8 +100,10 @@ class VLMTable:
     is_table: bool
     table_title: Optional[str]
     unit: Optional[str]
+    currency: Optional[str] = None
     columns: List[str] = field(default_factory=list)
     rows: List[VLMRow] = field(default_factory=list)
+    table_warnings: List[str] = field(default_factory=list)
     schema_errors: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -102,8 +112,10 @@ class VLMTable:
             "is_table": self.is_table,
             "table_title": self.table_title,
             "unit": self.unit,
+            "currency": self.currency,
             "columns": list(self.columns),
             "rows": [r.to_dict() for r in self.rows],
+            "table_warnings": list(self.table_warnings),
             "schema_errors": list(self.schema_errors),
         }
 
@@ -218,6 +230,7 @@ def _normalize_row(row: Any, row_index: int, columns: List[str]) -> VLMRow:
     if not isinstance(row, dict):
         return VLMRow(
             row_index=row_index,
+            source_row_index=None,
             row_name=None,
             metric_name_raw=None,
             metric_name_cn=None,
@@ -233,6 +246,7 @@ def _normalize_row(row: Any, row_index: int, columns: List[str]) -> VLMRow:
     if not isinstance(values_raw, list):
         return VLMRow(
             row_index=row_index,
+            source_row_index=None,
             row_name=row_name,
             metric_name_raw=metric_name_raw,
             metric_name_cn=metric_name_cn,
@@ -314,9 +328,21 @@ def _normalize_row(row: Any, row_index: int, columns: List[str]) -> VLMRow:
 
     return VLMRow(
         row_index=row_index,
+        source_row_index=(
+            int(row["row_index"])
+            if isinstance(row.get("row_index"), (int, float)) and not isinstance(row.get("row_index"), bool)
+            else None
+        ),
         row_name=row_name,
         metric_name_raw=metric_name_raw,
         metric_name_cn=metric_name_cn,
+        confidence=(
+            float(row["confidence"])
+            if isinstance(row.get("confidence"), (int, float)) and not isinstance(row.get("confidence"), bool)
+            else None
+        ),
+        uncertain=bool(row.get("uncertain", False)),
+        warnings=[_norm(item) for item in row.get("warnings", []) if _norm(item)],
         values=values,
         schema_errors=schema_errors,
     )
@@ -332,8 +358,10 @@ def normalize_vlm_payload(payload: Any) -> VLMTable:
             is_table=False,
             table_title=None,
             unit=None,
+            currency=None,
             columns=[],
             rows=[],
+            table_warnings=[],
             schema_errors=["ROOT_JSON_NOT_OBJECT"],
         )
 
@@ -353,8 +381,10 @@ def normalize_vlm_payload(payload: Any) -> VLMTable:
         is_table=bool(payload.get("is_table", True)),
         table_title=_optional_text(_first_present(payload, ("table_title", "title"))),
         unit=_optional_text(payload.get("unit")),
+        currency=_optional_text(payload.get("currency")),
         columns=columns,
         rows=rows,
+        table_warnings=[_norm(item) for item in payload.get("table_warnings", []) if _norm(item)],
         schema_errors=schema_errors,
     )
     return table
