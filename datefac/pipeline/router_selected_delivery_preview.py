@@ -135,6 +135,9 @@ def build_router_selected_delivery_preview(
     existing_candidates_by_table: Dict[str, pd.DataFrame],
     new_322a_candidates_df: pd.DataFrame,
     existing_selected_output_sources: Dict[str, str],
+    new_mineru_selected_output_source: str = MINERU_322A_SOURCE,
+    new_mineru_output_origin: str = "322A_NEW_MINERU",
+    new_mineru_note: str = "newly generated 322A MinerU-body output",
 ) -> SelectedOutputBundle:
     route_inventory_df = _ensure_columns(
         route_inventory_df,
@@ -241,9 +244,9 @@ def build_router_selected_delivery_preview(
         risk_tags = _norm(route_row.get("router_risk_tags"))
 
         if table_asset_id in new_grouped and not new_grouped[table_asset_id].empty:
-            selected_output_source = MINERU_322A_SOURCE
+            selected_output_source = new_mineru_selected_output_source
             selected_table_df = new_grouped[table_asset_id].copy()
-            notes = "newly generated 322A MinerU-body output"
+            notes = new_mineru_note
         elif table_asset_id in existing_candidates_by_table and not existing_candidates_by_table[table_asset_id].empty:
             selected_output_source = _norm(existing_selected_output_sources.get(table_asset_id))
             selected_table_df = existing_candidates_by_table[table_asset_id].copy()
@@ -280,6 +283,8 @@ def build_router_selected_delivery_preview(
             notes=notes,
             risk_tags=risk_tags,
         )
+        if selected_output_source == new_mineru_selected_output_source:
+            preview_row["output_origin"] = new_mineru_output_origin
         preview_rows.append(preview_row)
         delivery_preview_rows.append(dict(preview_row))
         candidate_frames.append(selected_table_df)

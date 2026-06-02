@@ -445,6 +445,7 @@ def _build_coverage_after(
     coverage_before_df: pd.DataFrame,
     selected_preview_after_df: pd.DataFrame,
     newly_processed_ids: Sequence[str],
+    mineru_selected_output_sources: Optional[Sequence[str]] = None,
 ) -> pd.DataFrame:
     route_inventory_df = route_inventory_df.fillna("") if not route_inventory_df.empty else pd.DataFrame()
     selected_preview_after_df = selected_preview_after_df.fillna("") if not selected_preview_after_df.empty else pd.DataFrame()
@@ -462,7 +463,10 @@ def _build_coverage_after(
     ]
     rows: List[Dict[str, Any]] = []
     newly_processed_set = set(str(item) for item in newly_processed_ids)
-    mineru_selected_after = int((selected_preview_after_df["selected_output_source"].astype(str).isin([MINERU_322A_SOURCE, MINERU_TABLE_BODY_321D])).sum()) if not selected_preview_after_df.empty else 0
+    mineru_sources = {MINERU_322A_SOURCE, MINERU_TABLE_BODY_321D}
+    if mineru_selected_output_sources:
+        mineru_sources.update(str(item) for item in mineru_selected_output_sources if _norm(item))
+    mineru_selected_after = int((selected_preview_after_df["selected_output_source"].astype(str).isin(list(mineru_sources)).sum())) if not selected_preview_after_df.empty else 0
     for recognizer in recognizers:
         before_row = before_lookup.get(recognizer, {})
         if recognizer == MINERU_TABLE_BODY_321D:
