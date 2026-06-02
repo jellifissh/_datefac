@@ -33,6 +33,23 @@ ROW_LABEL_CODE_LIKE = re.compile(r"^(?:\d{6}(?:\.[A-Z]{2})?|[A-Z]{3,5}|[A-Z]{1,5
 GENERIC_HEADER_LABELS = {"项目", "指标", "预测指标", "会计年度"}
 NON_ROW_FIRST_COL_HINTS = {"代码", "公司", "货币", "收盘价", "市值"}
 TITLE_HINTS = ("资产负债表", "利润表", "现金流量表", "盈利预测", "财务指标", "预测指标")
+UNIT_TEXT_VARIANTS = {
+    "百万人民币": "百万元",
+    "百万元人民币": "百万元",
+    "百万元": "百万元",
+    "百万": "百万元",
+    "亿元": "亿元",
+    "亿": "亿元",
+    "万元": "万元",
+}
+MOJIBAKE_TITLE_REPAIRS = {
+    "棰勬祴鎸囨爣": "预测指标",
+    "璧勪骇璐熷€鸿〃": "资产负债表",
+    "鍒╂鼎琛": "利润表",
+    "鐜伴噾娴侀噺琛": "现金流量表",
+    "鐩堝埄棰勬祴": "盈利预测",
+    "璐㈠姟鎸囨爣": "财务指标",
+}
 
 
 @dataclass
@@ -126,6 +143,8 @@ def _is_corrupted_title(text: str) -> bool:
         return False
     if any(hint in normalized for hint in TITLE_HINTS):
         return False
+    if normalized in MOJIBAKE_TITLE_REPAIRS:
+        return True
     return is_likely_corrupted_label(normalized) and score_text_quality(normalized) <= 0
 
 
@@ -140,17 +159,48 @@ def _infer_currency(unit: str, title: str) -> Optional[str]:
 
 def _canonical_unit_for_mapping(unit: str) -> str:
     normalized = normalize_text(unit)
-    if normalized in {"百万", "百万元", "百万元人民币"}:
-        return "百万元"
-    if normalized in {"亿元", "亿"}:
-        return "亿元"
-    if normalized in {"万元"}:
-        return "万元"
+    if normalized in UNIT_TEXT_VARIANTS:
+        return UNIT_TEXT_VARIANTS[normalized]
     if normalized in {"元/股", "元"}:
         return normalized
     if normalized in {"x", "X"}:
         return "x"
     return normalized
+
+
+def _repair_title_text(text: str) -> str:
+    normalized = normalize_text(text)
+    if not normalized:
+        return ""
+    for bad_text, repaired_text in MOJIBAKE_TITLE_REPAIRS.items():
+        normalized = normalized.replace(bad_text, repaired_text)
+    return normalized
+
+
+def _extract_unit_hint(*texts: str) -> str:
+    for text in texts:
+        normalized = _repair_title_text(text)
+        for variant, canonical in UNIT_TEXT_VARIANTS.items():
+            if variant and variant in normalized:
+                return canonical
+    return ""
+
+
+def _derive_title_candidate_from_rows(table: StructTableNormalizedTable, grid_rows: Sequence[Sequence[str]]) -> str:
+    markdown_rows = table.markdown_grid_rows or []
+    if len(markdown_rows) >= 2:
+        first_row = [_repair_title_text(value) for value in markdown_rows[0]]
+        second_row = [_repair_title_text(value) for value in markdown_rows[1]]
+        first_non_empty = [value for value in first_row if value]
+        if len(first_non_empty) == 1 and sum(1 for value in second_row if re.match(r"^20\d{2}", value.replace(" ", ""))) >= 2:
+            candidate = first_non_empty[0]
+            if not _is_corrupted_title(candidate):
+                return candidate
+    if grid_rows:
+        first_cell = _repair_title_text(grid_rows[0][0]) if grid_rows[0] else ""
+        if first_cell and first_cell not in GENERIC_HEADER_LABELS and any(hint in first_cell for hint in TITLE_HINTS):
+            return first_cell
+    return ""
 
 
 def _is_section_header_row(row: Sequence[str], year_column_indexes: Sequence[int]) -> bool:
@@ -192,22 +242,17 @@ def _table_type_guess(
 
 
 def _select_title(table: StructTableNormalizedTable, grid_rows: Sequence[Sequence[str]]) -> str:
-    if table.table_title and not _is_corrupted_title(table.table_title):
-        return normalize_text(table.table_title)
-    markdown_rows = table.markdown_grid_rows or []
-    if len(markdown_rows) >= 2:
-        first_row = [normalize_text(value) for value in markdown_rows[0]]
-        second_row = [normalize_text(value) for value in markdown_rows[1]]
-        first_non_empty = [value for value in first_row if value]
-        if len(first_non_empty) == 1 and sum(1 for value in second_row if re.match(r"^20\d{2}", value.replace(" ", ""))) >= 2:
-            candidate = first_non_empty[0]
-            if not _is_corrupted_title(candidate):
-                return candidate
-    if grid_rows:
-        first_cell = normalize_text(grid_rows[0][0]) if grid_rows[0] else ""
-        if first_cell and first_cell not in GENERIC_HEADER_LABELS and any(hint in first_cell for hint in TITLE_HINTS):
-            return first_cell
-    return ""
+    normalized_title = _repair_title_text(table.table_title)
+    row_derived_title = _derive_title_candidate_from_rows(table, grid_rows)
+    if row_derived_title and (
+        not normalized_title
+        or _is_corrupted_title(table.table_title)
+        or (not any(hint in normalized_title for hint in TITLE_HINTS) and any(hint in row_derived_title for hint in TITLE_HINTS))
+    ):
+        return row_derived_title
+    if normalized_title and not _is_corrupted_title(normalized_title):
+        return normalized_title
+    return row_derived_title
 
 
 def _table_fingerprint(table: StructTableNormalizedTable, grid_rows: Sequence[Sequence[str]]) -> str:
@@ -444,7 +489,10 @@ def _normalize_single_structtable(
     if any(count > 1 for count in seen_metric_names.values()):
         warnings.append(SECTION_CONTEXT_WARNING)
 
-    unit = _canonical_unit_for_mapping(detect_unit(title, [_norm(item["column"]) for item in year_columns], [row.metric_name_raw for row in rows]))
+    detected_unit = detect_unit(title, [_norm(item["column"]) for item in year_columns], [row.metric_name_raw for row in rows])
+    if not detected_unit:
+        detected_unit = _extract_unit_hint(title, *[_norm(item["column"]) for item in year_columns], *[row.metric_name_raw for row in rows[:10]])
+    unit = _canonical_unit_for_mapping(detected_unit)
     currency = _infer_currency(unit, title)
     fingerprint = _table_fingerprint(table, grid_rows)
     table_id = hashlib.sha1(f"{table.image_name}|{fingerprint}".encode("utf-8")).hexdigest()[:16]

@@ -100,6 +100,51 @@ EXTRACTION_RISK_TAGS = {
     "POSSIBLE_MISSING_VALUE_RISK",
 }
 LABEL_RISK_TAGS = {"CHINESE_LABEL_CORRUPTED", "ROW_LABEL_MISSING", "ROW_LABEL_CODE_LIKE", "CORRUPTED_LABEL"}
+OUT_OF_SCOPE_RISK_TAGS = {"OUT_OF_SCOPE_METRIC", "NON_CORE_STATEMENT_LINE"}
+CORE_BALANCE_SHEET_METRICS = {
+    "cash_and_equivalents",
+    "accounts_receivable",
+    "inventory",
+    "current_assets_total",
+    "fixed_assets",
+    "investment_property",
+    "total_assets",
+    "accounts_payable",
+    "current_liabilities_total",
+    "total_liabilities",
+    "shareholders_equity",
+    "minority_interest",
+    "total_liabilities_and_equity",
+    "short_term_borrowings",
+    "long_term_borrowings",
+}
+OUT_OF_SCOPE_LABELS = {
+    "在建工程",
+    "无形资产开发支出",
+    "长期待摊费用",
+    "其他非流动资产",
+    "其他流动资产",
+    "其他流动负债",
+    "其他非流动负债",
+    "其他负债",
+    "股本",
+    "资本公积金",
+    "留存收益",
+    "预付款",
+    "其他应收款",
+    "应收票据及应收款合计",
+    "应付票据及应付账款合计",
+    "应付和预收款项",
+    "流动资产",
+    "非流动资产",
+    "流动负债",
+    "非流动负债",
+}
+
+
+def _stage_slug_for_output(output_dir: Path) -> str:
+    name = _norm(output_dir.name).lower()
+    return name if name else "structtable_unified_mapping_321e4"
 
 
 @dataclass
@@ -151,6 +196,31 @@ def _map_structtable_metric_code(raw_metric_name: str, previous_metric_code: Opt
     if normalized in STRUCTTABLE_ALIAS_MAP:
         return STRUCTTABLE_ALIAS_MAP[normalized]
     return _map_metric_code(raw_metric_name, previous_metric_code, previous_metric_label)
+
+
+def _is_out_of_scope_balance_sheet_line(table_type_guess: str, raw_metric_name: str, metric_code: str) -> bool:
+    if table_type_guess != "balance_sheet":
+        return False
+    if metric_code != UNKNOWN_METRIC_CODE:
+        return False
+    normalized = _normalize_metric_label(raw_metric_name)
+    if normalized in {_normalize_metric_label(label) for label in OUT_OF_SCOPE_LABELS}:
+        return True
+    return False
+
+
+def _split_risk_tags_text(value: Any) -> List[str]:
+    return [_norm(item) for item in _norm(value).split("|") if _norm(item) and _norm(item).lower() != "nan"]
+
+
+def _risk_tag_counter(df: pd.DataFrame) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    if df.empty or "risk_tags" not in df.columns:
+        return counts
+    for value in df["risk_tags"]:
+        for tag in _split_risk_tags_text(value):
+            counts[tag] = counts.get(tag, 0) + 1
+    return counts
 
 
 def _risk_tag_set(candidate: MetricCandidate) -> set[str]:
@@ -286,7 +356,10 @@ def _write_report(path: Path, summary: Dict[str, Any], comparison_df: pd.DataFra
         f"- review_required_total_count: {summary.get('review_required_total_count', 0)}",
         f"- rejected_total_count: {summary.get('rejected_total_count', 0)}",
         f"- trusted_rate: {summary.get('trusted_rate', 0.0)}",
+        f"- all_candidate_trusted_rate: {summary.get('all_candidate_trusted_rate', 0.0)}",
+        f"- core_candidate_trusted_rate: {summary.get('core_candidate_trusted_rate', 0.0)}",
         f"- unit_unknown_count: {summary.get('unit_unknown_count', 0)}",
+        f"- out_of_scope_candidate_count: {summary.get('out_of_scope_candidate_count', 0)}",
         f"- invalid_year_count: {summary.get('invalid_year_count', 0)}",
         f"- unknown_metric_code_count: {summary.get('unknown_metric_code_count', 0)}",
         f"- value_parse_failed_count: {summary.get('value_parse_failed_count', 0)}",
@@ -295,6 +368,8 @@ def _write_report(path: Path, summary: Dict[str, Any], comparison_df: pd.DataFra
         f"- label_issue_candidate_count: {summary.get('label_issue_candidate_count', 0)}",
         f"- conflict_count: {summary.get('conflict_count', 0)}",
         f"- provenance_complete_rate: {summary.get('provenance_complete_rate', 0.0)}",
+        f"- unit_unknown_consistency_check: {summary.get('unit_unknown_consistency_check', '')}",
+        f"- risk_tag_summary_consistency_check: {summary.get('risk_tag_summary_consistency_check', '')}",
         f"- structtable_mapping_decision: {summary.get('structtable_mapping_decision', '')}",
         "",
         "## Route Comparison",
@@ -323,8 +398,9 @@ def _write_report(path: Path, summary: Dict[str, Any], comparison_df: pd.DataFra
 def _blocked_output(config: StructTableMetricProbeConfig, code: str, message: str) -> Dict[str, Any]:
     output_dir = config.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    stage_slug = _stage_slug_for_output(output_dir)
     summary = {
-        "stage": "321E4",
+        "stage": stage_slug.upper(),
         "blocked": True,
         "blocked_code": code,
         "blocked_message": message,
@@ -338,7 +414,10 @@ def _blocked_output(config: StructTableMetricProbeConfig, code: str, message: st
         "review_required_total_count": 0,
         "rejected_total_count": 0,
         "trusted_rate": 0.0,
+        "all_candidate_trusted_rate": 0.0,
+        "core_candidate_trusted_rate": 0.0,
         "unit_unknown_count": 0,
+        "out_of_scope_candidate_count": 0,
         "invalid_year_count": 0,
         "unknown_metric_code_count": 0,
         "value_parse_failed_count": 0,
@@ -354,6 +433,8 @@ def _blocked_output(config: StructTableMetricProbeConfig, code: str, message: st
         "qa_pass_count": 0,
         "qa_warn_count": 0,
         "qa_fail_count": 1,
+        "unit_unknown_consistency_check": "BLOCKED",
+        "risk_tag_summary_consistency_check": "BLOCKED",
         "structtable_mapping_decision": code,
         "top_risk_tags": [],
     }
@@ -371,9 +452,9 @@ def _blocked_output(config: StructTableMetricProbeConfig, code: str, message: st
         "qa_checks": pd.DataFrame([{"check_name": code, "status": "FAIL", "detail": message}]),
         "known_limitations": pd.DataFrame([{"limitation": "blocked_input", "detail": message}]),
     }
-    excel_path = output_dir / "structtable_unified_mapping_321e4.xlsx"
-    summary_json_path = output_dir / "structtable_unified_mapping_321e4_summary.json"
-    report_md_path = output_dir / "structtable_unified_mapping_321e4_report.md"
+    excel_path = output_dir / f"{stage_slug}.xlsx"
+    summary_json_path = output_dir / f"{stage_slug}_summary.json"
+    report_md_path = output_dir / f"{stage_slug}_report.md"
     _write_excel(excel_path, sheets)
     _write_json(summary_json_path, summary)
     _write_report(report_md_path, summary, pd.DataFrame(), sheets["qa_checks"])
@@ -485,7 +566,10 @@ def map_structtable_unified_tables_to_candidates(unified_tables: Sequence[Struct
                 risk_tags.extend([warning for warning in row.warnings if _norm(warning)])
                 risk_tags.extend([warning for warning in table.warnings if _norm(warning)])
                 risk_tags.extend([warning for warning in value_cell.warnings if _norm(warning)])
-                if metric_code == UNKNOWN_METRIC_CODE:
+                if _is_out_of_scope_balance_sheet_line(table.table_type_guess, raw_metric_name, metric_code):
+                    risk_tags.append("OUT_OF_SCOPE_METRIC")
+                    risk_tags.append("NON_CORE_STATEMENT_LINE")
+                elif metric_code == UNKNOWN_METRIC_CODE:
                     risk_tags.append("UNKNOWN_METRIC_CODE")
                 if _contains_corruption(raw_metric_name):
                     risk_tags.append("CHINESE_LABEL_CORRUPTED")
@@ -591,8 +675,12 @@ def map_structtable_unified_tables_to_candidates(unified_tables: Sequence[Struct
                 reason = ""
                 tags = _risk_tag_set(candidate)
                 if candidate.metric_code == UNKNOWN_METRIC_CODE:
-                    issue_type = "UNKNOWN_METRIC_CODE"
-                    action = "KEEP_REVIEW"
+                    if "OUT_OF_SCOPE_METRIC" in tags:
+                        issue_type = "OUT_OF_SCOPE_METRIC"
+                        action = "KEEP_REVIEW_EXCLUDE_FROM_CORE_DENOMINATOR"
+                    else:
+                        issue_type = "UNKNOWN_METRIC_CODE"
+                        action = "KEEP_REVIEW"
                     reason = raw_metric_name
                 elif candidate.year_source != "TABLE_HEADER":
                     issue_type = "INVALID_YEAR"
@@ -709,6 +797,9 @@ def split_structtable_candidates_for_preview(
         if "VALUE_CONFLICT" in tags:
             finalize(candidate, "review_required_preview", "VALUE_CONFLICT", review_required)
             continue
+        if tags.intersection(OUT_OF_SCOPE_RISK_TAGS):
+            finalize(candidate, "review_required_preview", "OUT_OF_SCOPE_METRIC", review_required)
+            continue
         if candidate.metric_code == UNKNOWN_METRIC_CODE:
             finalize(candidate, "review_required_preview", "UNKNOWN_METRIC_CODE", review_required)
             continue
@@ -744,10 +835,7 @@ def split_structtable_candidates_for_preview(
 def _explode_risk_tags(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty or "risk_tags" not in df.columns:
         return pd.DataFrame(columns=["risk_tag", "count"])
-    counts: Dict[str, int] = {}
-    for value in df["risk_tags"].astype(str):
-        for tag in [_norm(item) for item in value.split("|") if _norm(item) and _norm(item).lower() != "nan"]:
-            counts[tag] = counts.get(tag, 0) + 1
+    counts = _risk_tag_counter(df)
     rows = [{"risk_tag": key, "count": value} for key, value in sorted(counts.items(), key=lambda item: (-item[1], item[0]))]
     return pd.DataFrame(rows)
 
@@ -762,6 +850,7 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
 
     output_dir = config.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    stage_slug = _stage_slug_for_output(output_dir)
 
     unified_result = normalize_structtable_to_unified_tables(
         audit_dir=config.structtable_audit_dir,
@@ -793,13 +882,18 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
     review_required_total_count = int(len(review_df))
     rejected_total_count = int(len(rejected_df))
     total_candidate_count = int(len(all_candidates_df))
-    trusted_rate = float(trusted_total_count / total_candidate_count) if total_candidate_count else 0.0
-    unit_unknown_count = int(all_candidates_df["unit"].astype(str).eq("").sum()) if not all_candidates_df.empty else 0
+    risk_tag_counts_df = _explode_risk_tags(all_candidates_df)
+    risk_tag_counts_lookup = {str(row["risk_tag"]): int(row["count"]) for _, row in risk_tag_counts_df.iterrows()} if not risk_tag_counts_df.empty else {}
+    out_of_scope_candidate_count = int(risk_tag_counts_lookup.get("OUT_OF_SCOPE_METRIC", 0))
+    core_candidate_count = max(total_candidate_count - out_of_scope_candidate_count, 0)
+    all_candidate_trusted_rate = float(trusted_total_count / total_candidate_count) if total_candidate_count else 0.0
+    core_candidate_trusted_rate = float(trusted_total_count / core_candidate_count) if core_candidate_count else 0.0
+    trusted_rate = core_candidate_trusted_rate
+    unit_unknown_count = int(risk_tag_counts_lookup.get("UNIT_UNKNOWN", 0))
     invalid_year_count = int((all_candidates_df["year_source"].astype(str) != "TABLE_HEADER").sum()) if not all_candidates_df.empty else 0
-    unknown_metric_code_count = int((all_candidates_df["metric_code"].astype(str) == UNKNOWN_METRIC_CODE).sum()) if not all_candidates_df.empty else 0
+    unknown_metric_code_count = int(risk_tag_counts_lookup.get("UNKNOWN_METRIC_CODE", 0))
     value_parse_failed_count = int(all_candidates_df["risk_tags"].astype(str).str.contains("VALUE_PARSE_FAILED", regex=False).sum()) if not all_candidates_df.empty else 0
     provenance_complete_rate = float(mapping_result["provenance_complete_count"] / total_candidate_count) if total_candidate_count else 0.0
-    risk_tag_counts_df = _explode_risk_tags(all_candidates_df)
     top_risk_tags = risk_tag_counts_df.head(10).to_dict("records") if not risk_tag_counts_df.empty else []
 
     qa_rows: List[Dict[str, Any]] = []
@@ -836,6 +930,24 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
             ).sum()
         )
     qa_rows.append({"check_name": "extraction_risk_candidates_not_silently_trusted", "status": "PASS" if risky_trusted == 0 else "FAIL", "detail": f"risky_trusted_count={risky_trusted}"})
+    unit_unknown_consistency_pass = unit_unknown_count == int(risk_tag_counts_lookup.get("UNIT_UNKNOWN", 0))
+    qa_rows.append(
+        {
+            "check_name": "unit_unknown_consistency_check",
+            "status": "PASS" if unit_unknown_consistency_pass else "FAIL",
+            "detail": f"summary_unit_unknown_count={unit_unknown_count}; risk_tag_unit_unknown_count={int(risk_tag_counts_lookup.get('UNIT_UNKNOWN', 0))}",
+        }
+    )
+    risk_tag_total_from_sheet = int(risk_tag_counts_df["count"].sum()) if not risk_tag_counts_df.empty else 0
+    risk_tag_total_from_candidates = sum(len(_split_risk_tags_text(value)) for value in all_candidates_df["risk_tags"]) if not all_candidates_df.empty else 0
+    risk_tag_consistency_pass = risk_tag_total_from_sheet == risk_tag_total_from_candidates
+    qa_rows.append(
+        {
+            "check_name": "risk_tag_summary_consistency_check",
+            "status": "PASS" if risk_tag_consistency_pass else "FAIL",
+            "detail": f"risk_tag_sheet_total={risk_tag_total_from_sheet}; risk_tag_candidate_total={risk_tag_total_from_candidates}",
+        }
+    )
     qa_rows.append({"check_name": "output_written", "status": "PASS", "detail": str(output_dir)})
     qa_df = pd.DataFrame(qa_rows)
     qa_pass_count = int((qa_df["status"] == "PASS").sum()) if not qa_df.empty else 0
@@ -844,7 +956,7 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
 
     input_image_count = len(list(config.input_image_dir.glob("*")))
     summary = {
-        "stage": "321E4",
+        "stage": stage_slug.upper(),
         "blocked": False,
         "blocked_code": "",
         "blocked_message": "",
@@ -858,7 +970,10 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
         "review_required_total_count": review_required_total_count,
         "rejected_total_count": rejected_total_count,
         "trusted_rate": trusted_rate,
+        "all_candidate_trusted_rate": all_candidate_trusted_rate,
+        "core_candidate_trusted_rate": core_candidate_trusted_rate,
         "unit_unknown_count": unit_unknown_count,
+        "out_of_scope_candidate_count": out_of_scope_candidate_count,
         "invalid_year_count": invalid_year_count,
         "unknown_metric_code_count": unknown_metric_code_count,
         "value_parse_failed_count": value_parse_failed_count,
@@ -874,6 +989,8 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
         "qa_pass_count": qa_pass_count,
         "qa_warn_count": qa_warn_count,
         "qa_fail_count": qa_fail_count,
+        "unit_unknown_consistency_check": "PASS" if unit_unknown_consistency_pass else "FAIL",
+        "risk_tag_summary_consistency_check": "PASS" if risk_tag_consistency_pass else "FAIL",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "top_risk_tags": top_risk_tags,
     }
@@ -980,9 +1097,9 @@ def run_structtable_metric_probe(config: StructTableMetricProbeConfig) -> Dict[s
         "known_limitations": known_limitations_df,
     }
 
-    excel_path = output_dir / "structtable_unified_mapping_321e4.xlsx"
-    summary_json_path = output_dir / "structtable_unified_mapping_321e4_summary.json"
-    report_md_path = output_dir / "structtable_unified_mapping_321e4_report.md"
+    excel_path = output_dir / f"{stage_slug}.xlsx"
+    summary_json_path = output_dir / f"{stage_slug}_summary.json"
+    report_md_path = output_dir / f"{stage_slug}_report.md"
     _write_excel(excel_path, sheets)
     _write_json(summary_json_path, summary)
     _write_report(report_md_path, summary, comparison_df, qa_df)
