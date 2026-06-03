@@ -113,6 +113,153 @@
         "利润表"
       ],
       "promotion_status": "PROMOTED_STAGE4H"
+    },
+    "SEM_SCOPE_322N_001": {
+      "rule_id": "SEM_SCOPE_322N_001",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "其他流动负债",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::001",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::001",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::001",
+      "source_rule_id": "rule::out_of_scope::001",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::001",
+      "source_322j_rule_id": "rule::out_of_scope::001",
+      "source_322i_proposal_id": "proposal::out_of_scope::001",
+      "human_confirmation_source_case_id": "label::其他流动负债",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_322N_002": {
+      "rule_id": "SEM_SCOPE_322N_002",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "代码",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::002",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::002",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::002",
+      "source_rule_id": "rule::out_of_scope::002",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::002",
+      "source_322j_rule_id": "rule::out_of_scope::002",
+      "source_322i_proposal_id": "proposal::out_of_scope::002",
+      "human_confirmation_source_case_id": "label::代码",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_322N_003": {
+      "rule_id": "SEM_SCOPE_322N_003",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "行业均值",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::003",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::003",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::003",
+      "source_rule_id": "rule::out_of_scope::003",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::003",
+      "source_322j_rule_id": "rule::out_of_scope::003",
+      "source_322i_proposal_id": "proposal::out_of_scope::003",
+      "human_confirmation_source_case_id": "label::行业均值",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_322N_004": {
+      "rule_id": "SEM_SCOPE_322N_004",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "000338.sz",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::004",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::004",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::004",
+      "source_rule_id": "rule::out_of_scope::004",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::004",
+      "source_322j_rule_id": "rule::out_of_scope::004",
+      "source_322i_proposal_id": "proposal::out_of_scope::004",
+      "human_confirmation_source_case_id": "label::000338.sz",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_322N_005": {
+      "rule_id": "SEM_SCOPE_322N_005",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "002353.sz",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::005",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::005",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::005",
+      "source_rule_id": "rule::out_of_scope::005",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::005",
+      "source_322j_rule_id": "rule::out_of_scope::005",
+      "source_322i_proposal_id": "proposal::out_of_scope::005",
+      "human_confirmation_source_case_id": "label::002353.sz",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_322N_006": {
+      "rule_id": "SEM_SCOPE_322N_006",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "300153.sz",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::006",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::006",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::006",
+      "source_rule_id": "rule::out_of_scope::006",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::006",
+      "source_322j_rule_id": "rule::out_of_scope::006",
+      "source_322i_proposal_id": "proposal::out_of_scope::006",
+      "human_confirmation_source_case_id": "label::300153.sz",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_322N_007": {
+      "rule_id": "SEM_SCOPE_322N_007",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "300277.sz",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_322m::out_of_scope::007",
+      "source_dry_run_patch_operation_id": "dry_run_322l::out_of_scope::007",
+      "source_controlled_patch_proposal_id": "proposal_322k::out_of_scope::007",
+      "source_rule_id": "rule::out_of_scope::007",
+      "source_322k_proposal_id": "proposal_322k::out_of_scope::007",
+      "source_322j_rule_id": "rule::out_of_scope::007",
+      "source_322i_proposal_id": "proposal::out_of_scope::007",
+      "human_confirmation_source_case_id": "label::300277.sz",
+      "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
     }
   }
 }

@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "rule_family": "semantic_alias_candidates",
+  "description": "Official semantic alias candidates approved for controlled semantic mapping.",
+  "groups": {
+    "cash_flow": [
+      {
+        "rule_id": "SEM_ALIAS_322N_002",
+        "normalized_label": "货币资金的期初余额",
+        "metric_code": "cash_beginning_balance",
+        "metric_family": "cash_flow",
+        "source_approval_id": "approval_322m::alias::002",
+        "source_dry_run_patch_operation_id": "dry_run_322l::alias::002",
+        "source_controlled_patch_proposal_id": "proposal_322k::alias::002",
+        "source_rule_id": "rule::alias::002",
+        "source_322k_proposal_id": "proposal_322k::alias::002",
+        "source_322j_rule_id": "rule::alias::002",
+        "source_322i_proposal_id": "proposal::alias::002",
+        "human_confirmation_source_case_id": "label::货币资金的期初余额",
+        "approval_stage": "322N",
+        "status": "APPLIED_322N"
+      },
+      {
+        "rule_id": "SEM_ALIAS_322N_003",
+        "normalized_label": "货币资金的期末余额",
+        "metric_code": "cash_ending_balance",
+        "metric_family": "cash_flow",
+        "source_approval_id": "approval_322m::alias::003",
+        "source_dry_run_patch_operation_id": "dry_run_322l::alias::003",
+        "source_controlled_patch_proposal_id": "proposal_322k::alias::003",
+        "source_rule_id": "rule::alias::003",
+        "source_322k_proposal_id": "proposal_322k::alias::003",
+        "source_322j_rule_id": "rule::alias::003",
+        "source_322i_proposal_id": "proposal::alias::003",
+        "human_confirmation_source_case_id": "label::货币资金的期末余额",
+        "approval_stage": "322N",
+        "status": "APPLIED_322N"
+      }
+    ],
+    "profitability": [
+      {
+        "rule_id": "SEM_ALIAS_322N_001",
+        "normalized_label": "roic(%)",
+        "metric_code": "roic",
+        "metric_family": "profitability",
+        "source_approval_id": "approval_322m::alias::001",
+        "source_dry_run_patch_operation_id": "dry_run_322l::alias::001",
+        "source_controlled_patch_proposal_id": "proposal_322k::alias::001",
+        "source_rule_id": "rule::alias::001",
+        "source_322k_proposal_id": "proposal_322k::alias::001",
+        "source_322j_rule_id": "rule::alias::001",
+        "source_322i_proposal_id": "proposal::alias::001",
+        "human_confirmation_source_case_id": "label::roic(%)",
+        "approval_stage": "322N",
+        "status": "APPLIED_322N"
+      }
+    ]
+  }
+}
