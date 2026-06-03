@@ -384,10 +384,13 @@ def main() -> int:
     print(f"official_patch_human_approval_322m_final_approved_patch_plan_json: {output_paths['plan_json_path']}")
     print(f"official_patch_human_approval_322m_reviewed_qa_json: {output_paths['qa_json_path']}")
     for key in [
-        "approval_record_count",
+        "reviewed_approval_record_count",
         "approved_patch_count",
         "rejected_patch_count",
         "needs_more_review_count",
+        "pending_count",
+        "invalid_decision_count",
+        "final_approved_patch_count",
         "qa_pass_count",
         "qa_warn_count",
         "qa_fail_count",
@@ -400,4 +403,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

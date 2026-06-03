@@ -12,6 +12,8 @@ EXPECTED_322M_PREPARE_DECISION = "OFFICIAL_SEMANTIC_PATCH_HUMAN_APPROVAL_322M_RE
 EXPECTED_322M_PREPARE_NOT_READY = "OFFICIAL_SEMANTIC_PATCH_HUMAN_APPROVAL_322M_NOT_READY"
 EXPECTED_322M_REVIEWED_DECISION = "OFFICIAL_SEMANTIC_PATCH_HUMAN_APPROVAL_322M_REVIEWED_READY_FOR_322N_OFFICIAL_PATCH_APPLICATION"
 EXPECTED_322M_REVIEWED_NOT_READY = "OFFICIAL_SEMANTIC_PATCH_HUMAN_APPROVAL_322M_REVIEWED_NOT_READY"
+EXPECTED_322MR_DECISION = "OFFICIAL_SEMANTIC_PATCH_HUMAN_APPROVAL_322M_VALIDATE_REVIEWED_READY_FOR_REAL_HUMAN_REVIEWED_WORKBOOK"
+EXPECTED_322MR_NOT_READY = "OFFICIAL_SEMANTIC_PATCH_HUMAN_APPROVAL_322M_VALIDATE_REVIEWED_NOT_READY"
 
 DEFAULT_OUTPUT_DIR = Path(r"D:\_datefac\output\official_semantic_patch_human_approval_322m")
 FORMAL_SCOPE_RULES_PATH = Path(r"D:\_datefac\data\mapping\formal_scope_rules.json")
@@ -22,6 +24,12 @@ ALLOWED_REVIEWER_DECISIONS = {
     "APPROVED",
     "REJECTED",
     "NEEDS_MORE_REVIEW",
+}
+REQUIRED_REVIEWER_EDITABLE_FIELDS = {
+    "reviewer_decision",
+    "reviewer_note",
+    "reviewer_name",
+    "approval_timestamp",
 }
 
 
@@ -78,6 +86,34 @@ def _decision_distribution(records: Sequence[Dict[str, Any]]) -> Dict[str, int]:
         key = _norm(record.get("reviewer_decision")) or PREPARE_DECISION_PENDING
         distribution[key] = distribution.get(key, 0) + 1
     return distribution
+
+
+def _count_pending_decisions(records: Sequence[Dict[str, Any]]) -> int:
+    total = 0
+    for record in records:
+        decision = _norm(record.get("reviewer_decision")).upper()
+        if decision in {"", PREPARE_DECISION_PENDING}:
+            total += 1
+    return total
+
+
+def _count_invalid_decisions(records: Sequence[Dict[str, Any]]) -> int:
+    total = 0
+    for record in records:
+        decision = _norm(record.get("reviewer_decision")).upper()
+        if decision and decision != PREPARE_DECISION_PENDING and decision not in ALLOWED_REVIEWER_DECISIONS:
+            total += 1
+    return total
+
+
+def _missing_required_fields(records: Sequence[Dict[str, Any]], required_fields: Sequence[str]) -> List[Dict[str, str]]:
+    missing: List[Dict[str, str]] = []
+    for record in records:
+        record_id = _norm(record.get("approval_id")) or _norm(record.get("dry_run_patch_operation_id")) or "UNKNOWN_RECORD"
+        for field in required_fields:
+            if _norm(record.get(field)) == "":
+                missing.append({"record_id": record_id, "field": field})
+    return missing
 
 
 def load_official_patch_human_approval_inputs(
@@ -474,6 +510,8 @@ def build_official_patch_human_approval_validate_reviewed(
     decisions = [_norm(row.get("reviewer_decision")).upper() for row in records]
     invalid_decisions = sorted({decision for decision in decisions if decision not in ALLOWED_REVIEWER_DECISIONS})
     pending_present = PREPARE_DECISION_PENDING in decisions or "" in decisions
+    pending_count = _count_pending_decisions(records)
+    invalid_decision_count = _count_invalid_decisions(records)
     add_qa(
         "reviewed_integrity::valid_reviewer_decisions_only",
         "PASS" if not invalid_decisions else "FAIL",
@@ -482,7 +520,7 @@ def build_official_patch_human_approval_validate_reviewed(
     add_qa(
         "reviewed_integrity::no_pending_human_approval",
         "PASS" if not pending_present else "FAIL",
-        f"pending_present={pending_present}",
+        f"pending_present={pending_present}; pending_count={pending_count}",
     )
 
     approval_count = len(records)
@@ -514,6 +552,20 @@ def build_official_patch_human_approval_validate_reviewed(
     rollback_complete = not approvals_df.empty and approvals_df["rollback_note"].astype(str).ne("").all()
     add_qa("reviewed_integrity::rollback_note_completeness", "PASS" if rollback_complete else "FAIL", "rollback note populated for every reviewed record")
 
+    reviewer_field_missing = _missing_required_fields(records, sorted(REQUIRED_REVIEWER_EDITABLE_FIELDS))
+    add_qa(
+        "reviewed_integrity::reviewer_fields_non_empty",
+        "PASS" if not reviewer_field_missing else "FAIL",
+        "none" if not reviewer_field_missing else " | ".join(f"{item['record_id']}::{item['field']}" for item in reviewer_field_missing[:10]),
+    )
+
+    patch_identity_missing = _missing_required_fields(records, ["approval_id", "dry_run_patch_operation_id", "source_322k_proposal_id"])
+    add_qa(
+        "reviewed_integrity::patch_identity_fields_non_empty",
+        "PASS" if not patch_identity_missing else "FAIL",
+        "none" if not patch_identity_missing else " | ".join(f"{item['record_id']}::{item['field']}" for item in patch_identity_missing[:10]),
+    )
+
     approved_df = approvals_df.loc[approvals_df["reviewer_decision"].astype(str).str.upper() == "APPROVED"].copy() if not approvals_df.empty else pd.DataFrame()
     rejected_df = approvals_df.loc[approvals_df["reviewer_decision"].astype(str).str.upper() == "REJECTED"].copy() if not approvals_df.empty else pd.DataFrame()
     needs_more_review_df = approvals_df.loc[approvals_df["reviewer_decision"].astype(str).str.upper() == "NEEDS_MORE_REVIEW"].copy() if not approvals_df.empty else pd.DataFrame()
@@ -541,10 +593,14 @@ def build_official_patch_human_approval_validate_reviewed(
         "mode": "validate-reviewed",
         "output_dir": "",
         "reviewed_workbook": str(reviewed_workbook),
+        "reviewed_approval_record_count": approval_count,
         "approval_record_count": approval_count,
         "approved_patch_count": len(approved_df),
         "rejected_patch_count": len(rejected_df),
         "needs_more_review_count": len(needs_more_review_df),
+        "pending_count": pending_count,
+        "invalid_decision_count": invalid_decision_count,
+        "final_approved_patch_count": len(approved_df),
         "decision_distribution": _decision_distribution(records),
         "official_files_not_modified_confirmed": True,
         "approval_package_only_no_apply_confirmed": True,
@@ -620,4 +676,3 @@ def _build_prepare_review_instructions_markdown(summary: Dict[str, Any]) -> str:
         "",
     ]
     return "\n".join(lines)
-
