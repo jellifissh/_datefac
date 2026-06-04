@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Set
@@ -122,6 +123,10 @@ def _to_jsonable(value: Any) -> Any:
         return [_to_jsonable(item) for item in value]
     if isinstance(value, tuple):
         return [_to_jsonable(item) for item in value]
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
     if hasattr(value, "item"):
         try:
             return value.item()
