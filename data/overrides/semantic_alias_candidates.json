@@ -39,6 +39,25 @@
     ],
     "profitability": [
       {
+        "rule_id": "SEM_ALIAS_323M_001",
+        "normalized_label": "EBITDA",
+        "metric_code": "ebitda",
+        "metric_family": "profitability",
+        "source_approval_id": "approval_323l::alias::001",
+        "source_dry_run_patch_operation_id": "dry_run_323k::alias::001",
+        "source_controlled_proposal_id": "proposal_323j::alias::001",
+        "source_rule_candidate_id": "323i::alias::ca2a27ba78a8",
+        "source_rule_ids": "323h::alias::323g::alias::323ab__alias__023",
+        "source_confirmation_ids": "323g::alias::323ab__alias__023",
+        "source_request_ids": "323d::323ab__alias__023",
+        "source_group_ids": "323a::1110400338",
+        "reviewer_name": "xiaotang",
+        "reviewer_note": "approved for 323M official patch application",
+        "approval_timestamp": "2026-06-04T当前时间+08:00",
+        "approval_stage": "323M",
+        "status": "APPLIED_323M"
+      },
+      {
         "rule_id": "SEM_ALIAS_322N_001",
         "normalized_label": "roic(%)",
         "metric_code": "roic",
@@ -53,6 +72,25 @@
         "human_confirmation_source_case_id": "label::roic(%)",
         "approval_stage": "322N",
         "status": "APPLIED_322N"
+      },
+      {
+        "rule_id": "SEM_ALIAS_323M_002",
+        "normalized_label": "归属母公司净利润",
+        "metric_code": "net_profit",
+        "metric_family": "profitability",
+        "source_approval_id": "approval_323l::alias::002",
+        "source_dry_run_patch_operation_id": "dry_run_323k::alias::002",
+        "source_controlled_proposal_id": "proposal_323j::alias::002",
+        "source_rule_candidate_id": "323i::alias::b8dfb45562bc",
+        "source_rule_ids": "323h::alias::323g::alias::323ab__alias__024",
+        "source_confirmation_ids": "323g::alias::323ab__alias__024",
+        "source_request_ids": "323d::323ab__alias__024",
+        "source_group_ids": "323a::5764402581",
+        "reviewer_name": "xiaotang",
+        "reviewer_note": "approved for 323M official patch application",
+        "approval_timestamp": "2026-06-04T当前时间+08:00",
+        "approval_stage": "323M",
+        "status": "APPLIED_323M"
       }
     ]
   }

@@ -260,6 +260,102 @@
       "source_322i_proposal_id": "proposal::out_of_scope::007",
       "human_confirmation_source_case_id": "label::300277.sz",
       "promotion_status": "PROMOTED_322N_OFFICIAL_SEMANTIC_PATCH"
+    },
+    "SEM_SCOPE_323M_001": {
+      "rule_id": "SEM_SCOPE_323M_001",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "其他流动资产",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_323l::scope::001",
+      "source_dry_run_patch_operation_id": "dry_run_323k::scope::001",
+      "source_controlled_proposal_id": "proposal_323j::scope::001",
+      "source_rule_candidate_id": "323i::scope::ecd6268ab7b8",
+      "source_rule_ids": "323h::scope_noise::323g::scope_noise::323ab__scope_noise__008|323h::scope_noise::323g::scope_noise::323ab__scope_noise__009",
+      "source_confirmation_ids": "323g::scope_noise::323ab__scope_noise__008|323g::scope_noise::323ab__scope_noise__009",
+      "source_request_ids": "323d::323ab__scope_noise__008|323d::323ab__scope_noise__009",
+      "source_group_ids": "323a::1912514919|323a::1150895866",
+      "reviewer_name": "xiaotang",
+      "reviewer_note": "approved for 323M official patch application",
+      "approval_timestamp": "2026-06-04T当前时间+08:00",
+      "promotion_status": "PROMOTED_323M_OFFICIAL_PATCH"
+    },
+    "SEM_SCOPE_323M_002": {
+      "rule_id": "SEM_SCOPE_323M_002",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "其他非流动负债",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_323l::scope::002",
+      "source_dry_run_patch_operation_id": "dry_run_323k::scope::002",
+      "source_controlled_proposal_id": "proposal_323j::scope::002",
+      "source_rule_candidate_id": "323i::scope::09b757a9f028",
+      "source_rule_ids": "323h::scope_noise::323g::scope_noise::323ab__scope_noise__001|323h::scope_noise::323g::scope_noise::323ab__scope_noise__004|323h::scope_noise::323g::scope_noise::323ab__scope_noise__006",
+      "source_confirmation_ids": "323g::scope_noise::323ab__scope_noise__001|323g::scope_noise::323ab__scope_noise__004|323g::scope_noise::323ab__scope_noise__006",
+      "source_request_ids": "323d::323ab__scope_noise__001|323d::323ab__scope_noise__004|323d::323ab__scope_noise__006",
+      "source_group_ids": "323a::0352311279|323a::2244275058|323a::1323337658",
+      "reviewer_name": "xiaotang",
+      "reviewer_note": "approved for 323M official patch application",
+      "approval_timestamp": "2026-06-04T当前时间+08:00",
+      "promotion_status": "PROMOTED_323M_OFFICIAL_PATCH"
+    },
+    "SEM_SCOPE_323M_003": {
+      "rule_id": "SEM_SCOPE_323M_003",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "其他非流动资产",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_323l::scope::003",
+      "source_dry_run_patch_operation_id": "dry_run_323k::scope::003",
+      "source_controlled_proposal_id": "proposal_323j::scope::003",
+      "source_rule_candidate_id": "323i::scope::edcc41e7cc72",
+      "source_rule_ids": "323h::scope_noise::323g::scope_noise::323ab__scope_noise__002|323h::scope_noise::323g::scope_noise::323ab__scope_noise__005|323h::scope_noise::323g::scope_noise::323ab__scope_noise__007",
+      "source_confirmation_ids": "323g::scope_noise::323ab__scope_noise__002|323g::scope_noise::323ab__scope_noise__005|323g::scope_noise::323ab__scope_noise__007",
+      "source_request_ids": "323d::323ab__scope_noise__002|323d::323ab__scope_noise__005|323d::323ab__scope_noise__007",
+      "source_group_ids": "323a::9200735055|323a::9326084495|323a::1266938750",
+      "reviewer_name": "xiaotang",
+      "reviewer_note": "approved for 323M official patch application",
+      "approval_timestamp": "2026-06-04T当前时间+08:00",
+      "promotion_status": "PROMOTED_323M_OFFICIAL_PATCH"
+    },
+    "SEM_SCOPE_323M_004": {
+      "rule_id": "SEM_SCOPE_323M_004",
+      "rule_type": "core_metric_scope_exclusion",
+      "target_group": "core_metric_scope_exclusions",
+      "normalized_label": "股票代码",
+      "scope_action": "exclude_from_core_metric_mapping",
+      "existing_scope": "exclude_from_core_metric_mapping",
+      "scope_applicability": [
+        "GLOBAL_ALIAS_MATCH_ONLY",
+        "EXCLUDE_FROM_CORE_METRIC_MAPPING"
+      ],
+      "source_approval_id": "approval_323l::scope::004",
+      "source_dry_run_patch_operation_id": "dry_run_323k::scope::004",
+      "source_controlled_proposal_id": "proposal_323j::scope::004",
+      "source_rule_candidate_id": "323i::scope::66ea9ddaf5fb",
+      "source_rule_ids": "323h::scope_noise::323g::scope_noise::323ab__scope_noise__003",
+      "source_confirmation_ids": "323g::scope_noise::323ab__scope_noise__003",
+      "source_request_ids": "323d::323ab__scope_noise__003",
+      "source_group_ids": "323a::2017248259",
+      "reviewer_name": "xiaotang",
+      "reviewer_note": "approved for 323M official patch application",
+      "approval_timestamp": "2026-06-04T当前时间+08:00",
+      "promotion_status": "PROMOTED_323M_OFFICIAL_PATCH"
     }
   }
 }
