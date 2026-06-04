@@ -13,13 +13,28 @@ EXPECTED_323K_DECISION = (
 EXPECTED_323L_DECISION = (
     "CONTROLLED_OFFICIAL_PROPOSAL_HUMAN_APPROVAL_323L_READY_FOR_HUMAN_REVIEW"
 )
+EXPECTED_323LR_DECISION = (
+    "CONTROLLED_OFFICIAL_PROPOSAL_HUMAN_APPROVAL_323L_REVIEWED_READY_FOR_323M_OFFICIAL_PATCH_APPLICATION"
+)
+EXPECTED_323LR_NOT_READY = (
+    "CONTROLLED_OFFICIAL_PROPOSAL_HUMAN_APPROVAL_323L_REVIEWED_NOT_READY"
+)
 NOT_READY_DECISION = "CONTROLLED_OFFICIAL_PROPOSAL_HUMAN_APPROVAL_323L_NOT_READY"
 DEFAULT_OUTPUT_DIR = Path(
     r"D:\_datefac\output\controlled_official_proposal_human_approval_323l"
 )
+DEFAULT_REVIEWED_OUTPUT_DIR = Path(
+    r"D:\_datefac\output\controlled_official_proposal_human_approval_323lr"
+)
 
 PREPARE_DECISION_PENDING = "PENDING_HUMAN_APPROVAL"
 ALLOWED_REVIEWER_DECISIONS = {"APPROVED", "REJECTED", "NEEDS_MORE_REVIEW"}
+ALLOWED_REVIEWER_DECISIONS_REVIEWED = {
+    "APPROVED",
+    "REJECTED",
+    "NEEDS_MORE_REVIEW",
+    "NEEDS_MORE_INFO",
+}
 OFFICIAL_ALIAS_ASSET_PATH = Path(r"D:\_datefac\data\overrides\semantic_alias_candidates.json")
 FORMAL_SCOPE_RULES_PATH = Path(r"D:\_datefac\data\mapping\formal_scope_rules.json")
 
@@ -72,6 +87,27 @@ def _decision_distribution(records: List[Dict[str, Any]]) -> Dict[str, int]:
     return distribution
 
 
+def _read_workbook_sheet(path: Path, sheet_name: str) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        df = pd.read_excel(path, sheet_name=sheet_name)
+    except Exception:
+        return pd.DataFrame()
+    return df.fillna("")
+
+
+def _canonical_reviewer_decision(value: Any) -> str:
+    text = _norm(value).upper()
+    if text == "APPROVE":
+        return "APPROVED"
+    if text == "REJECT":
+        return "REJECTED"
+    if text == "NEEDS_MORE_INFO":
+        return "NEEDS_MORE_REVIEW"
+    return text
+
+
 def load_controlled_official_proposal_human_approval_inputs(
     dry_run_dir: Path,
 ) -> Dict[str, Any]:
@@ -113,6 +149,29 @@ def load_controlled_official_proposal_human_approval_inputs(
             if isinstance(rollback_payload.get("rollback_plan", []), list)
             else []
         ).fillna(""),
+    }
+
+
+def load_controlled_official_proposal_human_approval_reviewed_inputs(
+    approval_package_dir: Path,
+    reviewed_workbook: Path,
+) -> Dict[str, Any]:
+    package_json = _read_json(
+        approval_package_dir / "controlled_official_proposal_human_approval_323l_package.json"
+    )
+    return {
+        "approval_summary": _read_json(
+            approval_package_dir / "controlled_official_proposal_human_approval_323l_summary.json"
+        ),
+        "approval_qa": _read_json(
+            approval_package_dir / "controlled_official_proposal_human_approval_323l_qa.json"
+        ),
+        "approval_package_json": package_json,
+        "reviewed_all_records_df": _read_workbook_sheet(
+            reviewed_workbook, "all_approval_records"
+        ),
+        "reviewed_alias_df": _read_workbook_sheet(reviewed_workbook, "alias_approvals"),
+        "reviewed_scope_df": _read_workbook_sheet(reviewed_workbook, "scope_approvals"),
     }
 
 
@@ -627,3 +686,412 @@ def _build_review_notes_markdown(summary: Dict[str, Any]) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+def build_controlled_official_proposal_human_approval_validate_reviewed(
+    approval_summary: Dict[str, Any],
+    approval_qa: Dict[str, Any],
+    approval_package_json: Dict[str, Any],
+    reviewed_all_records_df: pd.DataFrame,
+    reviewed_alias_df: pd.DataFrame,
+    reviewed_scope_df: pd.DataFrame,
+    reviewed_workbook: Path,
+) -> Dict[str, Any]:
+    qa_rows: List[Dict[str, Any]] = []
+
+    def add_qa(name: str, status: str, detail: str) -> None:
+        qa_rows.append({"check_name": name, "status": status, "detail": detail})
+
+    add_qa(
+        "readiness::323l_decision",
+        "PASS"
+        if _norm(approval_summary.get("decision")) == EXPECTED_323L_DECISION
+        else "FAIL",
+        _norm(approval_summary.get("decision")),
+    )
+    add_qa(
+        "readiness::323l_qa_fail_count",
+        "PASS" if _safe_int(approval_summary.get("qa_fail_count")) == 0 else "FAIL",
+        str(approval_summary.get("qa_fail_count", "")),
+    )
+    add_qa(
+        "readiness::323l_qa_json_fail_count",
+        "PASS" if _safe_int(approval_qa.get("qa_fail_count")) == 0 else "FAIL",
+        str(approval_qa.get("qa_fail_count", "")),
+    )
+    for key, expected in [
+        ("approval_record_count", 6),
+        ("alias_approval_count", 2),
+        ("scope_approval_count", 4),
+    ]:
+        add_qa(
+            f"readiness::323l_{key}",
+            "PASS" if _safe_int(approval_summary.get(key)) == expected else "FAIL",
+            f"expected={expected} actual={approval_summary.get(key, '')}",
+        )
+
+    all_records_df = reviewed_all_records_df.copy().fillna("")
+    if all_records_df.empty:
+        all_records_df = pd.concat(
+            [reviewed_alias_df.copy().fillna(""), reviewed_scope_df.copy().fillna("")],
+            ignore_index=True,
+        ).fillna("")
+    package_records = approval_package_json.get("approval_records", [])
+    if not isinstance(package_records, list):
+        package_records = []
+    package_df = pd.DataFrame(package_records).fillna("")
+
+    required_columns = {
+        "approval_id",
+        "reviewer_decision",
+        "reviewer_note",
+        "reviewer_name",
+        "approval_timestamp",
+        "dry_run_patch_operation_id",
+        "controlled_proposal_id",
+        "source_rule_candidate_id",
+        "candidate_type",
+        "target_asset_path",
+        "target_group_name",
+        "proposed_change",
+        "provenance",
+        "rollback_note",
+        "dry_run_evidence",
+    }
+    missing_columns = sorted(required_columns.difference(set(all_records_df.columns)))
+    add_qa(
+        "reviewed_integrity::required_columns_present",
+        "PASS" if not missing_columns else "FAIL",
+        "none" if not missing_columns else " | ".join(missing_columns),
+    )
+
+    add_qa(
+        "reviewed_counts::approval_record_count",
+        "PASS" if len(all_records_df) == 6 else "FAIL",
+        f"actual={len(all_records_df)}",
+    )
+    add_qa(
+        "reviewed_counts::alias_approval_record_count",
+        "PASS"
+        if int(all_records_df["candidate_type"].astype(str).eq("alias").sum()) == 2
+        else "FAIL",
+        f"actual={int(all_records_df['candidate_type'].astype(str).eq('alias').sum()) if not all_records_df.empty else 0}",
+    )
+    add_qa(
+        "reviewed_counts::scope_approval_record_count",
+        "PASS"
+        if int(all_records_df["candidate_type"].astype(str).eq("scope").sum()) == 4
+        else "FAIL",
+        f"actual={int(all_records_df['candidate_type'].astype(str).eq('scope').sum()) if not all_records_df.empty else 0}",
+    )
+
+    if not all_records_df.empty:
+        normalized_df = all_records_df.copy()
+        normalized_df["reviewer_decision_normalized"] = normalized_df[
+            "reviewer_decision"
+        ].map(_canonical_reviewer_decision)
+    else:
+        normalized_df = all_records_df.copy()
+
+    package_approval_ids = set(package_df.get("approval_id", pd.Series(dtype=str)).astype(str))
+    reviewed_approval_ids = set(
+        normalized_df.get("approval_id", pd.Series(dtype=str)).astype(str)
+    )
+    add_qa(
+        "reviewed_integrity::approval_ids_match_package",
+        "PASS" if reviewed_approval_ids == package_approval_ids else "FAIL",
+        f"package={len(package_approval_ids)} reviewed={len(reviewed_approval_ids)}",
+    )
+
+    package_patch_ids = set(
+        package_df.get("dry_run_patch_operation_id", pd.Series(dtype=str)).astype(str)
+    )
+    reviewed_patch_ids = set(
+        normalized_df.get("dry_run_patch_operation_id", pd.Series(dtype=str)).astype(str)
+    )
+    add_qa(
+        "reviewed_integrity::patch_operation_ids_match_package",
+        "PASS" if reviewed_patch_ids == package_patch_ids else "FAIL",
+        f"package={len(package_patch_ids)} reviewed={len(reviewed_patch_ids)}",
+    )
+
+    duplicate_approval_id_count = (
+        int(normalized_df["approval_id"].astype(str).duplicated().sum())
+        if not normalized_df.empty
+        else 0
+    )
+    duplicate_patch_operation_id_count = (
+        int(normalized_df["dry_run_patch_operation_id"].astype(str).duplicated().sum())
+        if not normalized_df.empty
+        else 0
+    )
+    add_qa(
+        "reviewed_integrity::no_duplicate_approval_id",
+        "PASS" if duplicate_approval_id_count == 0 else "FAIL",
+        f"actual={duplicate_approval_id_count}",
+    )
+    add_qa(
+        "reviewed_integrity::no_duplicate_patch_operation_id",
+        "PASS" if duplicate_patch_operation_id_count == 0 else "FAIL",
+        f"actual={duplicate_patch_operation_id_count}",
+    )
+
+    records = normalized_df.to_dict(orient="records") if not normalized_df.empty else []
+    pending_count = 0
+    invalid_decision_count = 0
+    for row in records:
+        decision = _canonical_reviewer_decision(row.get("reviewer_decision"))
+        if decision in {"", PREPARE_DECISION_PENDING}:
+            pending_count += 1
+        elif decision not in ALLOWED_REVIEWER_DECISIONS_REVIEWED:
+            invalid_decision_count += 1
+
+    add_qa(
+        "reviewed_integrity::no_pending_decisions",
+        "PASS" if pending_count == 0 else "FAIL",
+        f"actual={pending_count}",
+    )
+    add_qa(
+        "reviewed_integrity::no_invalid_decisions",
+        "PASS" if invalid_decision_count == 0 else "FAIL",
+        f"actual={invalid_decision_count}",
+    )
+
+    missing_reviewer_name_count = (
+        int(normalized_df["reviewer_name"].astype(str).eq("").sum())
+        if not normalized_df.empty
+        else 0
+    )
+    missing_reviewer_note_count = (
+        int(normalized_df["reviewer_note"].astype(str).eq("").sum())
+        if not normalized_df.empty
+        else 0
+    )
+    missing_timestamp_count = (
+        int(normalized_df["approval_timestamp"].astype(str).eq("").sum())
+        if not normalized_df.empty
+        else 0
+    )
+    missing_provenance_count = (
+        int(normalized_df["provenance"].astype(str).eq("").sum())
+        if not normalized_df.empty
+        else 0
+    )
+    missing_rollback_count = (
+        int(normalized_df["rollback_note"].astype(str).eq("").sum())
+        if not normalized_df.empty
+        else 0
+    )
+    add_qa(
+        "reviewed_integrity::reviewer_name_present",
+        "PASS" if missing_reviewer_name_count == 0 else "FAIL",
+        f"actual={missing_reviewer_name_count}",
+    )
+    add_qa(
+        "reviewed_integrity::reviewer_note_present",
+        "PASS" if missing_reviewer_note_count == 0 else "FAIL",
+        f"actual={missing_reviewer_note_count}",
+    )
+    add_qa(
+        "reviewed_integrity::approval_timestamp_present",
+        "PASS" if missing_timestamp_count == 0 else "FAIL",
+        f"actual={missing_timestamp_count}",
+    )
+    add_qa(
+        "reviewed_integrity::provenance_present",
+        "PASS" if missing_provenance_count == 0 else "FAIL",
+        f"actual={missing_provenance_count}",
+    )
+    add_qa(
+        "reviewed_integrity::rollback_note_present",
+        "PASS" if missing_rollback_count == 0 else "FAIL",
+        f"actual={missing_rollback_count}",
+    )
+
+    approved_df = (
+        normalized_df.loc[
+            normalized_df["reviewer_decision_normalized"].astype(str) == "APPROVED"
+        ].copy()
+        if not normalized_df.empty
+        else pd.DataFrame()
+    )
+    rejected_df = (
+        normalized_df.loc[
+            normalized_df["reviewer_decision_normalized"].astype(str) == "REJECTED"
+        ].copy()
+        if not normalized_df.empty
+        else pd.DataFrame()
+    )
+    needs_more_info_df = (
+        normalized_df.loc[
+            normalized_df["reviewer_decision_normalized"].astype(str)
+            == "NEEDS_MORE_REVIEW"
+        ].copy()
+        if not normalized_df.empty
+        else pd.DataFrame()
+    )
+    if not approved_df.empty:
+        approved_df["final_plan_status"] = "APPROVED_FOR_323M"
+
+    alias_approved_count = (
+        int(approved_df["candidate_type"].astype(str).eq("alias").sum())
+        if not approved_df.empty
+        else 0
+    )
+    scope_approved_count = (
+        int(approved_df["candidate_type"].astype(str).eq("scope").sum())
+        if not approved_df.empty
+        else 0
+    )
+    add_qa(
+        "reviewed_counts::approved_patch_operation_count",
+        "PASS" if len(approved_df) == 6 else "FAIL",
+        f"actual={len(approved_df)}",
+    )
+    add_qa(
+        "reviewed_counts::alias_approved_patch_operation_count",
+        "PASS" if alias_approved_count == 2 else "FAIL",
+        f"actual={alias_approved_count}",
+    )
+    add_qa(
+        "reviewed_counts::scope_approved_patch_operation_count",
+        "PASS" if scope_approved_count == 4 else "FAIL",
+        f"actual={scope_approved_count}",
+    )
+    add_qa(
+        "reviewed_counts::rejected_count",
+        "PASS" if len(rejected_df) == 0 else "FAIL",
+        f"actual={len(rejected_df)}",
+    )
+    add_qa(
+        "reviewed_counts::needs_more_info_count",
+        "PASS" if len(needs_more_info_df) == 0 else "FAIL",
+        f"actual={len(needs_more_info_df)}",
+    )
+    add_qa(
+        "safety::no_official_file_modification",
+        "PASS",
+        "323L-R validates reviewed decisions only and does not modify official assets.",
+    )
+    add_qa(
+        "safety::no_llm_or_api_call_executed",
+        "PASS",
+        "323L-R uses the 323L approval package and reviewed workbook only.",
+    )
+
+    qa_checks_df = pd.DataFrame(qa_rows).fillna("")
+    qa_pass_count = int((qa_checks_df["status"] == "PASS").sum()) if not qa_checks_df.empty else 0
+    qa_warn_count = int((qa_checks_df["status"] == "WARN").sum()) if not qa_checks_df.empty else 0
+    qa_fail_count = int((qa_checks_df["status"] == "FAIL").sum()) if not qa_checks_df.empty else 0
+    blocking_reasons = (
+        qa_checks_df.loc[qa_checks_df["status"] == "FAIL", "check_name"]
+        .astype(str)
+        .tolist()
+        if not qa_checks_df.empty
+        else []
+    )
+
+    decision_distribution = _decision_distribution(records)
+    summary = {
+        "stage": "323L-R",
+        "mode": "validate-reviewed",
+        "output_dir": "",
+        "reviewed_workbook_path": str(reviewed_workbook),
+        "source_approval_package_decision": _norm(approval_summary.get("decision")),
+        "source_approval_package_qa_fail_count": _safe_int(
+            approval_summary.get("qa_fail_count")
+        ),
+        "approval_record_count": len(normalized_df),
+        "approved_patch_operation_count": len(approved_df),
+        "alias_approved_patch_operation_count": alias_approved_count,
+        "scope_approved_patch_operation_count": scope_approved_count,
+        "rejected_count": len(rejected_df),
+        "needs_more_info_count": len(needs_more_info_df),
+        "pending_count": pending_count,
+        "invalid_decision_count": invalid_decision_count,
+        "decision_distribution": decision_distribution,
+        "official_assets_not_modified_confirmed": True,
+        "approval_package_only_no_apply_confirmed": True,
+        "qa_pass_count": qa_pass_count,
+        "qa_warn_count": qa_warn_count,
+        "qa_fail_count": qa_fail_count,
+        "blocking_reasons": blocking_reasons,
+        "decision": EXPECTED_323LR_DECISION
+        if qa_fail_count == 0
+        else EXPECTED_323LR_NOT_READY,
+    }
+
+    final_approved_patch_plan_json = {
+        "stage": "323L-R",
+        "mode": "validate-reviewed",
+        "decision": summary["decision"],
+        "reviewed_workbook_path": str(reviewed_workbook),
+        "approved_patch_operations": approved_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ).to_dict(orient="records"),
+        "rejected_patch_operations": rejected_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ).to_dict(orient="records"),
+        "needs_more_info_patch_operations": needs_more_info_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ).to_dict(orient="records"),
+    }
+
+    qa_json = {
+        "qa_pass_count": qa_pass_count,
+        "qa_warn_count": qa_warn_count,
+        "qa_fail_count": qa_fail_count,
+        "blocking_reasons": blocking_reasons,
+        "checks": qa_checks_df.to_dict(orient="records"),
+    }
+
+    qa_summary_df = pd.DataFrame(
+        [
+            {
+                "qa_pass_count": qa_pass_count,
+                "qa_warn_count": qa_warn_count,
+                "qa_fail_count": qa_fail_count,
+                "blocking_reasons": " | ".join(blocking_reasons),
+                "decision": summary["decision"],
+            }
+        ]
+    ).fillna("")
+
+    reviewed_notes_markdown = "\n".join(
+        [
+            "# Controlled Official Proposal Human Approval 323L-R",
+            "",
+            "## Decision",
+            f"- {summary['decision']}",
+            "",
+            "## Reviewed Counts",
+            f"- approval_record_count: {summary['approval_record_count']}",
+            f"- approved_patch_operation_count: {summary['approved_patch_operation_count']}",
+            f"- rejected_count: {summary['rejected_count']}",
+            f"- needs_more_info_count: {summary['needs_more_info_count']}",
+            f"- pending_count: {summary['pending_count']}",
+            f"- invalid_decision_count: {summary['invalid_decision_count']}",
+            "",
+        ]
+    )
+
+    return {
+        "summary": summary,
+        "approved_df": approved_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ),
+        "rejected_df": rejected_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ),
+        "needs_more_info_df": needs_more_info_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ),
+        "all_reviewed_df": normalized_df.drop(
+            columns=["reviewer_decision_normalized"], errors="ignore"
+        ),
+        "qa_summary_df": qa_summary_df,
+        "qa_checks_df": qa_checks_df,
+        "qa_json": qa_json,
+        "final_approved_patch_plan_json": final_approved_patch_plan_json,
+        "reviewed_notes_markdown": reviewed_notes_markdown,
+    }

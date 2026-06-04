@@ -21,6 +21,16 @@ SHEET_ORDER = [
     "known_limitations",
 ]
 
+REVIEWED_SHEET_ORDER = [
+    "reviewed_summary",
+    "approved_patch_operations",
+    "rejected_patch_operations",
+    "needs_more_info_patch_operations",
+    "all_reviewed_approval_records",
+    "reviewed_qa_summary",
+    "reviewed_qa_checks",
+]
+
 
 def _norm(value: Any) -> str:
     if value is None:
@@ -51,11 +61,12 @@ def _safe_sheet_name(name: str, used: Set[str]) -> str:
     return out
 
 
-def write_excel(path: Path, sheets: Dict[str, pd.DataFrame]) -> None:
+def write_excel(path: Path, sheets: Dict[str, pd.DataFrame], mode: str = "prepare") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     used: Set[str] = set()
+    sheet_order = SHEET_ORDER if mode == "prepare" else REVIEWED_SHEET_ORDER
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
-        for name in SHEET_ORDER:
+        for name in sheet_order:
             sheets.get(name, pd.DataFrame()).to_excel(
                 writer,
                 sheet_name=_safe_sheet_name(name, used),
