@@ -4,6 +4,15 @@ from datefac.trust.no_apply_proof import (
     build_no_apply_proof,
     capture_official_asset_hashes,
 )
+from datefac.trust.confidence_scoring import (
+    SCORING_COMPONENTS,
+    SCORING_MODEL_VERSION,
+    SPECIAL_RISK_PENALTIES,
+    calculate_confidence_score,
+    calculate_risk_penalty,
+    score_trust_record,
+    scoring_model_summary,
+)
 from datefac.trust.risk_registry import (
     RISK_REGISTRY,
     RiskDefinition,
@@ -34,11 +43,16 @@ __all__ = [
     "ROUTING_REVIEW_REQUIRED",
     "ROUTING_TRUSTED",
     "RISK_REGISTRY",
+    "SCORING_COMPONENTS",
+    "SCORING_MODEL_VERSION",
     "SEMANTIC_ALIAS_ASSET_PATH",
+    "SPECIAL_RISK_PENALTIES",
     "RiskDefinition",
     "TrustRecord",
     "build_no_apply_proof",
     "build_trust_record",
+    "calculate_confidence_score",
+    "calculate_risk_penalty",
     "capture_official_asset_hashes",
     "coerce_risk_registry_summary",
     "confidence_level_from_score",
@@ -50,4 +64,6 @@ __all__ = [
     "risk_registry_rows",
     "route_trust_record",
     "routing_policy_smoke_cases",
+    "score_trust_record",
+    "scoring_model_summary",
 ]

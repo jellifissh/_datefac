@@ -21,7 +21,7 @@ def confidence_level_from_score(score: Any) -> str:
         return "HIGH"
     if numeric >= 60:
         return "MEDIUM"
-    if numeric >= 0:
+    if numeric > 0:
         return "LOW"
     return "UNKNOWN"
 
