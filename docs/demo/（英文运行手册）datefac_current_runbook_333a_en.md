@@ -30,7 +30,7 @@ The current instructions assume:
 - Python available in the current environment
 - upstream project stages already exist locally
 
-The important completed stages behind the current reviewed preview narrative are:
+The important completed stages behind the current clean-preview narrative are:
 
 - `330L` client-style export preview
 - `331A` demo packaging
@@ -39,10 +39,12 @@ The important completed stages behind the current reviewed preview narrative are
 - `330K4` reviewed export refresh
 - `331B` demo packaging refresh after human unit review
 - `332A` demo release audit
+- `335A` client-facing clean export
 
 The current high-level state that all documentation should respect is:
 
-- `project_status = DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW`
+- `project_status = CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`
+- `client_facing_preview = true`
 - `client_ready = false`
 - `production_ready = false`
 
@@ -67,6 +69,7 @@ The current high-level state that all documentation should respect is:
 | 330K4 | `D:\_datefac\output\reviewed_export_refresh_330k4` |
 | 331B | `D:\_datefac\output\demo_packaging_331b` |
 | 332A | `D:\_datefac\output\demo_release_audit_332a` |
+| 335A | `D:\_datefac\output\client_facing_clean_export_335a` |
 
 ### Frequently inspected files
 
@@ -81,6 +84,8 @@ The current high-level state that all documentation should respect is:
 - `D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_summary.json`
 - `D:\_datefac\output\demo_packaging_331b\demo_packaging_331b_summary.json`
 - `D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_summary.json`
+- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_preview.xlsx`
+- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json`
 
 ## 4. Required Upstream Outputs
 
@@ -139,6 +144,17 @@ The 332A stage audits the final demo narrative. It expects:
 
 This stage checks wording and consistency. It does not produce new parser outputs.
 
+### 335A requirements
+
+The 335A stage generates the client-facing clean preview workbook. It expects:
+
+- the 330K4 reviewed export refresh
+- the 331B demo packaging
+- the 332A demo release audit
+- the 330L client-style export preview
+
+This stage must still be read as sidecar preview work. It does not create a client-ready delivery artifact.
+
 ## 5. Exact Commands
 
 Keep Windows paths, stage names, and runner names exactly as they are.
@@ -173,6 +189,12 @@ python tools\run_demo_packaging_331b.py --demo-packaging-331a-dir D:\_datefac\ou
 python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefac\output\demo_packaging_331b --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --demo-packaging-331a-dir D:\_datefac\output\demo_packaging_331a --docs-demo-dir D:\_datefac\docs\demo --output-dir D:\_datefac\output\demo_release_audit_332a
 ```
 
+### 335A
+
+```powershell
+python tools\run_client_facing_clean_export_335a.py --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --demo-packaging-331b-dir D:\_datefac\output\demo_packaging_331b --demo-release-audit-dir D:\_datefac\output\demo_release_audit_332a --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --output-dir D:\_datefac\output\client_facing_clean_export_335a
+```
+
 ## 6. Expected Output Directories And Main Artifacts
 
 | Stage | Output Directory | First File To Inspect |
@@ -182,6 +204,7 @@ python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefa
 | 330K4 | `D:\_datefac\output\reviewed_export_refresh_330k4` | `reviewed_export_refresh_330k4_preview.xlsx` |
 | 331B | `D:\_datefac\output\demo_packaging_331b` | `demo_packaging_331b_summary.json` |
 | 332A | `D:\_datefac\output\demo_release_audit_332a` | `demo_release_audit_332a_summary.json` |
+| 335A | `D:\_datefac\output\client_facing_clean_export_335a` | `client_facing_clean_export_335a_preview.xlsx` |
 
 If you want to understand “what changed” at each stage, the summary JSON is usually the fastest starting point, and the workbook is usually the best contextual follow-up.
 
@@ -207,6 +230,12 @@ The current reviewed-preview chain should align with these values:
 | 331B | `project_status` | `DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW` |
 | 332A | `overclaim_risk_count` | 0 |
 | 332A | `qa_fail_count` | 0 |
+| 335A | `project_status` | `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY` |
+| 335A | `core_metrics_reviewed_row_count` | 98 |
+| 335A | `needs_review_row_count` | 1 |
+| 335A | `excluded_or_rejected_row_count` | 18 |
+| 335A | `source_page_missing_count` | 0 |
+| 335A | `qa_fail_count` | 0 |
 
 These numbers are not decoration. They are the current public story of the demo state. If documentation says something else, the documentation is wrong.
 
@@ -229,6 +258,7 @@ Get-Content D:\_datefac\output\human_unit_review_apply_simulation_330k3\human_un
 Get-Content D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_summary.json
 Get-Content D:\_datefac\output\demo_packaging_331b\demo_packaging_331b_summary.json
 Get-Content D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_summary.json
+Get-Content D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json
 ```
 
 Check:

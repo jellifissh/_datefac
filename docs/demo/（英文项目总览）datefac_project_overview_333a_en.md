@@ -118,7 +118,18 @@ This stage refreshes the preview state according to the dry-run plan. The curren
 
 Those numbers tell a useful story. The system did not magically absorb every risky row. It promoted two reviewed-safe rows, kept eighteen out of trusted preview, and left one unresolved. That is conservative and credible.
 
-## 7. Stage Timeline From Stage 1 To 332A
+### 6.4 335A: client-facing clean export
+
+The 335A stage does not change the underlying review decisions. It takes the reviewed preview and reorganizes it into a cleaner workbook that is easier for non-engineering readers to inspect. Its current customer-facing counts are:
+
+- core metrics reviewed row count: 98
+- needs review row count: 1
+- excluded or rejected row count: 18
+- source trace row count: 117
+
+This matters because it improves readability without crossing the boundary into client-ready delivery or production write-back.
+
+## 7. Stage Timeline From Stage 1 To 335A
 
 ### 7.1 Stage 1 to Stage 4
 
@@ -142,12 +153,13 @@ The later demo-oriented stages build the current public story:
 - `330K4` refreshed the reviewed preview state
 - `331B` refreshed the demo packaging to match the reviewed preview
 - `332A` audited the entire story for consistency and overclaim risk
+- `335A` generated a cleaner customer-facing preview workbook from the reviewed preview state
 
 The value of this timeline is not just chronological clarity. It shows that the project has a disciplined transition from parser-adjacent preview logic to human review, then to refreshed preview, and finally to audited public explanation.
 
 ## 8. Current Metrics
 
-The current reviewed-preview state is summarized by the following metrics:
+The current clean-preview state is summarized by the following metrics:
 
 | Metric | Value |
 |---|---:|
@@ -157,9 +169,14 @@ The current reviewed-preview state is summarized by the following metrics:
 | `original_trusted_sheet_row_count` | 96 |
 | `reviewed_unit_confirmed_count` | 2 |
 | `reviewed_trusted_preview_row_count` | 98 |
+| `core_metrics_reviewed_row_count` | 98 |
+| `needs_review_row_count` | 1 |
+| `excluded_or_rejected_row_count` | 18 |
+| `source_trace_row_count` | 117 |
 | `human_rejected_row_count` | 18 |
 | `remaining_review_required_after_unit_review_count` | 1 |
 | `apply_plan_row_count` | 21 |
+| `source_page_missing_count` | 0 |
 | `overclaim_risk_count` | 0 |
 | `qa_fail_count` | 0 |
 
@@ -176,6 +193,7 @@ The project can currently and safely claim that:
 - it packages manual unit review workbooks
 - it creates no-write-back dry-run apply plans
 - it refreshes a reviewed preview state
+- it generates a cleaner client-facing preview workbook while preserving source traceability
 - it packages the current state into demo-facing materials
 - it audits public-facing documentation for overclaim risk
 
@@ -226,10 +244,10 @@ To keep the overview aligned with the README and runbook, it is useful to state 
 Current limitations include:
 
 - the path is still a sidecar reviewed preview flow
+- the current clean export is still a preview artifact rather than a final delivery export
 - the project still enforces a no write-back boundary
 - parser quality remains an upstream bottleneck
 - the benchmark scope is still limited relative to real production expectations
-- the reviewed preview is not a final client-facing clean export
 - deployment, security, permissions, monitoring, and data-isolation work remain unfinished
 
 These limitations do not reduce the engineering value of the project. They define the honest scope of that value.
@@ -253,4 +271,4 @@ This is a better engineering story than a one-off export because it demonstrates
 
 The strongest honest description of DateFac today is this:
 
-It is a sidecar trust-routing and reviewed-preview demo for financial research PDF extraction that emphasizes provenance, manual review boundaries, dry-run simulation, and audited public documentation. It is demo-ready after human unit review preview. It is not client-ready. It is not production-ready. It does not perform production write-back. Its value lies in making the trust problem visible and manageable, not in pretending that the trust problem has already disappeared.
+It is a sidecar trust-routing, reviewed-preview, and client-facing clean-preview demo for financial research PDF extraction that emphasizes provenance, manual review boundaries, dry-run simulation, and audited public documentation. Its current state is `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`. It is not client-ready. It is not production-ready. It does not perform production write-back. Its value lies in making the trust problem visible and manageable, not in pretending that the trust problem has already disappeared.

@@ -130,6 +130,7 @@ The simplest mental model is:
 
 - 330L = baseline client-style preview before manual unit review outcomes are applied
 - 330K4 = reviewed preview after manual unit review outcomes are reflected through the dry-run simulation
+- 335A = client-facing clean preview export that repackages the reviewed preview for easier non-engineering inspection
 
 The current reviewed preview numbers are:
 
@@ -140,6 +141,15 @@ The current reviewed preview numbers are:
 - remaining review-required rows after unit review: 1
 
 This is a strong engineering story because it shows that the project did not simply “clean everything up.” It made two rows stronger, kept eighteen rows out of trusted preview, and left one row unresolved. That is much more believable than magically promoting every row.
+
+The newer 335A stage does not change those underlying review outcomes. It repackages them into a cleaner workbook with:
+
+- 98 reviewed core-metric rows
+- 1 needs-review row
+- 18 excluded or rejected rows
+- 117 source-trace rows
+- `project_status = CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`
+- `client_facing_preview = true`
 
 ## 7. What Demo Packaging Means
 
@@ -154,6 +164,7 @@ In this project:
 
 - 331A packaged the earlier 330L preview state
 - 331B refreshed the narrative after human unit review and reviewed preview refresh
+- 335A generated a cleaner customer-facing preview workbook after the reviewed-preview and release-audit stages
 
 Demo packaging is not fluff. It is part of the system boundary. A preview project can still mislead people if its public-facing docs overclaim. Packaging therefore has to be conservative and consistent.
 
@@ -190,6 +201,7 @@ These tell you what the project is trying to do, what each stage means, and what
 - `tools/run_reviewed_export_refresh_330k4.py`
 - `tools/run_demo_packaging_331b.py`
 - `tools/run_demo_release_audit_332a.py`
+- `tools/run_client_facing_clean_export_335a.py`
 
 These runners tell you what each stage expects as input and what it writes as output.
 
@@ -207,6 +219,7 @@ These implement the sidecar logic behind packaging, apply simulation, preview re
 - `output/reviewed_export_refresh_330k4`
 - `output/demo_packaging_331b`
 - `output/demo_release_audit_332a`
+- `output/client_facing_clean_export_335a`
 
 These output directories are where you actually inspect the current state.
 
@@ -282,6 +295,15 @@ This stage refreshes public-facing docs.
 
 This stage audits the final narrative.
 
+### 335A inputs
+
+- 330K4 reviewed export refresh
+- 331B demo packaging
+- 332A demo release audit
+- 330L client-style export preview
+
+This stage builds the cleaner customer-facing preview workbook. It is still a no-write-back preview artifact.
+
 ## 12. What Comes Out Of Each Stage
 
 ### 330K2 outputs
@@ -346,6 +368,19 @@ Main artifacts:
 
 This is where narrative safety is checked.
 
+### 335A outputs
+
+Main artifacts:
+
+- clean preview workbook
+- summary JSON
+- manifest JSON
+- QA JSON
+- no-apply proof JSON
+- report markdown
+
+This is where the reviewed preview is reorganized into a cleaner workbook for non-engineering inspection without changing the underlying trust boundary.
+
 ## 13. How To Read The Excel Files
 
 A new operator often opens a workbook and looks at the first visible number. That is a mistake. The right reading order is:
@@ -384,6 +419,15 @@ Use it to compare:
 - what was added to reviewed trusted preview
 - what was rejected
 - what remains unresolved
+
+### Client-facing clean preview workbook
+
+Use it to explain:
+
+- which 98 rows are the clean reviewed rows
+- which 1 row still needs review
+- which 18 rows were excluded or rejected
+- how each customer-facing row traces back to source evidence
 
 ## 14. How To Understand The 330K2 Human Unit Review Workbook
 
@@ -473,6 +517,11 @@ The safest showcase materials are the documentation artifacts that already expla
 - the 332A interview talking points
 - the 333A bilingual operator docs
 
+For live local walkthroughs, the 335A workbook and summary are also useful to open, but they remain generated output and should stay unstaged:
+
+- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_preview.xlsx`
+- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json`
+
 These are safe because they present the project as a demo preview with human review boundaries and no write-back claims.
 
 ## 19. What Is Safe To Say In Interviews
@@ -552,7 +601,7 @@ The current limitations include:
 - the project still enforces a no write-back boundary
 - parser quality remains an upstream bottleneck
 - workbook-based human review is still operator-heavy
-- the reviewed preview is not the same thing as a clean client-facing final export
+- the clean export is still a preview artifact rather than a final client-delivery export
 - the benchmark scope is still narrower than what a production claim would require
 - deployment, security, permissions, and data-isolation work remain unfinished
 
@@ -562,7 +611,7 @@ Those limitations do not erase the value of the project. They define the honest 
 
 If you want to push the project forward responsibly, the next steps should look something like this:
 
-1. improve the clarity of client-facing preview exports
+1. validate and harden the client-facing clean preview export against broader document variability
 2. expand the benchmark set beyond the current unfamiliar PDFs
 3. reduce manual friction in the review workflow
 4. collect stronger dry-run evidence before even discussing write-back promotion

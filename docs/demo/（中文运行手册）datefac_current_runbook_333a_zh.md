@@ -2,7 +2,7 @@
 
 ## 1. 适用范围
 
-这份 runbook 只覆盖当前从 `330K2` 到 `332A` 的 sidecar / demo / preview / no write-back 路线。它不是生产运维手册，不授权修改 production pipeline，也不授权改写官方资产。它的目标很明确：让不是原始作者的人，也能在 Windows 本地环境中读懂当前链路、检查输入、运行命令、核对输出，并在不越界的前提下解释当前 reviewed preview 状态。
+这份 runbook 只覆盖当前从 `330K2` 到 `335A` 的 sidecar / demo / preview / no write-back 路线。它不是生产运维手册，不授权修改 production pipeline，也不授权改写官方资产。它的目标很明确：让不是原始作者的人，也能在 Windows 本地环境中读懂当前链路、检查输入、运行命令、核对输出，并在不越界的前提下解释当前 client-facing clean preview 状态。
 
 如果你现在要做的是：
 
@@ -11,6 +11,7 @@
 - 基于 dry-run 结果生成 330K4 reviewed preview
 - 刷新 331B demo packaging 文档
 - 审计 332A release audit 文档一致性
+- 生成 335A client-facing clean export
 
 这份 runbook 就是给你用的。如果你现在要做的是：
 
@@ -30,8 +31,9 @@
 - 仓库根目录：`D:\_datefac`
 - 命令行：PowerShell
 - Python 可从当前环境直接调用
-- 上游阶段 `330L`、`331A`、`330K2`、`330K3`、`330K4`、`331B`、`332A` 的代码与输出已经存在
-- 当前对外状态是 `DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW`
+- 上游阶段 `330L`、`331A`、`330K2`、`330K3`、`330K4`、`331B`、`332A`、`335A` 的代码与输出已经存在
+- 当前对外状态是 `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`
+- 当前存在 `client_facing_preview = true`
 - 当前明确边界是 `client_ready = false`、`production_ready = false`
 
 这里最重要的一点不是“命令能不能跑”，而是“你是不是在对的阶段状态上跑”。如果上游 summary 不满足预期，继续往下跑只会让链路更乱。
@@ -57,6 +59,7 @@
 | 330K4 | `D:\_datefac\output\reviewed_export_refresh_330k4` |
 | 331B | `D:\_datefac\output\demo_packaging_331b` |
 | 332A | `D:\_datefac\output\demo_release_audit_332a` |
+| 335A | `D:\_datefac\output\client_facing_clean_export_335a` |
 
 ### 3.3 关键 workbook 和 summary 文件
 
@@ -73,6 +76,8 @@
 - `D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_summary.json`
 - `D:\_datefac\output\demo_packaging_331b\demo_packaging_331b_summary.json`
 - `D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_summary.json`
+- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_preview.xlsx`
+- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json`
 
 ## 4. 当前阶段必须满足的上游输出
 
@@ -137,6 +142,17 @@
 
 如果 331B 文档没生成或没更新，332A 只是空审，意义不大。
 
+### 4.6 335A 需要什么
+
+335A 是 client-facing clean export。它的作用不是改 330K4，也不是生产写回，而是把 reviewed preview 重新整理成更适合客户视角检查的 workbook。因此它需要：
+
+- `reviewed_export_refresh_330k4`
+- `demo_packaging_331b`
+- `demo_release_audit_332a`
+- `client_style_export_preview_330l`
+
+这里最重要的核对点是：335A 仍然是 preview 产物，必须同时保留 `client_ready = false` 和 `production_ready = false`。
+
 ## 5. 精确运行命令
 
 下面的命令保持当前 Windows 路径原样，不要随意翻译路径、runner 名称或参数名称。
@@ -171,6 +187,12 @@ python tools\run_demo_packaging_331b.py --demo-packaging-331a-dir D:\_datefac\ou
 python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefac\output\demo_packaging_331b --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --demo-packaging-331a-dir D:\_datefac\output\demo_packaging_331a --docs-demo-dir D:\_datefac\docs\demo --output-dir D:\_datefac\output\demo_release_audit_332a
 ```
 
+### 5.6 335A
+
+```powershell
+python tools\run_client_facing_clean_export_335a.py --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --demo-packaging-331b-dir D:\_datefac\output\demo_packaging_331b --demo-release-audit-dir D:\_datefac\output\demo_release_audit_332a --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --output-dir D:\_datefac\output\client_facing_clean_export_335a
+```
+
 ## 6. 预期输出目录与关键文件
 
 | 阶段 | 输出目录 | 最值得先看的文件 |
@@ -180,6 +202,7 @@ python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefa
 | 330K4 | `D:\_datefac\output\reviewed_export_refresh_330k4` | `reviewed_export_refresh_330k4_preview.xlsx` |
 | 331B | `D:\_datefac\output\demo_packaging_331b` | `demo_packaging_331b_summary.json` |
 | 332A | `D:\_datefac\output\demo_release_audit_332a` | `demo_release_audit_332a_summary.json` |
+| 335A | `D:\_datefac\output\client_facing_clean_export_335a` | `client_facing_clean_export_335a_preview.xlsx` |
 
 ## 7. 当前应该核对的 summary 指标
 
@@ -203,6 +226,12 @@ python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefa
 | 331B | `project_status` | `DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW` |
 | 332A | `overclaim_risk_count` | 0 |
 | 332A | `qa_fail_count` | 0 |
+| 335A | `project_status` | `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY` |
+| 335A | `core_metrics_reviewed_row_count` | 98 |
+| 335A | `needs_review_row_count` | 1 |
+| 335A | `excluded_or_rejected_row_count` | 18 |
+| 335A | `source_page_missing_count` | 0 |
+| 335A | `qa_fail_count` | 0 |
 
 这些数字在 README、overview、runbook、demo script 里应该保持一致。如果出现不一致，优先相信 summary，再去修正文档。
 
@@ -225,6 +254,7 @@ Get-Content D:\_datefac\output\human_unit_review_apply_simulation_330k3\human_un
 Get-Content D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_summary.json
 Get-Content D:\_datefac\output\demo_packaging_331b\demo_packaging_331b_summary.json
 Get-Content D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_summary.json
+Get-Content D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json
 ```
 
 核对重点：
