@@ -1,11 +1,1 @@
-ARTIFACT_MARKDOWN = "01_全量脱水底稿.md"
-ARTIFACT_TABLES = "02_研报全量结构化数据.xlsx"
-ARTIFACT_RAW_TABLES = "02A_研报原始表格资产.xlsx"
-ARTIFACT_SUMMARY = "03_投研结论精华.xlsx"
-ARTIFACT_CLASSIFICATION = "04_表格分类结果.xlsx"
-ARTIFACT_FINANCIALS = "05_核心财务指标标准化.xlsx"
-ARTIFACT_MERGE_DIAGNOSTICS = "06_pdfplumber_merge_diagnostics.xlsx"
-ARTIFACT_PDFPLUMBER_PROFILE_DIAGNOSTICS = "06A_pdfplumber_profile_diagnostics.xlsx"
-ARTIFACT_SEGMENT_MAP = "07_table_segment_map.xlsx"
-ARTIFACT_GLUED_SPLIT_DIAGNOSTICS = "07A_glued_table_split_diagnostics.xlsx"
-ARTIFACT_BATCH_STATUS = "09_batch_run_status.xlsx"
+from datefac.utils.artifact_names import *
