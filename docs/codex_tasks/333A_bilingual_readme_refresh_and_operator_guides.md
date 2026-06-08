@@ -19,12 +19,12 @@ This is a documentation-only task.
 
 ## Files To Modify Or Create
 1. `README.md`
-2. `docs/demo/datefac_newbie_operator_guide_333a_zh.md`
-3. `docs/demo/datefac_newbie_operator_guide_333a_en.md`
-4. `docs/demo/datefac_current_runbook_333a_zh.md`
-5. `docs/demo/datefac_current_runbook_333a_en.md`
-6. `docs/demo/datefac_project_overview_333a_zh.md`
-7. `docs/demo/datefac_project_overview_333a_en.md`
+2. `docs/demo/（中文新手指南）datefac_newbie_operator_guide_333a_zh.md`
+3. `docs/demo/（英文新手指南）datefac_newbie_operator_guide_333a_en.md`
+4. `docs/demo/（中文运行手册）datefac_current_runbook_333a_zh.md`
+5. `docs/demo/（英文运行手册）datefac_current_runbook_333a_en.md`
+6. `docs/demo/（中文项目总览）datefac_project_overview_333a_zh.md`
+7. `docs/demo/（英文项目总览）datefac_project_overview_333a_en.md`
 8. `docs/codex_tasks/333A_bilingual_readme_refresh_and_operator_guides.md`
 
 ## Source Material To Inspect Before Writing

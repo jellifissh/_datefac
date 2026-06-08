@@ -234,12 +234,12 @@ python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefa
 - `docs/demo/datefac_demo_script_331b.md`
 - `docs/demo/datefac_demo_release_checklist_332a.md`
 - `docs/demo/datefac_interview_talking_points_332a.md`
-- `docs/demo/datefac_newbie_operator_guide_333a_zh.md`
-- `docs/demo/datefac_newbie_operator_guide_333a_en.md`
-- `docs/demo/datefac_current_runbook_333a_zh.md`
-- `docs/demo/datefac_current_runbook_333a_en.md`
-- `docs/demo/datefac_project_overview_333a_zh.md`
-- `docs/demo/datefac_project_overview_333a_en.md`
+- `docs/demo/（中文新手指南）datefac_newbie_operator_guide_333a_zh.md`
+- `docs/demo/（英文新手指南）datefac_newbie_operator_guide_333a_en.md`
+- `docs/demo/（中文运行手册）datefac_current_runbook_333a_zh.md`
+- `docs/demo/（英文运行手册）datefac_current_runbook_333a_en.md`
+- `docs/demo/（中文项目总览）datefac_project_overview_333a_zh.md`
+- `docs/demo/（英文项目总览）datefac_project_overview_333a_en.md`
 
 如果只想给第一次接触仓库的人一个最稳妥的阅读顺序，可以先看 `README.md`，再看 333A 的项目总览，再看 333A 的 runbook，最后再打开 330L、330K2、330K3、330K4、331B、332A 对应的 summary 与 workbook。这样能先理解边界，再理解命令，再理解产物，不容易把 preview 和正式资产混在一起。
 
@@ -421,12 +421,12 @@ The current safest showcase files are:
 - `docs/demo/datefac_demo_script_331b.md`
 - `docs/demo/datefac_demo_release_checklist_332a.md`
 - `docs/demo/datefac_interview_talking_points_332a.md`
-- `docs/demo/datefac_newbie_operator_guide_333a_zh.md`
-- `docs/demo/datefac_newbie_operator_guide_333a_en.md`
-- `docs/demo/datefac_current_runbook_333a_zh.md`
-- `docs/demo/datefac_current_runbook_333a_en.md`
-- `docs/demo/datefac_project_overview_333a_zh.md`
-- `docs/demo/datefac_project_overview_333a_en.md`
+- `docs/demo/（中文新手指南）datefac_newbie_operator_guide_333a_zh.md`
+- `docs/demo/（英文新手指南）datefac_newbie_operator_guide_333a_en.md`
+- `docs/demo/（中文运行手册）datefac_current_runbook_333a_zh.md`
+- `docs/demo/（英文运行手册）datefac_current_runbook_333a_en.md`
+- `docs/demo/（中文项目总览）datefac_project_overview_333a_zh.md`
+- `docs/demo/（英文项目总览）datefac_project_overview_333a_en.md`
 
 ### Safety Boundaries
 

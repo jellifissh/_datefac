@@ -325,8 +325,8 @@ Get-Content D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_s
 如果你是把项目交给下一位操作者，或者过一段时间之后再自己接回来，建议用下面这个顺序重新建立上下文：
 
 1. 先看 `README.md`，确认当前公开叙事还是 reviewed preview 而不是正式交付。
-2. 再看 `docs/demo/datefac_project_overview_333a_zh.md`，把整体链路、阶段历史和当前指标重新对齐。
-3. 再看 `docs/demo/datefac_current_runbook_333a_zh.md`，确认命令、输入目录和输出目录没有记混。
+2. 再看 `docs/demo/（中文项目总览）datefac_project_overview_333a_zh.md`，把整体链路、阶段历史和当前指标重新对齐。
+3. 再看 `docs/demo/（中文运行手册）datefac_current_runbook_333a_zh.md`，确认命令、输入目录和输出目录没有记混。
 4. 再打开 330L、330K2、330K3、330K4、331B、332A 的 summary，核对 `decision` 和 `qa_fail_count`。
 5. 最后才去打开 workbook，看 trusted、review_required、human rejected 和 reviewed preview 的具体记录。
 
