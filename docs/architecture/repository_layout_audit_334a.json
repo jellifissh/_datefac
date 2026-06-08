@@ -1,0 +1,287 @@
+[
+  {
+    "path": "ai_summary_service.py",
+    "purpose": "AI-assisted JSON summary generation helper used by legacy orchestration.",
+    "import_references": [
+      "factory_core.py"
+    ],
+    "suggested_target": "datefac/legacy/",
+    "migration_risk": "medium",
+    "requires_import_shim": true,
+    "recommended_action": "Treat as legacy but do not move before factory_core decoupling."
+  },
+  {
+    "path": "artifact_names.py",
+    "purpose": "Constant definitions for output artifact names.",
+    "import_references": [
+      "factory_core.py",
+      "raw_table_exporter.py"
+    ],
+    "suggested_target": "datefac/utils/",
+    "migration_risk": "low",
+    "requires_import_shim": true,
+    "recommended_action": "Use as a first-wave shim-first migration candidate."
+  },
+  {
+    "path": "config_manager.py",
+    "purpose": "Configuration loading and merge support for runtime tools and legacy orchestration.",
+    "import_references": [
+      "factory_core.py",
+      "tools/check_vision_dependencies.py",
+      "tools/extract_stage5b_pdf_raw_tables.py",
+      "tools/prewarm_marker_models.py",
+      "tools/probe_extractors.py",
+      "tools/rebuild_stage5k_full_sandbox_02_05_from_pdf.py",
+      "tools/run_eval1_10pdf_sandbox_extraction_evaluation.py",
+      "tools/run_eval1b_profile_selection_fix_regression.py",
+      "tools/run_stage7d_sandbox_pipeline.py"
+    ],
+    "suggested_target": "datefac/utils/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone until tool import-path migration is explicitly planned and validated."
+  },
+  {
+    "path": "extractor_adapter.py",
+    "purpose": "Adapter layer that normalizes extractor outputs into common table-block structures.",
+    "import_references": [
+      "datefac/trust/full_unfamiliar_export_benchmark_330h.py",
+      "datefac/trust/unfamiliar_candidate_export_smoke_330f4.py",
+      "factory_core.py",
+      "tools/extract_stage5b_pdf_raw_tables.py",
+      "tools/probe_extractors.py",
+      "tools/rebuild_stage5k_full_sandbox_02_05_from_pdf.py",
+      "tools/run_eval1_10pdf_sandbox_extraction_evaluation.py",
+      "tools/run_eval1b_profile_selection_fix_regression.py",
+      "tools/run_stage7d_sandbox_pipeline.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Defer to a later parser/extraction migration phase."
+  },
+  {
+    "path": "extractor_quality.py",
+    "purpose": "Table-block quality scoring helper based on text, year, and keyword signals.",
+    "import_references": [
+      "pdfplumber_profile_extractor.py",
+      "raw_table_exporter.py",
+      "tools/probe_extractors.py",
+      "tools/probe_glued_table_split.py",
+      "tools/probe_pdfplumber_profiles.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "medium",
+    "requires_import_shim": true,
+    "recommended_action": "Consider only after table_block and parser helper paths are stabilized."
+  },
+  {
+    "path": "factory_core.py",
+    "purpose": "Legacy orchestration hub with high fan-out across root-level modules.",
+    "import_references": [],
+    "suggested_target": "keep_in_root",
+    "migration_risk": "high",
+    "requires_import_shim": false,
+    "recommended_action": "Keep in root during 334B and treat as the main decoupling blocker."
+  },
+  {
+    "path": "financial_standardizer.py",
+    "purpose": "Financial metric normalization and standardization logic reused by tools and tests.",
+    "import_references": [
+      "factory_core.py",
+      "glued_table_splitter.py",
+      "tests/test_financial_standardizer.py",
+      "tools/analyze_stage5e_mapping_miss_inventory.py",
+      "tools/analyze_stage5g_remaining_mapping_miss.py",
+      "tools/audit_stage5a_pdf_conversion_baseline.py",
+      "tools/build_stage5h_alias_draft_validation.py",
+      "tools/build_stage5o_promotion_review.py",
+      "tools/build_stage5q_apply_precheck_fix.py",
+      "tools/build_stage7b_full_structured_sandbox.py",
+      "tools/diagnose_financial_standardizer.py",
+      "tools/fix_stage5m_semantic_wide_table_quality.py",
+      "tools/fix_stage5n_wide_review_layout.py",
+      "tools/improve_stage5f_raw_metric_extraction.py",
+      "tools/probe_column_group_binding.py",
+      "tools/probe_glued_table_split.py",
+      "tools/promote_stage5i_alias_rules.py",
+      "tools/rebuild_stage5k_full_sandbox_02_05_from_pdf.py",
+      "tools/reconstruct_stage5l_semantic_wide_tables.py",
+      "tools/standardize_stage5d_sandbox_02_to_05.py",
+      "tools/verify_stage5j_pdf_to_05_baseline_closure.py"
+    ],
+    "suggested_target": "datefac/standardization/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone until a dedicated standardization package move is planned with regression coverage."
+  },
+  {
+    "path": "glued_table_splitter.py",
+    "purpose": "Heuristic splitter for glued multi-table captures.",
+    "import_references": [
+      "factory_core.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "medium",
+    "requires_import_shim": true,
+    "recommended_action": "Defer until standardizer and extractor package paths are stabilized."
+  },
+  {
+    "path": "logger_utils.py",
+    "purpose": "Central logging setup helper.",
+    "import_references": [
+      "factory_core.py"
+    ],
+    "suggested_target": "datefac/utils/",
+    "migration_risk": "low",
+    "requires_import_shim": true,
+    "recommended_action": "Use as a first-wave shim-first migration candidate."
+  },
+  {
+    "path": "pdfplumber_profile_extractor.py",
+    "purpose": "Profile-driven PDFPlumber extraction orchestration.",
+    "import_references": [
+      "factory_core.py",
+      "tools/extract_stage5b_pdf_raw_tables.py",
+      "tools/rebuild_stage5k_full_sandbox_02_05_from_pdf.py",
+      "tools/run_eval1_10pdf_sandbox_extraction_evaluation.py",
+      "tools/run_eval1b_profile_selection_fix_regression.py",
+      "tools/run_stage7d_sandbox_pipeline.py"
+    ],
+    "suggested_target": "datefac/parsers/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; migrate only with parser import shims."
+  },
+  {
+    "path": "pdfplumber_table_extractor.py",
+    "purpose": "Low-level PDFPlumber table extraction and block-to-DataFrame conversion.",
+    "import_references": [
+      "extractor_adapter.py",
+      "factory_core.py",
+      "pdfplumber_profile_extractor.py",
+      "tests/test_pdfplumber_table_extractor.py",
+      "tests/test_pdfplumber_table_postprocessor.py"
+    ],
+    "suggested_target": "datefac/parsers/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; direct move would break both runtime imports and tests."
+  },
+  {
+    "path": "pdfplumber_table_postprocessor.py",
+    "purpose": "Post-processing and merge heuristics for extracted PDFPlumber blocks.",
+    "import_references": [
+      "factory_core.py",
+      "tests/test_pdfplumber_table_postprocessor.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; treat as a test-backed migration item."
+  },
+  {
+    "path": "raw_table_exporter.py",
+    "purpose": "Exports extracted table blocks into raw reviewable assets.",
+    "import_references": [
+      "factory_core.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "medium",
+    "requires_import_shim": true,
+    "recommended_action": "Consider after artifact_names and table_block path policy is set."
+  },
+  {
+    "path": "run_state.py",
+    "purpose": "Document-level run state dataclass.",
+    "import_references": [
+      "factory_core.py"
+    ],
+    "suggested_target": "datefac/utils/",
+    "migration_risk": "low",
+    "requires_import_shim": true,
+    "recommended_action": "Use as a first-wave shim-first migration candidate."
+  },
+  {
+    "path": "segment_validator.py",
+    "purpose": "Segment validation helper for type and classification consistency checks.",
+    "import_references": [
+      "factory_core.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "medium",
+    "requires_import_shim": true,
+    "recommended_action": "Use only in a later wave after the utility pilot succeeds."
+  },
+  {
+    "path": "table_block.py",
+    "purpose": "Shared table-block datamodel plus quality feature helpers.",
+    "import_references": [
+      "extractor_adapter.py",
+      "extractor_quality.py",
+      "pdfplumber_profile_extractor.py",
+      "raw_table_exporter.py",
+      "tools/extract_stage5b_pdf_raw_tables.py",
+      "tools/probe_extractors.py",
+      "tools/probe_glued_table_split.py",
+      "tools/probe_pdfplumber_profiles.py",
+      "tools/rebuild_stage5k_full_sandbox_02_05_from_pdf.py",
+      "tools/run_eval1_10pdf_sandbox_extraction_evaluation.py",
+      "tools/run_eval1b_profile_selection_fix_regression.py",
+      "tools/run_stage7d_sandbox_pipeline.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; this shared model is a path-change multiplier."
+  },
+  {
+    "path": "table_classifier.py",
+    "purpose": "Classifies tables by statement type using keyword heuristics.",
+    "import_references": [
+      "factory_core.py",
+      "tests/test_table_classifier.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; migrate only with retained backward import compatibility."
+  },
+  {
+    "path": "table_cleaner.py",
+    "purpose": "Cleans and deduplicates table DataFrames.",
+    "import_references": [
+      "factory_core.py",
+      "tests/test_table_cleaner.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; runtime-sensitive and test-sensitive."
+  },
+  {
+    "path": "table_segmenter.py",
+    "purpose": "Row segmentation and merge logic for complex tables.",
+    "import_references": [
+      "factory_core.py",
+      "tests/test_table_segmenter.py"
+    ],
+    "suggested_target": "datefac/extraction/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Do not include in 334B pilot; explicit repo guidance already protects this area."
+  },
+  {
+    "path": "vision_runtime.py",
+    "purpose": "Vision environment construction and diagnostics for extraction tooling.",
+    "import_references": [
+      "factory_core.py",
+      "tools/check_vision_dependencies.py",
+      "tools/prewarm_marker_models.py"
+    ],
+    "suggested_target": "datefac/utils/",
+    "migration_risk": "high",
+    "requires_import_shim": true,
+    "recommended_action": "Postpone; environment tooling makes this sensitive."
+  }
+]
