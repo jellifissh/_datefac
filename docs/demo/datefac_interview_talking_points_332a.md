@@ -1,16 +1,43 @@
-# Interview Talking Points 332A
+# Interview Talking Points 332A/339A Synced
 
 ## Why Parser Quality Alone Is Not Enough
-A parser can recover text and table cells, but downstream trust still depends on whether the metric label, unit, year alignment, and provenance are all coherent. Good raw extraction does not automatically mean a row is safe to trust.
 
-## Why Unit Review Matters
-Unit ambiguity can silently flip the meaning of a value. By forcing a human review stage for unit-risk rows, the system avoids treating weakly supported rows as trusted output.
+A parser can recover text, tables, and candidate rows, but trust still depends on whether metric, year, unit, provenance, and surrounding context all line up. A plausible row can still be unsafe if the unit is wrong, the year is misaligned, or the row came from the wrong table role.
 
-## How Trust Routing Works
-The system keeps sidecar trust scoring separate from production routing. Rows with strong evidence and clean risk profiles surface into trusted preview, while ambiguous rows stay review-required and risky rows can be isolated.
+## Why MinerU Matters Now
 
-## Why Human Review Is Isolated Before Write-Back
-Write-back creates a much higher correctness bar. Isolating manual review outcomes in a dry-run and reviewed-preview path preserves traceability and avoids accidentally promoting unresolved rows into official assets.
+MinerU is now the primary parser for the current real-PDF preview flow. That matters because the project is no longer talking only about cached sidecar previews. It now shows a concrete real-PDF intake path on three real reports, then layers governance and review logic on top of that parser output.
 
-## What Changed From 331A To 331B
-331A packaged a demo-ready baseline with unit review caveats. 330K2 collected unit-review rows, 330K3 simulated applying decisions without write-back, 330K4 refreshed the reviewed preview, and 331B updated the demo narrative around that safer reviewed state.
+## Why Deterministic Rules Still Come First
+
+The current system does not let model output outrank hard safety logic. Deterministic rules still guard against unit issues, duplicate rows, percentage-as-amount mistakes, and obvious noise. That is why the AI layer is framed as assistive dry-run logic rather than final truth.
+
+## Why AI Review Is Dry-Run Only
+
+The project intentionally separates model judgment from official adoption. 338A through 338D evaluate whether model outputs are useful, whether they are grounded, and whether any of them would be safe to accept under policy. They do not write back to official assets or production workbooks.
+
+## How The Model Roles Differ
+
+- MinerU is the primary parser for layout and table extraction.
+- `AI_REVIEW_MODEL` is the current main text-adjudication candidate.
+- DeepSeek flash is the conservative baseline and fallback.
+- Vision models are reserved for future layout, screenshot, or image-table uncertainty.
+- Human review remains the final safety layer.
+
+## What 338B-338D Show
+
+338B shows that `gpt-5.5` is materially stronger than the DeepSeek flash baseline on the sampled text-adjudication task. 338C shows that stronger grounding rules reduce invalid outputs further. 338D shows that even then, the project still does not automatically recommend default adoption, because dry-run policy and safety boundaries are more important than raw model enthusiasm.
+
+## What Changed In The Project Story
+
+The project story is no longer only “we created a reviewed preview after manual unit review.” It is now:
+
+1. real PDFs can be ingested with MinerU-first parsing
+2. candidate quality can be tightened with rules
+3. reviewed rows can be made stricter before AI touches them
+4. AI text adjudication can be evaluated safely in dry-run form
+5. grounded review and adoption simulation can constrain model optimism
+
+## Safest Honest Closing Line
+
+DateFac is currently strongest as a trust-governed preview engineering system for financial research PDFs, not as a production-ready automatic delivery platform.

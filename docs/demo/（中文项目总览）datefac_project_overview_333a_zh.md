@@ -1,231 +1,169 @@
-# DateFac 项目总览 333A（中文）
+# DateFac 项目总览 333A/339A 同步版
 
-## 1. 项目背景
+## 1. 项目现在在解决什么问题
 
-DateFac 的背景不是“再做一个 PDF 表格抽取器”，而是“在金融研报 PDF 抽取结果之上，建立一个更可追溯、更可复核、更适合演示与交接的信任治理层”。在真实业务里，抽取本身只是第一步。真正难的是抽取完成以后，如何判断哪些记录能先进入 trusted preview，哪些记录必须停留在 review_required，哪些记录在人工看过以后应该明确排除，哪些记录只能继续保留为 unresolved preview 状态。
+DateFac 当前不是在重复做一个“普通 PDF 表格抽取器”。
+
+它更像是在回答这个问题：
+
+> 当 parser 已经能从研报 PDF 里抽出一批候选行之后，系统如何保守地判断哪些能先信、哪些要继续复核、哪些应该明确拒绝，以及怎样把这一切讲清楚而不夸大？
+
+这就是为什么仓库最近的重点是：
+
+- MinerU-first 真实 PDF intake
+- precision calibration
+- 表格上下文修复
+- reviewed strictness 与 year alignment QA
+- AI 文本裁决 dry-run
+- grounded review
+- adoption simulation
+
+## 2. 当前工程定位
+
+当前定位可以概括成：
+
+- 本地运行
+- sidecar
+- demo
+- preview
+- no-write-back
 
-这个问题在金融研报场景里尤其突出，因为数字看起来对，并不代表它真的对。一个值可能来自错误的 row_text，可能单位缺失，可能年份列错位，可能其实来自对比表、图注或说明段，而不是核心财务预测表。DateFac 选择正面处理这些问题，而不是把它们藏在一个“看起来已经很完整”的导出结果后面。
+这几个词都不是装饰词，而是边界说明。
 
-## 2. 项目要解决的问题
+当前必须承认：
 
-DateFac 当前要解决的是三个层次的问题：
+- `client_ready = false`
+- `production_ready = false`
+- AI 结论当前不写回 official assets
 
-### 2.1 抽取结果能否被可信地解释
+## 3. 当前链路的功能化理解
 
-很多 parser 可以把表格切出来，也能把字符识别出来，但业务真正需要的是“这条记录能不能被可信地解释”。可信解释至少意味着：
+不要先用阶段号记忆，先按功能看：
 
-- 有 provenance
-- 有 metric、year、value、unit 的上下文
-- 有 routing 决策
-- 有风险标记
-- 有人工复核边界
+1. 用 MinerU 把真实 PDF 解析成可读的页面、表格和候选项
+2. 用规则校准把明显噪声和低质量 candidate 压掉
+3. 用财务表上下文修复补足表角色和单位信息
+4. 用 stricter QA 把 reviewed 集合收紧到更可信的状态
+5. 用 AI 做文本层 dry-run 裁决
+6. 再做 grounded review 和 adoption simulation
+7. 让最终 preview 与文档都保持保守边界
 
-### 2.2 风险记录能否被保守处理
+## 4. 337A-338D 的阶段作用
 
-如果系统没有 review_required 队列，就会天然倾向于把更多行推进 trusted。DateFac 当前恰恰反过来：宁可保守、宁可留下 review_required，也不把高风险行伪装成“已经可信”。
+- 336A：从 PDF 文件夹起跑的 smoke runner
+- 336B：单文档 debug package
+- 337A：MinerU-first 真实 PDF intake
+- 337B：candidate precision calibration
+- 337C：核心财务表上下文修复
+- 337D：reviewed strictness、year alignment、可疑行 QA
+- 338A：DeepSeek flash 文本裁决 baseline
+- 338B：`AI_REVIEW_MODEL` 对比 DeepSeek flash
+- 338C：grounded schema tightening
+- 338D：adoption simulation
 
-### 2.3 对外叙事能否不过度宣称
+其中 338A-338D 最重要的边界是：
 
-一个工程 demo 即便内部逻辑保守，如果 README、overview、resume bullets 或 demo script 说得过满，依然会制造错误预期。332A release audit 的存在，就是为了把“文档叙事也纳入工程审计”。
+> 它们在决定“模型建议是否值得参考”，而不是在做正式生产采用。
 
-## 3. 为什么这不只是 PDF table extraction
+## 5. 当前关键指标
 
-如果只从 PDF table extraction 角度看，通常只会问：
+### 真实 PDF intake
 
-- 表格有没有识别出来
-- 单元格切分对不对
-- OCR 是否足够清晰
+- 337A 成功解析 `3` 份真实 PDF
+- 每份 PDF metric candidates:
+  - `H3_AP202606081823352620_1.pdf = 134`
+  - `H3_AP202606081823352906_1.pdf = 111`
+  - `H3_AP202606081823356439_1.pdf = 102`
+- 337A 总体：
+  - `reviewed = 303`
+  - `needs_review = 42`
+  - `rejected_or_excluded = 2`
 
-但对金融数据来说，决定可用性的并不只有这些，还有：
+### 规则校准与修复
 
-- metric 语义是否对
-- year 和 value 是否真正对齐
-- unit 是否明确且没有冲突
-- provenance 是否足够支撑人工回溯
-- 风险是否被正确隔离
-- 对外展示是否带有当前限制说明
+- 337B reviewed 从 `303` 降到 `98`
+- 337C reviewed 升到 `148`
+- 337C `table_role_repair_count = 35`
+- 337C `unit_filled_count = 119`
+- 337D reviewed 再收紧到 `112`
+- 337D `year_alignment_repaired_count = 33`
+- 337D `reviewed_duplicate_removed_count = 27`
 
-因此 DateFac 的重点不是重复发明 parser，而是把 parser 之后的可信治理工程补齐。这也是它为什么反复强调 sidecar、preview、human review、no write-back 和 release audit。
+### AI dry-run
 
-## 4. 当前架构
+- 338A DeepSeek flash baseline:
+  - `low_confidence = 34 / 50`
+  - `NEEDS_MORE_CONTEXT = 33 / 50`
+- 338B `gpt-5.5` A/B:
+  - `low_confidence = 0 / 50`
+  - `NEEDS_MORE_CONTEXT = 3 / 50`
+  - `invalid_response = 3`
+- 338C grounded review:
+  - `invalid_response = 1`
+  - `grounding_source BOTH = 49`
+- 338D adoption simulation:
+  - `ACCEPT_MODEL_CONFIRM = 39`
+  - `ACCEPT_MODEL_REJECT = 3`
+  - `HOLD_FOR_HUMAN_REVIEW = 3`
+  - `REJECT_BY_DETERMINISTIC_RULE = 4`
+  - `INVALID_MODEL_RESPONSE = 1`
+  - `deterministic_rule_override_count = 0`
 
-当前架构最适合被理解为一个多层 sidecar 信任路由链路：
+## 6. 模型角色分工
 
-1. 输入 PDF 或缓存 parser 输出
-2. candidate extraction 与 candidate preparation
-3. trusted / review_required routing
-4. unit risk detection
-5. human unit review packaging
-6. dry-run apply simulation
-7. reviewed preview refresh
-8. demo packaging
-9. demo release audit
+- MinerU：当前主解析器
+- deterministic rules：当前最优先的安全层
+- `AI_REVIEW_MODEL`：当前主文本裁决候选模型
+- DeepSeek flash：baseline / fallback
+- vision model：未来版面或截图不确定性工具
+- human review：最终安全层
 
-这条链路不是从头改生产，而是从 preview 侧补充治理能力。它最大的价值是把“自动候选”、“人工确认”、“仍需复核”、“明确拒绝”和“仅限演示”这几类状态分清楚。
+特别重要的一点：
 
-## 5. Trust-routing 设计
+> 338D 没有建议直接把 `AI_REVIEW_MODEL` 设为默认正式模型，`suggest_set_ai_review_model_default = false`。
 
-DateFac 当前 trust-routing 设计的核心，是不把 candidate rows 一股脑推进 trusted。相反，它明确区分：
+## 7. 为什么这个状态有价值
 
-- trusted
-- review_required
-- human rejected after review
+这个状态的价值，不在于“已经可以对客户正式交付”，而在于：
 
-这个设计的意义有三点：
+- 真实 PDF intake 已经能稳定跑起来
+- 规则层能显著压缩错误 reviewed
+- AI 层不是黑盒直接上产，而是被 deterministic rules、grounding 和 adoption policy 约束
+- 文档层明确承认系统还不成熟
 
-1. 系统承认自己有不确定性。
-2. 风险被显式暴露，而不是被 UI 或文档遮掩。
-3. 人工 review 的工作量被收敛到真正高风险的区域。
+这比“只给一个看上去很完整的 Excel”更可信。
 
-在当前链路里，trusted 并不等于“永远绝对正确”，而是“在当前证据、当前 sidecar 规则和当前 review 状态下，可以被放进 trusted preview”。这个定义非常关键，因为它把“可信 preview”与“生产真理”明确区分开来。
+## 8. 安全宣称与禁止宣称
 
-## 6. Human review loop
+### 当前可安全宣称
 
-当前 human review loop 对应的阶段是 `330K2 -> 330K3 -> 330K4`。
+- 支持真实研报 PDF 的 MinerU-first intake preview
+- 支持规则驱动的 candidate precision repair
+- 支持核心财务上下文修复与 stricter reviewed QA
+- 支持 AI text adjudication dry-run、A/B 评估、grounded review 和 adoption simulation
+- 支持 no-write-back 的 preview 治理链路
 
-### 6.1 330K2
+### 当前不能宣称
 
-330K2 的任务是把 21 条 unit-review 行打包出来。它不是修 parser，不是改生产规则，而是把高风险行组织成一个人工可读、可填、可追溯的 workbook。
+- 已 client-ready
+- 已 production-ready
+- AI 已取代人工
+- 100% 准确
+- fully automatic commercial SaaS
+- 可直接用于投资决策
 
-### 6.2 330K3
+## 9. 当前限制
 
-330K3 读取人工填写过的 workbook，把 `CONFIRM_UNIT`、`REJECT_UNIT`、`NEEDS_MORE_CONTEXT` 等决策翻译成 dry-run apply actions。重点在于：先形成“如果接受这些人工判断，会发生什么”的计划，而不是立刻生效。
+当前限制至少包括：
 
-### 6.3 330K4
+- 整条链路仍然是 sidecar / demo / preview
+- AI 决策仍然只是 dry-run
+- human review 仍然必要
+- 更大规模 benchmark 还不够
+- deployment / security / permission / data isolation 还未闭环
 
-330K4 再基于 dry-run apply plan 刷新 reviewed preview。当前结果是：
+## 10. 结论
 
-- 原始 trusted preview：96 行
-- reviewed unit confirmed：2 行
-- reviewed trusted preview：98 行
-- human rejected：18 行
-- remaining review required：1 行
+DateFac 现在最值得展示的，不是“自动化已经完成”，而是：
 
-这说明系统在当前阶段并没有试图“把 21 条风险行全都洗进 trusted”，而是只把证据变强后仍然安全的 2 行推进 reviewed trusted preview。
-
-### 6.4 335A
-
-335A 不改变 330K4 的底层复核结论，它做的是把 reviewed preview 重新整理成一份更适合客户视角检查的 clean workbook。当前关键结果是：
-
-- core metrics reviewed：98 行
-- needs review：1 行
-- excluded / rejected：18 行
-- source trace：117 行
-- `project_status = CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`
-- `client_facing_preview = true`
-
-## 7. Stage timeline：Stage 1 到 335A
-
-### 7.1 Stage 1 到 Stage 4
-
-Stage 1 到 Stage 4 更像工程治理的前史，关注的是 repair discipline、override-first rebuildability 和 rule governance。它们的价值不在当前 preview 数字，而在于它们建立了一个原则：所有重要修复都应该可解释、可重建、可审计。
-
-### 7.2 330L 到 332A
-
-330L 之后的链路则更像“把治理原则用于 demo-ready preview state”：
-
-- `330L` 生成 baseline client-style export preview
-- `331A` 把 baseline preview 包装成 demo 文档
-- `330K2` 对 unit 风险行做人工 review 打包
-- `330K3` 生成 no write-back 的 dry-run apply plan
-- `330K4` 生成 reviewed preview
-- `331B` 基于 reviewed preview 刷新 demo 文档
-- `332A` 对文档说法、数字一致性和 overclaim 风险做最终审计
-- `335A` 在 reviewed preview 和 release audit 基础上生成更干净的 client-facing preview workbook
-
-这条链路最值得展示的，不是单点命中率，而是“系统如何有纪律地把人类判断吸收到 preview 叙事里，同时不越界到生产写回”。
-
-## 8. 当前关键指标
-
-当前应保持一致的指标如下：
-
-| 指标 | 当前值 |
-|---|---:|
-| unfamiliar PDFs | 13 |
-| PDFs produced candidates | 7 |
-| `prepared_candidate_row_count` | 117 |
-| `original_trusted_sheet_row_count` | 96 |
-| `reviewed_unit_confirmed_count` | 2 |
-| `reviewed_trusted_preview_row_count` | 98 |
-| `core_metrics_reviewed_row_count` | 98 |
-| `needs_review_row_count` | 1 |
-| `excluded_or_rejected_row_count` | 18 |
-| `source_trace_row_count` | 117 |
-| `human_rejected_row_count` | 18 |
-| `remaining_review_required_after_unit_review_count` | 1 |
-| `apply_plan_row_count` | 21 |
-| `source_page_missing_count` | 0 |
-| `overclaim_risk_count` | 0 |
-| `qa_fail_count` | 0 |
-
-这些数字不仅要在 summary 中对齐，也应该在 README、overview、runbook、demo script 和面试介绍中对齐。
-
-## 9. Safe claims
-
-当前可以安全宣称的内容包括：
-
-- 这是一个 financial research PDF core metric extraction + trust-routing demo
-- 当前状态是 `DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW`
-- 项目具备 provenance 保留、unit risk detection、human review packaging、dry-run apply、reviewed preview refresh 和 release audit
-- 项目已经能在不越界到正式交付的前提下生成 client-facing clean preview export
-- 项目有明确的 no write-back 边界
-- 项目能展示从 baseline preview 到 reviewed preview 的演化过程
-- 项目对 rejected 与 unresolved 状态采取保守展示策略
-
-## 10. Unsafe claims
-
-当前不能宣称的内容包括：
-
-- 已达到可直接对客交付
-- 已达到可直接进入生产部署
-- 自动结果可以替代人工 review
-- 准确性被保证到没有误差空间
-- 已经是全自动商业系统
-- 已经是可直接卖给客户的 SaaS
-- 可以直接驱动投资决策
-
-这些说法的问题不是“听起来夸张”，而是它们与当前工程事实不一致。
-
-## 11. 面试与展示时的重点话术
-
-当前最有价值的面试话术不是“我们抽出来了多少表”，而是：
-
-1. parser quality 很重要，但它不是终点，trust routing 才决定展示层是否可信。
-2. unit review 是金融数据可信化里最关键的一类人工兜底。
-3. dry-run apply 把人工判断先变成计划，而不是变成未经审查的正式写回。
-4. reviewed preview 体现了 human-in-the-loop 的工程化，而不是手工修 Excel 的偶然结果。
-5. release audit 说明项目连“对外怎么说”都纳入了审计范围。
-
-## 12. 商业试点边界
-
-如果未来把这个项目用于小规模试点，当前最合理的边界是：
-
-- 可以做 demo
-- 可以做内部展示
-- 可以做有人盯着的 human-in-the-loop 小样本验证
-- 可以做人工兜底的 preview 服务
-
-但不能说成：
-
-- 正式客户交付系统
-- 无人值守自动化生产线
-- 已完成部署与安全治理的 SaaS
-
-原因很简单：当前链路仍然依赖 preview、review 和 no write-back 设计，生产级系统所需的部署、安全、权限、数据隔离与持续运行能力尚未完成。
-
-## 13. Current limitations / 当前局限
-
-为了让总览文档和 README、runbook 保持同一套边界，这里也明确保留 `current limitations` 这个词。当前局限包括：
-
-- 当前仍然是 reviewed preview，而不是官方结果刷新
-- 当前虽然已经有 clean export，但它仍然只是 client-facing clean preview，不是正式客户交付导出
-- 当前仍然依赖 human review 来处理 unit 风险和剩余不确定性
-- 当前没有 production write-back，也没有官方资产 promotion 逻辑
-- 当前 benchmark 样本虽然足够支持 demo 叙事，但不足以支撑大规模商业承诺
-- 当前没有把安全、权限、部署、监控和故障恢复做成生产级能力
-
-这些局限不是失败说明，而是当前阶段应被诚实保留的边界说明。
-
-## 14. 结论
-
-DateFac 当前最值得展示的，不是“已经完全自动化”，而是“已经把可信化治理、人工 review 隔离、preview 刷新、clean preview 整理和过度宣称防护这几层工程问题分清楚了”。它当前的最新状态是 `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`，适合展示工程判断力、review 闭环和风险边界意识；它不是一个应该被包装成已经达到生产级就绪的系统。
+> 它已经把真实 PDF 解析、规则约束、AI 裁决试验、人工复核边界和对外叙事安全，组织成了一条比较完整、比较诚实的工程链路。

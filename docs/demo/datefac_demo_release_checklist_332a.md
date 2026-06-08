@@ -1,32 +1,44 @@
-# Demo Release Checklist 332A
+# Demo Release Checklist 332A/339A Synced
 
 ## 1. Safe To Show On GitHub
-- Sidecar trust-routing architecture and preview packaging flow
-- Reviewed preview metrics: 98 reviewed trusted rows, 18 human-rejected rows, 1 remaining review-required row
-- Provenance preservation, manual unit review isolation, and no-write-back boundaries
-- Conservative demo docs that explicitly stay below client-ready and production-ready claims
+
+- MinerU-first real PDF intake preview
+- Rule-based precision calibration and context repair
+- Strict reviewed QA before any AI dry-run story
+- AI review dry-run, grounded review, and adoption simulation with no-write-back wording
+- Clear statements that the project is not client-ready and not production-ready
 
 ## 2. Safe To Say In Interview
-- Parser quality is necessary but not sufficient because trust depends on units, provenance, and routing decisions
-- Human unit review was intentionally isolated before any write-back or official export refresh
-- 331A established the demo-ready baseline and 331B shows the reviewed preview state after manual review feedback
-- The system prefers conservative review-required routing over false trust promotion
+
+- Parser quality is necessary but not sufficient
+- MinerU is the current primary parser for real PDF preview intake
+- Deterministic rules stay above model suggestions
+- AI review is currently dry-run only
+- Human review remains necessary for held, invalid, or conflicting rows
+- `gpt-5.5` looks promising as a text adjudicator candidate, but 338D does not recommend immediate default adoption
 
 ## 3. Must Not Claim
-- Production deployment or production routing changes
-- Client delivery readiness or client-ready export quality
-- Guaranteed extraction accuracy or automatic correctness
-- Full-scale commercial readiness
-- Official asset write-back or production workbook refresh
+
+- client-ready delivery
+- production-ready deployment
+- 100% accurate extraction
+- no human review needed
+- AI decisions are final
+- fully automatic commercial SaaS
+- direct investment-decision use
 
 ## 4. Known Limitations
-- Project status remains DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW
-- Sidecar preview only; no production pipeline changes
-- One row remains review-required after unit review
-- Review outcomes are surfaced conservatively rather than auto-applied into official outputs
+
+- Current path remains sidecar / demo / preview / no-write-back
+- Real PDF intake works, but production hardening is incomplete
+- AI dry-run results still require human and policy review
+- Broader benchmark coverage is still needed
+- Deployment, security, permissions, and data isolation are unfinished
 
 ## 5. Suggested Next Engineering Milestones
-- Add a safe write-back planning stage with explicit human approval gates
-- Expand deterministic consistency checks for more doc and metric variants
-- Broaden preview audit coverage for additional demo narratives and artifacts
-- Keep parser, provenance, and review-layer evidence aligned before any production promotion
+
+- Expand real-PDF benchmark breadth
+- Tighten deterministic guards where AI still produces invalid or weakly grounded responses
+- Improve human review ergonomics beyond workbook-style workflows
+- Revisit default model selection only after more adoption-simulation evidence
+- Add deployment and data-governance design before any production ambition

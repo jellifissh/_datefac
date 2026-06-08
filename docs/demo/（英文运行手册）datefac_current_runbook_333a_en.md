@@ -1,296 +1,259 @@
-# DateFac Current Runbook 333A (English)
+# DateFac Current Runbook 333A/339A Synced
 
 ## 1. Scope
 
-This runbook covers the current `330K2` through `332A` sidecar, demo, preview, and no-write-back path. It is not a production operations manual. It does not authorize changes to the production pipeline, parser, extraction logic, delivery logic, or official assets. Its purpose is narrower and more practical: help a careful operator understand the current stage sequence, verify upstream outputs, run the correct commands, inspect the right artifacts, and avoid unsafe Git or staging mistakes.
+This runbook covers the current real-PDF preview chain:
 
-Use this runbook if you need to:
+- 337A MinerU-first intake
+- 337B precision calibration
+- 337C core financial context repair
+- 337D reviewed strictness / year-alignment QA
+- 338A DeepSeek baseline dry-run
+- 338B `AI_REVIEW_MODEL` A/B evaluation
+- 338C grounded AI review
+- 338D adoption simulation
 
-- package unit-risk rows for manual review
-- read a filled review workbook and simulate the effect of manual decisions
-- refresh the reviewed preview export
-- refresh demo-facing documentation
-- audit the final demo narrative for consistency and overclaim risk
+This is not a production operations manual.
 
-Do not use this runbook as justification to:
+It does not authorize:
 
-- rewrite parser behavior
-- rewrite extraction rules
-- modify delivery outputs in the main pipeline
-- edit official assets casually
-- stage output artifacts
+- production pipeline changes
+- parser / extraction / delivery changes
+- official asset modification
+- committing generated output artifacts
 
-## 2. Environment Assumptions
+## 2. Assumptions
 
-The current instructions assume:
+Expected environment:
 
-- Windows environment
+- Windows
 - repository root at `D:\_datefac`
-- PowerShell terminal
-- Python available in the current environment
-- upstream project stages already exist locally
+- PowerShell
+- local Python available
+- 337A-338D code already present
 
-The important completed stages behind the current clean-preview narrative are:
+All synced docs must continue to acknowledge:
 
-- `330L` client-style export preview
-- `331A` demo packaging
-- `330K2` human unit review package
-- `330K3` human unit review apply simulation
-- `330K4` reviewed export refresh
-- `331B` demo packaging refresh after human unit review
-- `332A` demo release audit
-- `335A` client-facing clean export
-
-The current high-level state that all documentation should respect is:
-
-- `project_status = CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`
-- `client_facing_preview = true`
 - `client_ready = false`
 - `production_ready = false`
+- AI decisions are dry-run only
+- no-write-back is still active
 
-## 3. Important Paths
+## 3. Key Paths
 
-### Repository and docs paths
+Input directory:
 
-| Type | Path |
-|---|---|
-| Repository root | `D:\_datefac` |
-| Demo docs | `D:\_datefac\docs\demo` |
-| Codex task docs | `D:\_datefac\docs\codex_tasks` |
+- `D:\_datefac\input\real_test`
 
-### Output directories
+Main output directories:
 
-| Stage | Path |
-|---|---|
-| 330L | `D:\_datefac\output\client_style_export_preview_330l` |
-| 331A | `D:\_datefac\output\demo_packaging_331a` |
-| 330K2 | `D:\_datefac\output\human_unit_review_330k2` |
-| 330K3 | `D:\_datefac\output\human_unit_review_apply_simulation_330k3` |
-| 330K4 | `D:\_datefac\output\reviewed_export_refresh_330k4` |
-| 331B | `D:\_datefac\output\demo_packaging_331b` |
-| 332A | `D:\_datefac\output\demo_release_audit_332a` |
-| 335A | `D:\_datefac\output\client_facing_clean_export_335a` |
+- `D:\_datefac\output\mineru_real_test_337a`
+- `D:\_datefac\output\mineru_candidate_precision_337b`
+- `D:\_datefac\output\core_financial_context_repair_337c`
+- `D:\_datefac\output\reviewed_strictness_year_alignment_337d`
+- `D:\_datefac\output\deepseek_text_adjudicator_338a`
+- `D:\_datefac\output\ai_review_model_ab_338b`
+- `D:\_datefac\output\grounded_ai_review_338c`
+- `D:\_datefac\output\ai_review_adoption_simulation_338d`
 
-### Frequently inspected files
+## 4. Recommended Run Order
 
-- `D:\_datefac\output\client_style_export_preview_330l\client_style_export_preview_330l_preview.xlsx`
-- `D:\_datefac\output\client_style_export_preview_330l\client_style_export_preview_330l_summary.json`
-- `D:\_datefac\output\human_unit_review_330k2\human_unit_review_330k2_review_template.xlsx`
-- `D:\_datefac\output\human_unit_review_330k2\human_unit_review_330k2_review_filled.xlsx`
-- `D:\_datefac\output\human_unit_review_330k2\human_unit_review_330k2_summary.json`
-- `D:\_datefac\output\human_unit_review_apply_simulation_330k3\human_unit_review_apply_simulation_330k3_apply_plan.xlsx`
-- `D:\_datefac\output\human_unit_review_apply_simulation_330k3\human_unit_review_apply_simulation_330k3_summary.json`
-- `D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_preview.xlsx`
-- `D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_summary.json`
-- `D:\_datefac\output\demo_packaging_331b\demo_packaging_331b_summary.json`
-- `D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_summary.json`
-- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_preview.xlsx`
-- `D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json`
-
-## 4. Required Upstream Outputs
-
-### 330K2 requirements
-
-The 330K2 stage packages the review queue. It expects:
-
-- `demo_packaging_331a`
-- `client_style_export_preview_330l`
-- `unit_signal_review_330k`
-- `delivery_report_refresh_after_330k_330j2`
-
-Before running it, check that the 330L preview workbook and 330L summary both exist. Also check that the 331A summary exists.
-
-### 330K3 requirements
-
-The 330K3 stage simulates the effect of manual review decisions. It expects:
-
-- the 330K2 output directory
-- a filled review workbook
-- the 331A summary context
-- the 330L preview context
-
-If the review workbook is not actually filled, the stage may still run into validation issues or produce unusable results.
-
-### 330K4 requirements
-
-The 330K4 stage refreshes the reviewed preview. It expects:
-
-- the 330L baseline preview
-- the 330K2 review package
-- the 330K3 apply simulation
-
-This stage should never be interpreted as a write-back step. It produces a refreshed preview workbook, not a production replacement.
-
-### 331B requirements
-
-The 331B stage refreshes public-facing demo materials. It expects:
-
-- the 331A demo packaging baseline
-- the 330K4 reviewed export refresh
-- the 330K3 apply simulation
-- the 330K2 review package
-- the 330L preview baseline
-
-The purpose is to align the story with the reviewed preview state.
-
-### 332A requirements
-
-The 332A stage audits the final demo narrative. It expects:
-
-- the 331B demo packaging
-- the 330K4 reviewed export refresh
-- the 331A demo packaging
-- the relevant demo docs under `docs\demo`
-
-This stage checks wording and consistency. It does not produce new parser outputs.
-
-### 335A requirements
-
-The 335A stage generates the client-facing clean preview workbook. It expects:
-
-- the 330K4 reviewed export refresh
-- the 331B demo packaging
-- the 332A demo release audit
-- the 330L client-style export preview
-
-This stage must still be read as sidecar preview work. It does not create a client-ready delivery artifact.
-
-## 5. Exact Commands
-
-Keep Windows paths, stage names, and runner names exactly as they are.
-
-### 330K2
+### 4.1 Real PDF intake
 
 ```powershell
-python tools\run_human_unit_review_330k2.py --demo-packaging-dir D:\_datefac\output\demo_packaging_331a --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --unit-signal-review-dir D:\_datefac\output\unit_signal_review_330k --delivery-report-refresh-dir D:\_datefac\output\delivery_report_refresh_after_330k_330j2 --output-dir D:\_datefac\output\human_unit_review_330k2
+python tools\run_mineru_real_pdf_intake_337a.py --input-pdf-dir D:\_datefac\input\real_test --output-dir D:\_datefac\output\mineru_real_test_337a
 ```
 
-### 330K3
+### 4.2 Candidate precision calibration
 
 ```powershell
-python tools\run_human_unit_review_apply_simulation_330k3.py --filled-review-workbook D:\_datefac\output\human_unit_review_330k2\human_unit_review_330k2_review_filled.xlsx --human-unit-review-dir D:\_datefac\output\human_unit_review_330k2 --demo-packaging-dir D:\_datefac\output\demo_packaging_331a --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --output-dir D:\_datefac\output\human_unit_review_apply_simulation_330k3
+python tools\run_mineru_candidate_precision_337b.py --mineru-real-test-dir D:\_datefac\output\mineru_real_test_337a --output-dir D:\_datefac\output\mineru_candidate_precision_337b
 ```
 
-### 330K4
+### 4.3 Core financial context repair
 
 ```powershell
-python tools\run_reviewed_export_refresh_330k4.py --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --human-unit-review-dir D:\_datefac\output\human_unit_review_330k2 --apply-simulation-dir D:\_datefac\output\human_unit_review_apply_simulation_330k3 --output-dir D:\_datefac\output\reviewed_export_refresh_330k4
+python tools\run_core_financial_context_repair_337c.py --precision-337b-dir D:\_datefac\output\mineru_candidate_precision_337b --mineru-real-test-dir D:\_datefac\output\mineru_real_test_337a --output-dir D:\_datefac\output\core_financial_context_repair_337c
 ```
 
-### 331B
+### 4.4 Reviewed strictness / year alignment
 
 ```powershell
-python tools\run_demo_packaging_331b.py --demo-packaging-331a-dir D:\_datefac\output\demo_packaging_331a --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --apply-simulation-dir D:\_datefac\output\human_unit_review_apply_simulation_330k3 --human-unit-review-dir D:\_datefac\output\human_unit_review_330k2 --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --output-dir D:\_datefac\output\demo_packaging_331b
+python tools\run_reviewed_strictness_year_alignment_337d.py --context-repair-337c-dir D:\_datefac\output\core_financial_context_repair_337c --mineru-real-test-dir D:\_datefac\output\mineru_real_test_337a --output-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d
 ```
 
-### 332A
+### 4.5 AI baseline dry-run
 
 ```powershell
-python tools\run_demo_release_audit_332a.py --demo-packaging-331b-dir D:\_datefac\output\demo_packaging_331b --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --demo-packaging-331a-dir D:\_datefac\output\demo_packaging_331a --docs-demo-dir D:\_datefac\docs\demo --output-dir D:\_datefac\output\demo_release_audit_332a
+python tools\run_deepseek_text_adjudicator_338a.py --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\deepseek_text_adjudicator_338a --limit 50
 ```
 
-### 335A
+### 4.6 A/B evaluation
 
 ```powershell
-python tools\run_client_facing_clean_export_335a.py --reviewed-export-refresh-dir D:\_datefac\output\reviewed_export_refresh_330k4 --demo-packaging-331b-dir D:\_datefac\output\demo_packaging_331b --demo-release-audit-dir D:\_datefac\output\demo_release_audit_332a --client-style-export-preview-dir D:\_datefac\output\client_style_export_preview_330l --output-dir D:\_datefac\output\client_facing_clean_export_335a
+python tools\run_ai_review_model_ab_338b.py --baseline-338a-dir D:\_datefac\output\deepseek_text_adjudicator_338a --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\ai_review_model_ab_338b --limit 50
 ```
 
-## 6. Expected Output Directories And Main Artifacts
-
-| Stage | Output Directory | First File To Inspect |
-|---|---|---|
-| 330K2 | `D:\_datefac\output\human_unit_review_330k2` | `human_unit_review_330k2_review_template.xlsx` |
-| 330K3 | `D:\_datefac\output\human_unit_review_apply_simulation_330k3` | `human_unit_review_apply_simulation_330k3_apply_plan.xlsx` |
-| 330K4 | `D:\_datefac\output\reviewed_export_refresh_330k4` | `reviewed_export_refresh_330k4_preview.xlsx` |
-| 331B | `D:\_datefac\output\demo_packaging_331b` | `demo_packaging_331b_summary.json` |
-| 332A | `D:\_datefac\output\demo_release_audit_332a` | `demo_release_audit_332a_summary.json` |
-| 335A | `D:\_datefac\output\client_facing_clean_export_335a` | `client_facing_clean_export_335a_preview.xlsx` |
-
-If you want to understand “what changed” at each stage, the summary JSON is usually the fastest starting point, and the workbook is usually the best contextual follow-up.
-
-## 7. Expected Summary Metrics
-
-The current reviewed-preview chain should align with these values:
-
-| Stage | Metric | Expected Value |
-|---|---|---:|
-| 330L | `prepared_candidate_row_count` | 117 |
-| 330L | `trusted_sheet_row_count` | 96 |
-| 330L | `review_required_sheet_row_count` | 21 |
-| 330K2 | `packaged_unit_review_row_count` | 21 |
-| 330K2 | `unit_missing_count` | 18 |
-| 330K2 | `unit_conflict_risk_count` | 12 |
-| 330K3 | `apply_plan_row_count` | 21 |
-| 330K3 | `confirm_unit_count` | 2 |
-| 330K3 | `reject_unit_count` | 18 |
-| 330K3 | `needs_more_context_count` | 1 |
-| 330K4 | `reviewed_trusted_preview_row_count` | 98 |
-| 330K4 | `human_rejected_row_count` | 18 |
-| 330K4 | `remaining_review_required_after_unit_review_count` | 1 |
-| 331B | `project_status` | `DEMO_READY_AFTER_HUMAN_UNIT_REVIEW_PREVIEW` |
-| 332A | `overclaim_risk_count` | 0 |
-| 332A | `qa_fail_count` | 0 |
-| 335A | `project_status` | `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY` |
-| 335A | `core_metrics_reviewed_row_count` | 98 |
-| 335A | `needs_review_row_count` | 1 |
-| 335A | `excluded_or_rejected_row_count` | 18 |
-| 335A | `source_page_missing_count` | 0 |
-| 335A | `qa_fail_count` | 0 |
-
-These numbers are not decoration. They are the current public story of the demo state. If documentation says something else, the documentation is wrong.
-
-## 8. Validation Commands
-
-For most task types, start with:
+### 4.7 Grounded review
 
 ```powershell
-git status -sb
-python -m py_compile <changed_python_files>
-python -m pytest <relevant_test_file> -q
+python tools\run_grounded_ai_review_338c.py --ab-338b-dir D:\_datefac\output\ai_review_model_ab_338b --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\grounded_ai_review_338c --limit 50
 ```
 
-For this current demo path, also inspect the key summaries directly:
+### 4.8 Adoption simulation
 
 ```powershell
-Get-Content D:\_datefac\output\client_style_export_preview_330l\client_style_export_preview_330l_summary.json
-Get-Content D:\_datefac\output\human_unit_review_330k2\human_unit_review_330k2_summary.json
-Get-Content D:\_datefac\output\human_unit_review_apply_simulation_330k3\human_unit_review_apply_simulation_330k3_summary.json
-Get-Content D:\_datefac\output\reviewed_export_refresh_330k4\reviewed_export_refresh_330k4_summary.json
-Get-Content D:\_datefac\output\demo_packaging_331b\demo_packaging_331b_summary.json
-Get-Content D:\_datefac\output\demo_release_audit_332a\demo_release_audit_332a_summary.json
-Get-Content D:\_datefac\output\client_facing_clean_export_335a\client_facing_clean_export_335a_summary.json
+python tools\run_ai_review_adoption_simulation_338d.py --grounded-ai-review-338c-dir D:\_datefac\output\grounded_ai_review_338c --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\ai_review_adoption_simulation_338d
 ```
 
-Check:
+## 5. What To Inspect After Each Stage
 
-- `decision`
-- `qa_fail_count`
-- `blocking_reasons`
-- no official-asset modification proof fields
+### 337A
 
-## 9. Git Safety Rules
+Inspect:
 
-These rules are strict because the project often operates in a workspace with existing dirty files and large output artifacts.
+- `00_batch_summary.json`
+- `real_test_mineru_client_export_337a.xlsx`
+- each per-PDF `document_summary.json`
 
-Never do the following:
+Expected:
 
-- `git add -A`
-- `git add .`
-- stage `output/*`
-- stage protected dirty files
-- stage manual response or temporary directories casually
+- `pdf_found_count = 3`
+- `mineru_success_count = 3`
+- `reviewed_count = 303`
+- `needs_review_count = 42`
+- `rejected_or_excluded_count = 2`
 
-Always prefer precise staging:
+### 337B
 
-- `git add path\to\one_file`
-- verify `git status -sb`
-- only then commit
+Inspect:
 
-If a rebase or pull is blocked by protected dirty files, stash only the protected paths you were explicitly told to protect. Do not stash the entire repository unless there is an explicit reason.
+- `mineru_candidate_precision_337b_summary.json`
 
-## 10. Protected Dirty Files
+Expected:
 
-The current protected dirty paths are:
+- `reviewed_before_count = 303`
+- `reviewed_after_count = 98`
+
+### 337C
+
+Inspect:
+
+- `core_financial_context_repair_337c_summary.json`
+
+Expected:
+
+- `reviewed_after_count = 148`
+- `table_role_repair_count = 35`
+- `unit_filled_count = 119`
+
+### 337D
+
+Inspect:
+
+- `reviewed_strictness_year_alignment_337d_summary.json`
+- `real_test_mineru_client_export_337d.xlsx`
+
+Expected:
+
+- `reviewed_after_count = 112`
+- `year_alignment_repaired_count = 33`
+- `reviewed_duplicate_removed_count = 27`
+- `qa_fail_count = 0`
+
+### 338A
+
+Inspect:
+
+- `deepseek_text_adjudicator_338a_summary.json`
+
+Expected:
+
+- `model_name = deepseek-v4-flash`
+- `low_confidence_count = 34`
+- `needs_more_context_count = 33`
+
+### 338B
+
+Inspect:
+
+- `ai_review_model_ab_338b_summary.json`
+
+Expected:
+
+- `new_model_name = gpt-5.5`
+- `low_confidence_count_new = 0`
+- `needs_more_context_count_new = 3`
+- `invalid_response_count_new = 3`
+
+### 338C
+
+Inspect:
+
+- `grounded_ai_review_338c_summary.json`
+
+Expected:
+
+- `invalid_response_count_338c = 1`
+- `grounding_source_counts.BOTH = 49`
+
+### 338D
+
+Inspect:
+
+- `ai_review_adoption_simulation_338d_summary.json`
+- `ai_review_adoption_simulation_338d_plan.xlsx`
+
+Expected:
+
+- `accept_model_confirm_count = 39`
+- `accept_model_reject_count = 3`
+- `hold_for_human_review_count = 3`
+- `invalid_model_response_count = 1`
+- `deterministic_rule_override_count = 0`
+
+## 6. Boundaries That Must Stay Visible
+
+Do not lose these:
+
+- this is sidecar preview work, not production
+- AI conclusions are dry-run only, not formal write-back
+- deterministic rules outrank model outputs
+- human review is still necessary
+- `AI_REVIEW_MODEL` is still only a candidate default adjudicator
+
+## 7. Common Misreads
+
+### Misread 1
+
+“337A parsed 3 PDFs successfully, so the system is ready for delivery.”
+
+False. 337A proves real-PDF intake can run. It does not prove delivery readiness.
+
+### Misread 2
+
+“338B/338C show `gpt-5.5` is stronger, so it should immediately replace the baseline by default.”
+
+False. 338D explicitly says:
+
+- `suggest_set_ai_review_model_default = false`
+
+### Misread 3
+
+“AI adoption simulation means AI is now officially adopted.”
+
+False. It is still only a simulation layer.
+
+## 8. Git Discipline
+
+For this documentation sync task:
+
+- do not use `git add -A`
+- do not use `git add .`
+- do not stage `output/*`
+- do not stage protected dirty files
+
+Protected dirty files still include:
 
 - `datefac/benchmark/batch_row_text_delivery_benchmark.py`
 - `datefac/extraction/row_text_metric_extractor.py`
@@ -300,60 +263,17 @@ The current protected dirty paths are:
 - `input/semantic_adjudicator_responses_322f/`
 - `temp/`
 
-Treat these as out of scope for the current documentation and sidecar tasks unless a separate task explicitly tells you otherwise.
+## 9. Minimum Re-Entry Order
 
-## 11. What To Do Before Committing
+When you return to the repo, use this order:
 
-Before any commit related to this demo path:
+1. `git status -sb`
+2. read `README.md`
+3. read this runbook
+4. read `datefac_ai_review_architecture_339a_en.md`
+5. inspect the 337A, 337D, and 338D summaries
+6. only then open workbooks
 
-1. run `git status -sb`
-2. confirm only task-relevant files were modified
-3. rerun the minimum necessary validation
-4. check that metrics and stage names are still consistent
-5. confirm that `output/*` is not staged
-6. confirm that protected dirty files are not staged
-7. stage files one by one with precise `git add`
+## 10. Final Sentence
 
-The most common avoidable mistake is to prepare a clean sidecar or docs commit and accidentally include unrelated dirty files or output artifacts.
-
-## 12. What Must Never Be Staged
-
-At minimum, do not stage:
-
-- `output/*`
-- `temp/*`
-- `input/semantic_adjudicator_responses_*`
-- unrelated production code
-- official assets
-- protected dirty files
-
-If you are unsure whether a file is generated output or source material, stop and inspect it before staging.
-
-## 13. Troubleshooting Checklist
-
-If a command fails, work through these checks in order:
-
-1. Does the required upstream output directory exist?
-2. Does the expected summary JSON exist?
-3. Does the prior summary show a ready decision?
-4. Is the workbook path correct?
-5. Was the workbook actually filled?
-6. Are you confusing the 330L baseline preview with the 330K4 reviewed preview?
-7. Are you reading 331A docs when you mean 331B docs?
-8. Did a local unstaged change shift the workspace state?
-9. Is there a `.git/index.lock` or permission issue?
-
-This order matters because many failures are not code logic bugs. They are context, version, or path mismatches.
-
-## 14. Current Boundaries
-
-The current runbook is built around the following boundary terms, and every operator should keep them visible:
-
-- sidecar
-- demo
-- preview
-- no write-back
-- human review
-- current limitations
-
-If you remove these boundary terms from your explanation, the project starts sounding much more mature than it actually is. That is exactly what the release audit tries to prevent.
+> The point of the current runbook is not to make the project sound stronger. It is to help you run it correctly, read it correctly, and describe it correctly within its real boundary.

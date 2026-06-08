@@ -1,274 +1,169 @@
-# DateFac Project Overview 333A (English)
+# DateFac Project Overview 333A/339A Synced
+
+## 1. What Problem The Project Is Solving
+
+DateFac is no longer best described as “a PDF table extractor.” The more accurate framing is:
+
+> once parser output already exists, how does the system decide what can be trusted, what must stay under review, what should be rejected, and how should that state be explained without overstating maturity?
+
+That is why the current repository focus includes:
+
+- MinerU-first real PDF intake
+- candidate precision calibration
+- financial-table context repair
+- reviewed strictness and year-alignment QA
+- AI text adjudication dry-runs
+- grounded review
+- adoption simulation
+
+## 2. Current Engineering Position
+
+The current path should be described as:
+
+- local
+- sidecar
+- demo
+- preview
+- no-write-back
 
-## 1. Background
+Those are not decorative terms. They are boundary terms.
 
-DateFac is best understood as an engineering layer built around financial research PDF extraction, not as a claim that PDF parsing alone solves the downstream trust problem. In many document-extraction projects, the public story stops too early. A parser reads text, tables are detected, candidate rows are surfaced, and the demo ends there. That approach may look impressive, but it leaves out the hardest and most operationally important question: after candidate rows exist, which ones can actually be trusted, which ones need human review, which ones should be rejected from the trusted preview, and how should all of that be explained to others without overstating the project’s maturity?
+The documentation must continue to acknowledge:
 
-DateFac’s current reviewed-preview path exists precisely because the team chose not to hand-wave those questions away. The project treats parser output as the beginning of the trust problem rather than the end of it. That is why the current late-stage work focuses on provenance, routing, unit risk, review isolation, dry-run simulation, preview refresh, demo packaging, and release-audit discipline.
+- `client_ready = false`
+- `production_ready = false`
+- AI conclusions do not write back into official assets
 
-## 2. The Problem Being Solved
+## 3. Functional View Of The Current Pipeline
 
-The project solves a layered problem.
+Ignore stage numbers first and think in functions:
 
-At the extraction layer, candidate rows may already exist. But raw extraction does not answer these business-critical questions:
+1. MinerU parses real PDFs into usable layout, table, and candidate artifacts
+2. rule calibration suppresses obvious noise and low-quality candidates
+3. context repair restores table role and unit clues
+4. strict reviewed QA tightens the reviewed set
+5. AI performs text-only dry-run adjudication
+6. grounded review and adoption simulation constrain that model output further
+7. final preview and docs remain conservative
 
-- Does the row actually represent the intended metric?
-- Is the value aligned with the correct year?
-- Is the unit explicit, missing, or contradictory?
-- Is the row part of a core forecast table or an unrelated peer-comparison or annotation fragment?
-- Is the evidence strong enough to justify promotion into a trusted preview?
-- If a human disagrees with the system, how do we reflect that safely?
-- How do we show the project publicly without implying client delivery readiness or live deployment readiness?
+## 4. What 337A-338D Added
 
-DateFac handles the trust and presentation side of those questions. That is why it matters as an engineering project even in a repository that also contains parser and delivery work.
+- 336A: PDF-folder smoke runner
+- 336B: per-PDF debug package
+- 337A: MinerU-first real PDF intake
+- 337B: candidate precision calibration
+- 337C: core financial context repair
+- 337D: reviewed strictness, year-alignment, suspicious-row QA
+- 338A: DeepSeek flash text-adjudication baseline
+- 338B: `AI_REVIEW_MODEL` versus DeepSeek flash
+- 338C: grounded schema tightening
+- 338D: adoption simulation
 
-## 3. Why This Is Not Just PDF Table Extraction
+The most important boundary across 338A-338D is:
 
-A table extractor is mainly concerned with recognition and structure:
+> these stages evaluate whether model recommendations are usable, not whether production adoption is complete.
 
-- Where are the tables?
-- What are the rows and columns?
-- What text is inside the cells?
+## 5. Current Metrics
 
-DateFac goes further by asking:
+### Real PDF intake
 
-- Is this candidate defensible?
-- Is there provenance for human follow-up?
-- Should the candidate remain in a review-required queue?
-- Is the unit risk significant enough to isolate manually?
-- Can the result be shown as a preview without pretending it is an official export?
+- 337A parsed `3` real PDFs successfully
+- per-PDF metric candidates:
+  - `H3_AP202606081823352620_1.pdf = 134`
+  - `H3_AP202606081823352906_1.pdf = 111`
+  - `H3_AP202606081823356439_1.pdf = 102`
+- 337A totals:
+  - `reviewed = 303`
+  - `needs_review = 42`
+  - `rejected_or_excluded = 2`
 
-This distinction matters because many financially dangerous errors look superficially plausible. A wrong unit, a wrong year alignment, or a misread context can create a candidate row that looks “clean enough” to non-specialists. Without a trust layer, those rows are likely to be over-promoted.
+### Rule calibration and repair
 
-DateFac therefore reframes the project from “How good is the parser?” to “How disciplined is the system once parser output exists?”
+- 337B reduced reviewed rows from `303` to `98`
+- 337C raised reviewed rows to `148`
+- 337C `table_role_repair_count = 35`
+- 337C `unit_filled_count = 119`
+- 337D tightened reviewed rows down to `112`
+- 337D `year_alignment_repaired_count = 33`
+- 337D `reviewed_duplicate_removed_count = 27`
 
-## 4. Architecture
+### AI dry-run
 
-The current reviewed-preview path can be summarized like this:
+- 338A DeepSeek flash baseline:
+  - `low_confidence = 34 / 50`
+  - `NEEDS_MORE_CONTEXT = 33 / 50`
+- 338B `gpt-5.5` A/B:
+  - `low_confidence = 0 / 50`
+  - `NEEDS_MORE_CONTEXT = 3 / 50`
+  - `invalid_response = 3`
+- 338C grounded review:
+  - `invalid_response = 1`
+  - `grounding_source BOTH = 49`
+- 338D adoption simulation:
+  - `ACCEPT_MODEL_CONFIRM = 39`
+  - `ACCEPT_MODEL_REJECT = 3`
+  - `HOLD_FOR_HUMAN_REVIEW = 3`
+  - `REJECT_BY_DETERMINISTIC_RULE = 4`
+  - `INVALID_MODEL_RESPONSE = 1`
+  - `deterministic_rule_override_count = 0`
 
-```text
-Input PDFs / Cached Parser Outputs
-    -> candidate extraction and preparation
-    -> sidecar trust routing
-    -> trusted preview / review_required preview
-    -> human unit review queue
-    -> dry-run apply plan
-    -> reviewed preview refresh
-    -> demo packaging
-    -> demo release audit
-```
+## 6. Model Role Split
 
-Several design choices are important here.
+- MinerU: current primary parser
+- deterministic rules: current highest-priority safety layer
+- `AI_REVIEW_MODEL`: current main candidate text adjudicator
+- DeepSeek flash: baseline / fallback
+- vision model: future tool for screenshot, layout, or image-table uncertainty
+- human review: final safety layer
 
-### 4.1 Sidecar instead of production mutation
+One key detail matters:
 
-The current late-stage demo work deliberately avoids production write-back. That allows the project to demonstrate controlled trust and review logic without pretending that official outputs are already safe to mutate automatically.
+> 338D does not recommend immediately setting `AI_REVIEW_MODEL` as the default formal adjudicator because `suggest_set_ai_review_model_default = false`.
 
-### 4.2 Human review before any future write-back conversation
+## 7. Why This State Is Valuable
 
-The project treats human review as a first-class control. It does not hide manual review outcomes or collapse them into invisible post-processing. Human feedback is isolated, explicitly interpreted, and then surfaced into preview form only after a dry-run stage.
+Its value is not that it already supports direct client delivery.
 
-### 4.3 Preview refresh instead of baseline overwrite
+Its value is that:
 
-The 330K4 stage creates a reviewed preview rather than overwriting the 330L baseline workbook. This matters because it keeps the baseline state inspectable and makes the effect of manual review explainable.
+- real PDF intake now runs on actual documents
+- the rule layer can materially reduce false reviewed rows
+- the AI layer is constrained by deterministic guards, grounding requirements, and adoption policy
+- the documentation explicitly preserves maturity boundaries
 
-### 4.4 Documentation as part of system safety
+That is more credible than a polished spreadsheet with weak explanation.
 
-The 332A release audit shows that documentation is not treated as an afterthought. Public-facing claims are audited for consistency and overclaim risk. This is not a cosmetic decision. It prevents the engineering work from being misrepresented.
+## 8. Safe Claims And Unsafe Claims
 
-## 5. Trust-Routing Design
+### Safe claims
 
-The trust-routing design is one of the strongest parts of the current project story. It explicitly avoids the common anti-pattern of promoting everything that looks plausible.
+- MinerU-first intake preview for real research PDFs exists
+- rule-based candidate precision repair exists
+- financial-context repair and stricter reviewed QA exist
+- AI text-adjudication dry-run, A/B evaluation, grounded review, and adoption simulation exist
+- the path remains no-write-back and preview-oriented
 
-Instead, the system distinguishes between:
+### Unsafe claims
 
-- trusted preview rows
-- review-required rows
-- rows rejected after human review
-
-That separation creates three benefits:
-
-1. It preserves uncertainty instead of flattening it.
-2. It makes manual review targeted rather than random.
-3. It keeps the preview honest by showing what was not trusted.
-
-Trusted, in this project, should be understood as “safe enough for the current preview state under the current evidence and review boundaries.” It should not be read as “universally correct forever.”
-
-## 6. The Human Review Loop
-
-The current human review loop is implemented through `330K2`, `330K3`, and `330K4`.
-
-### 6.1 330K2: human unit review package
-
-This stage packages the relevant unit-risk rows into a workbook for manual inspection. The purpose is not to fix parser quality directly. The purpose is to isolate the rows that are risky specifically because of unit ambiguity or unit conflict.
-
-### 6.2 330K3: human unit review apply simulation
-
-This stage reads the filled review workbook and maps reviewer decisions to dry-run actions. The important idea is that human decisions are first converted into a plan, not an automatic mutation.
-
-### 6.3 330K4: reviewed export refresh
-
-This stage refreshes the preview state according to the dry-run plan. The current reviewed outcome is:
-
-- original trusted preview row count: 96
-- reviewed unit-confirmed count: 2
-- reviewed trusted preview row count: 98
-- human rejected row count: 18
-- remaining review-required row count: 1
-
-Those numbers tell a useful story. The system did not magically absorb every risky row. It promoted two reviewed-safe rows, kept eighteen out of trusted preview, and left one unresolved. That is conservative and credible.
-
-### 6.4 335A: client-facing clean export
-
-The 335A stage does not change the underlying review decisions. It takes the reviewed preview and reorganizes it into a cleaner workbook that is easier for non-engineering readers to inspect. Its current customer-facing counts are:
-
-- core metrics reviewed row count: 98
-- needs review row count: 1
-- excluded or rejected row count: 18
-- source trace row count: 117
-
-This matters because it improves readability without crossing the boundary into client-ready delivery or production write-back.
-
-## 7. Stage Timeline From Stage 1 To 335A
-
-### 7.1 Stage 1 to Stage 4
-
-The earlier stages were focused on structured repair and governance rather than the current reviewed-preview packaging flow. Their value was foundational:
-
-- establish guarded repair discipline
-- prove rebuildability
-- separate official assets from temporary sidecar work
-- formalize governance rules
-
-These stages matter because they created the habits that make later demo claims believable.
-
-### 7.2 330L to 332A
-
-The later demo-oriented stages build the current public story:
-
-- `330L` created the baseline client-style export preview
-- `331A` packaged that baseline into a demo-ready narrative with unit review caveats
-- `330K2` isolated the 21 unit-review rows for manual review
-- `330K3` simulated the effect of those manual decisions without write-back
-- `330K4` refreshed the reviewed preview state
-- `331B` refreshed the demo packaging to match the reviewed preview
-- `332A` audited the entire story for consistency and overclaim risk
-- `335A` generated a cleaner customer-facing preview workbook from the reviewed preview state
-
-The value of this timeline is not just chronological clarity. It shows that the project has a disciplined transition from parser-adjacent preview logic to human review, then to refreshed preview, and finally to audited public explanation.
-
-## 8. Current Metrics
-
-The current clean-preview state is summarized by the following metrics:
-
-| Metric | Value |
-|---|---:|
-| unfamiliar PDFs | 13 |
-| PDFs produced candidates | 7 |
-| `prepared_candidate_row_count` | 117 |
-| `original_trusted_sheet_row_count` | 96 |
-| `reviewed_unit_confirmed_count` | 2 |
-| `reviewed_trusted_preview_row_count` | 98 |
-| `core_metrics_reviewed_row_count` | 98 |
-| `needs_review_row_count` | 1 |
-| `excluded_or_rejected_row_count` | 18 |
-| `source_trace_row_count` | 117 |
-| `human_rejected_row_count` | 18 |
-| `remaining_review_required_after_unit_review_count` | 1 |
-| `apply_plan_row_count` | 21 |
-| `source_page_missing_count` | 0 |
-| `overclaim_risk_count` | 0 |
-| `qa_fail_count` | 0 |
-
-These values should remain consistent across README, overview docs, runbooks, and interview materials. If they drift, the documentation is no longer trustworthy.
-
-## 9. Safe Claims
-
-The project can currently and safely claim that:
-
-- it supports financial research PDF core metric candidate preparation
-- it preserves provenance for review-sensitive rows
-- it performs sidecar trust-routing
-- it detects unit-related risk
-- it packages manual unit review workbooks
-- it creates no-write-back dry-run apply plans
-- it refreshes a reviewed preview state
-- it generates a cleaner client-facing preview workbook while preserving source traceability
-- it packages the current state into demo-facing materials
-- it audits public-facing documentation for overclaim risk
-
-These are meaningful claims. They are also careful claims.
-
-## 10. Unsafe Claims
-
-The project should not claim any of the following:
-
-- direct client delivery readiness
-- production deployment completion
-- automatic correctness without human review
-- fully automated commercial system maturity
-- guaranteed extraction certainty
-- customer-facing SaaS readiness
+- client-ready
+- production-ready
+- AI replaces humans
+- 100% accurate
+- fully automatic commercial SaaS
 - direct investment-decision suitability
 
-The reason is simple: these statements are inconsistent with the actual current state.
-
-## 11. Interview Talking Points
-
-The best interview framing for DateFac is not “we built a parser.” The better framing is:
-
-1. parser quality alone is not enough because trust depends on provenance, units, and review boundaries
-2. the project deliberately separates trusted, review-required, and rejected states
-3. manual unit review exists because financially plausible outputs can still be unsafe
-4. human decisions are converted into dry-run actions before they affect preview state
-5. the demo narrative itself is audited so that presentation does not outrun engineering reality
-
-This framing is strong because it highlights judgment, not just automation.
-
-## 12. Commercial Trial Boundary
-
-If this project is ever used in a small trial or highly supervised pilot, the honest positioning is:
-
-- human-in-the-loop
-- preview-oriented
-- no write-back
-- bounded scope
-- explicit documentation of rejected and unresolved rows
-
-That can still be valuable. It may be enough for an internal proof-of-concept or a tightly supervised trial. But it is not the same as a production-grade client delivery system, and it should not be presented that way.
-
-## 13. Current Limitations
-
-To keep the overview aligned with the README and runbook, it is useful to state the current limitations directly.
+## 9. Current Limitations
 
 Current limitations include:
 
-- the path is still a sidecar reviewed preview flow
-- the current clean export is still a preview artifact rather than a final delivery export
-- the project still enforces a no write-back boundary
-- parser quality remains an upstream bottleneck
-- the benchmark scope is still limited relative to real production expectations
-- deployment, security, permissions, monitoring, and data-isolation work remain unfinished
+- the path remains sidecar, demo, and preview-oriented
+- AI decisions remain dry-run only
+- human review remains necessary
+- broader benchmarking is still needed
+- deployment, security, permissions, and data isolation remain unfinished
 
-These limitations do not reduce the engineering value of the project. They define the honest scope of that value.
+## 10. Final Positioning
 
-## 14. Why 331A To 331B Matters
+The strongest honest description of DateFac today is:
 
-The transition from 331A to 331B is important because it shows the project doing more than static packaging.
-
-331A showed a demo-ready baseline with unit review caveats.
-
-331B showed what changed after:
-
-- packaging unit-risk rows for human review
-- simulating the effect of those decisions
-- refreshing the reviewed preview
-- updating demo materials accordingly
-
-This is a better engineering story than a one-off export because it demonstrates a feedback loop. The project is not only generating a preview. It is showing how controlled human review changes the preview state without breaking safety boundaries.
-
-## 15. Final Positioning
-
-The strongest honest description of DateFac today is this:
-
-It is a sidecar trust-routing, reviewed-preview, and client-facing clean-preview demo for financial research PDF extraction that emphasizes provenance, manual review boundaries, dry-run simulation, and audited public documentation. Its current state is `CLIENT_FACING_CLEAN_EXPORT_PREVIEW_READY`. It is not client-ready. It is not production-ready. It does not perform production write-back. Its value lies in making the trust problem visible and manageable, not in pretending that the trust problem has already disappeared.
+> it is a coherent engineering chain that combines real-PDF parsing, rule-based constraint layers, AI adjudication experiments, human-review boundaries, and claim-safe documentation, without pretending that production adoption is already complete.
