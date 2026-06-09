@@ -1,21 +1,43 @@
-# DateFac 真实 PDF + MinerU + AI Review 运行手册 339A（中文）
+# DateFac 真实 PDF + MinerU + AI Review Runbook 339A（341A 状态同步）
 
-## 1. 这份手册是干什么的
+## 1. 这份 runbook 现在讲什么
 
-这份手册只讲当前最现实的一条链路：
+这份文档仍然以 `337A-338D` 的真实 PDF + MinerU + AI dry-run 链路为主，但已经同步到 `341A` 里程碑状态。
 
-> 从真实研报 PDF 出发，先用 MinerU 解析，再用规则修复与严格 QA 收紧结果，最后可选地做 AI 文本裁决 dry-run。
+现在它要表达的是：
 
-这不是生产手册，不授权写回 official assets，也不授权把模型结论当正式结果。
+> AI review 只是中间治理层。当前对外最完整的链路，已经延伸到 human review、client preview 和 preview audit，而不是停在 AI adoption simulation。
 
-## 2. 先决条件
+## 2. 当前总状态
 
-- 输入目录：`D:\_datefac\input\real_test`
-- 当前示例 PDF 共 `3` 份
-- 本地已有 MinerU 可执行文件
-- Python 可运行
+- `demo_ready = true`
+- `client_preview_ready = true`
+- `client_ready = false`
+- `production_ready = false`
+- `not investment advice`
 
-## 3. 当前建议命令顺序
+## 3. 339A 在今天链路里的位置
+
+339A 讲清楚的是前半段：
+
+1. 真实 PDF 进入 MinerU-first intake
+2. deterministic rules 做 precision calibration 与 context repair
+3. reviewed strictness / year alignment QA 收紧 reviewed 候选
+4. AI review 以 dry-run 方式对 ambiguous rows 做建议判断
+
+但今天真正完整的链路已经是：
+
+`Real PDFs -> MinerU-first extraction -> AI dry-run review -> Human review -> 340C full validation -> 340D apply plan -> 340E post-human sidecar -> 340F client preview -> 340G audit -> 341A milestone package`
+
+## 4. 当前建议阅读顺序
+
+1. `README.md`
+2. 本文档
+3. `docs/demo/datefac_ai_review_architecture_339a_zh.md`
+4. `docs/demo/datefac_human_reviewed_client_preview_runbook_341b_zh.md`
+5. `docs/demo/datefac_human_reviewed_client_preview_architecture_341b_zh.md`
+
+## 5. 337A-338D 建议运行顺序
 
 ```powershell
 python tools\run_mineru_real_pdf_intake_337a.py --input-pdf-dir D:\_datefac\input\real_test --output-dir D:\_datefac\output\mineru_real_test_337a
@@ -35,78 +57,53 @@ python tools\run_grounded_ai_review_338c.py --ab-338b-dir D:\_datefac\output\ai_
 python tools\run_ai_review_adoption_simulation_338d.py --grounded-ai-review-338c-dir D:\_datefac\output\grounded_ai_review_338c --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\ai_review_adoption_simulation_338d
 ```
 
-## 4. 每一步最关键看什么
+## 6. 前半段关键结果仍然要记住
 
-### 337A
+### 337A-337D
 
-看：
-
-- `00_batch_summary.json`
-- `real_test_mineru_client_export_337a.xlsx`
-
-当前结果：
-
-- 3 份 PDF 全部成功
-- reviewed `303`
-- needs_review `42`
-- rejected `2`
-
-### 337B
-
-看：
-
-- `mineru_candidate_precision_337b_summary.json`
-
-当前结果：
-
-- reviewed 从 `303` 压到 `98`
-
-### 337C
-
-看：
-
-- `core_financial_context_repair_337c_summary.json`
-
-当前结果：
-
-- reviewed 变为 `148`
-- `unit_filled_count = 119`
-
-### 337D
-
-看：
-
-- `reviewed_strictness_year_alignment_337d_summary.json`
-
-当前结果：
-
-- reviewed 收紧到 `112`
+- 337A 成功解析 `3` 份真实 PDF
+- 337A reviewed / needs_review / rejected = `303 / 42 / 2`
+- 337B reviewed 从 `303` 降到 `98`
+- 337C reviewed 升到 `148`
+- 337D reviewed 收紧到 `112`
 
 ### 338A-338D
 
-核心结论：
+- 338A DeepSeek baseline `NEEDS_MORE_CONTEXT = 33 / 50`
+- 338B `gpt-5.5` 在 sampled adjudication 上更强
+- 338C grounded review 把 invalid response 进一步压低
+- 338D 仍然不给出默认正式 adoption，`suggest_set_ai_review_model_default = false`
 
-- DeepSeek flash baseline 比较保守，低置信度很多
-- `gpt-5.5` 文本裁决更强，但仍有 invalid cases
-- grounded schema 能继续收紧无效输出
-- adoption simulation 仍未建议直接默认采用
+## 7. 341A 同步后的新增里程碑数字
 
-## 5. 当前最重要的边界
+- `340B review queue = 77`
+- `340C filled = 77 / pending = 0`
+- `340D reviewed_after_human_candidate_count = 34`
+- `340E reviewed_after_human_total_count = 34`
+- `340F client_preview_core_metric_count = 34`
+- `340G audited_core_metric_count = 34`
+- `duplicate_issue_count = 0`
+- `unit_issue_count = 0`
+- `missing_source_trace_count = 0`
+- `unsafe_claim_count = 0`
+- `qa_fail_count = 0`
 
-- 当前不是 client-ready
-- 当前不是 production-ready
-- AI 结论不写回
-- deterministic rules 优先于模型
-- human review 仍然必要
+## 8. 现在最关键的边界
 
-## 6. 推荐先打开的文件
+- AI decisions are dry-run only
+- human review was used before client preview
+- `340F` 是 human-reviewed client preview，不是 official delivery
+- `340G` audit passed，但这仍然不是 production-ready
+- 当前 benchmark 仍然是有限真实 PDF 样本，不代表规模化稳定性
 
-- `README.md`
-- `docs/demo/datefac_ai_review_architecture_339a_zh.md`
+## 9. 当前最适合打开哪些文件
+
 - `D:\_datefac\output\mineru_real_test_337a\00_batch_summary.json`
 - `D:\_datefac\output\reviewed_strictness_year_alignment_337d\reviewed_strictness_year_alignment_337d_summary.json`
 - `D:\_datefac\output\ai_review_adoption_simulation_338d\ai_review_adoption_simulation_338d_summary.json`
+- `D:\_datefac\output\human_reviewed_client_preview_milestone_341a\human_reviewed_client_preview_milestone_341a.xlsx`
+- `D:\_datefac\output\client_preview_export_audit_340g\client_preview_export_audit_340g.xlsx`
 
-## 7. 一句话总结
+## 10. 一句话收尾
 
-> 这条链路的目标不是把 AI 包装成正式决定者，而是把真实 PDF 到可信 preview 的约束过程跑清楚。
+> 339A 现在不再只是“AI review runbook”，而是 341A milestone 的前半段解释层，用来说明为什么 AI dry-run 之后仍然必须经过 human review 和 preview audit。 

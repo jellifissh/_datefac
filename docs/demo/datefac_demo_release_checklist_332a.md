@@ -1,44 +1,51 @@
-# Demo Release Checklist 332A/339A Synced
+# Demo Release Checklist 332A / 341A Synced
 
 ## 1. Safe To Show On GitHub
 
-- MinerU-first real PDF intake preview
-- Rule-based precision calibration and context repair
-- Strict reviewed QA before any AI dry-run story
-- AI review dry-run, grounded review, and adoption simulation with no-write-back wording
-- Clear statements that the project is not client-ready and not production-ready
+- MinerU-first real PDF intake
+- deterministic precision calibration, context repair, and reviewed strictness QA
+- AI review as dry-run only
+- workbook-based human review before client preview
+- post-human sidecar result, client preview, and client preview audit
+- `341A` milestone wording: `demo_ready = true`, `client_preview_ready = true`
+- explicit `client_ready = false`
+- explicit `production_ready = false`
+- explicit `not investment advice`
 
 ## 2. Safe To Say In Interview
 
-- Parser quality is necessary but not sufficient
-- MinerU is the current primary parser for real PDF preview intake
-- Deterministic rules stay above model suggestions
-- AI review is currently dry-run only
-- Human review remains necessary for held, invalid, or conflicting rows
-- `gpt-5.5` looks promising as a text adjudicator candidate, but 338D does not recommend immediate default adoption
+- parser quality alone is not enough
+- deterministic rules stay above model suggestions
+- AI decisions are dry-run only
+- human review is deliberately isolated before preview promotion
+- `340F` is a human-reviewed client preview, not official delivery
+- `340G` audit passed with `duplicate_issue_count = 0`, `unit_issue_count = 0`, `missing_source_trace_count = 0`, `unsafe_claim_count = 0`
+- the current benchmark is still limited to the present real-PDF sample set
 
 ## 3. Must Not Claim
 
 - client-ready delivery
 - production-ready deployment
-- 100% accurate extraction
+- automatic write-back
 - no human review needed
-- AI decisions are final
-- fully automatic commercial SaaS
-- direct investment-decision use
+- 100% extraction accuracy
+- direct investment advice
+- scalable production stability
 
 ## 4. Known Limitations
 
-- Current path remains sidecar / demo / preview / no-write-back
-- Real PDF intake works, but production hardening is incomplete
-- AI dry-run results still require human and policy review
-- Broader benchmark coverage is still needed
-- Deployment, security, permissions, and data isolation are unfinished
+- current benchmark remains a limited real-PDF sample set
+- parser robustness still needs broader validation
+- metadata extraction is not fully solved
+- UI review workflow is still workbook-centric
+- batch reliability still needs stronger proof
+- broader operational hardening is unfinished
 
 ## 5. Suggested Next Engineering Milestones
 
-- Expand real-PDF benchmark breadth
-- Tighten deterministic guards where AI still produces invalid or weakly grounded responses
-- Improve human review ergonomics beyond workbook-style workflows
-- Revisit default model selection only after more adoption-simulation evidence
-- Add deployment and data-governance design before any production ambition
+- expand the real-PDF benchmark
+- improve parser robustness
+- improve metadata extraction
+- build a stronger UI review workflow
+- improve batch reliability
+- define production governance only after those foundations improve

@@ -1,125 +1,127 @@
-# DateFac AI Review Architecture 339A (English)
+# DateFac AI Review Architecture 339A (Synced To 341A State)
 
-## 1. What This Architecture Solves
+## 1. What This Architecture Document Now Does
 
-The AI review path is not about “plug in a model and trust the answer.” It is about:
+This document no longer only explains “how models were compared.” It explains the real role of AI in the current complete chain:
 
-> given a reviewed candidate set, how can a model provide auditable text adjudication suggestions without outranking hard rules and without writing back?
+> AI is a dry-run judgment layer constrained by deterministic rules, grounding requirements, human-review closure, and no-write-back boundaries. It is not the formal decision layer.
 
-## 2. Current Layering
+## 2. Where AI Sits In The Full Chain
 
-The current AI review stack is:
+The full chain is now:
 
-1. 337D tightens the reviewed candidate set with deterministic QA
-2. 338A runs DeepSeek flash as the baseline dry-run
-3. 338B runs `AI_REVIEW_MODEL` on the same sample for A/B comparison
-4. 338C tightens schema and grounding requirements
-5. 338D decides which model outputs would be safe to accept under dry-run policy
+`Real PDFs -> MinerU-first extraction -> AI dry-run review -> Human review -> 340C full validation -> 340D apply plan -> 340E post-human sidecar -> 340F client preview -> 340G audit -> 341A milestone package`
 
-## 3. Why 337D Must Come First
+AI sits in the middle, not at the end.
 
-If the reviewed pool is still too loose, AI review just amplifies noise.
+## 3. Current State
 
-337D performs:
+- `demo_ready = true`
+- `client_preview_ready = true`
+- `client_ready = false`
+- `production_ready = false`
+- `not investment advice`
 
-- stricter reviewed gating
+## 4. Why AI Must Still Come After Deterministic Reviewed Gating
+
+If the reviewed pool is still loose before `337D`, AI just explains noise more confidently.
+
+That is why `337D` matters:
+
+- stricter reviewed gate
 - year-alignment repair
 - suspicious-row QA
 
-That is why the reviewed set tightens from `148` to `112` before the AI layer runs.
+It tightens the pool before the AI layer sees it.
 
-## 4. Role Of 338A
+## 5. Architectural Meaning Of 338A-338D
 
-338A is not the final solution. It is the baseline.
+### 338A
 
-Current baseline:
+- DeepSeek baseline dry-run
+- conservative reference point
 
-- model: `deepseek-v4-flash`
-- `low_confidence = 34 / 50`
-- `NEEDS_MORE_CONTEXT = 33 / 50`
+### 338B
 
-Its value is to provide a conservative reference point.
+- A/B comparison between `AI_REVIEW_MODEL` and the baseline
+- checks whether the stronger model actually reduces low-confidence and needs-more-context behavior
 
-## 5. Role Of 338B
+### 338C
 
-338B compares `AI_REVIEW_MODEL` with DeepSeek flash on the same 50 rows.
+- grounded schema tightening
+- separates raw evidence, supporting context, and conclusion
 
-Current new-model result:
+### 338D
 
-- model: `gpt-5.5`
-- `low_confidence = 0 / 50`
-- `NEEDS_MORE_CONTEXT = 3 / 50`
-- `invalid_response = 3`
+- adoption simulation
+- separates model output from formal adoption policy
 
-This shows that the new model is stronger on the sampled text-adjudication task, but that still does not mean it is ready for default adoption.
-
-## 6. Role Of 338C
-
-338C is not mainly about changing the model. It is about tightening schema and grounding:
-
-- `raw_evidence_quote`
-- `supporting_context_quote`
-- `grounding_source`
-
-Current result:
-
-- `invalid_response_count_338c = 1`
-- `grounding_source BOTH = 49`
-
-The purpose is to make model decisions more auditable instead of merely more confident.
-
-## 7. Role Of 338D
-
-338D separates model output from formal adoption policy.
-
-Its actions are:
-
-- `ACCEPT_MODEL_CONFIRM`
-- `ACCEPT_MODEL_DOWNGRADE`
-- `ACCEPT_MODEL_REJECT`
-- `HOLD_FOR_HUMAN_REVIEW`
-- `REJECT_BY_DETERMINISTIC_RULE`
-- `INVALID_MODEL_RESPONSE`
-
-Current result:
-
-- `ACCEPT_MODEL_CONFIRM = 39`
-- `ACCEPT_MODEL_REJECT = 3`
-- `HOLD_FOR_HUMAN_REVIEW = 3`
-- `REJECT_BY_DETERMINISTIC_RULE = 4`
-- `INVALID_MODEL_RESPONSE = 1`
-- `deterministic_rule_override_count = 0`
-
-The key points are:
-
-- deterministic hard rejects are never overridden by the model
-- invalid responses are never accepted
-- `NEEDS_MORE_CONTEXT` still stays with human review
-
-## 8. Current Model Role Split
-
-- `AI_REVIEW_MODEL`: main candidate text adjudicator
-- DeepSeek flash: fallback / baseline
-- vision model: future complement for layout, screenshot, or image-table uncertainty
-
-And still:
-
-- not client-ready
-- not production-ready
-- not a write-back path
-
-## 9. Why Default Adoption Is Still Not Approved
-
-Even though `gpt-5.5` performs better in 338B and 338C, 338D still concludes:
+The most important conclusion at this layer remains:
 
 - `suggest_set_ai_review_model_default = false`
 
-That is reasonable because:
+So AI does not become the formal default simply because local task performance improved.
 
-- invalid cases still exist
-- adoption policy still needs more evidence
-- deterministic safety still comes first
+## 6. Why 340B-341A Still Matter After AI Dry-Run
 
-## 10. One-Line Conclusion
+Because after AI dry-run there are still real rows that:
 
-> The current AI review architecture is not designed to prove that the model is “smart enough.” It is designed to prove that even a strong model must remain constrained by rules, evidence, and human-review boundaries.
+- need human confirmation
+- need correction before confirmation
+- need rejection or continued review
+
+That is why 340B-341A matter:
+
+- human review is explicitly inserted before preview
+- all apply-like results remain sidecar and no-write-back
+- only human-reviewed confirmed results reach the client preview
+
+## 7. Current Headline Counts
+
+- `340B review queue = 77`
+- `340C filled = 77 / pending = 0`
+- `340D reviewed_after_human_candidate_count = 34`
+- `340E reviewed_after_human_total_count = 34`
+- `340F client_preview_core_metric_count = 34`
+- `340G audited_core_metric_count = 34`
+- `duplicate_issue_count = 0`
+- `unit_issue_count = 0`
+- `missing_source_trace_count = 0`
+- `unsafe_claim_count = 0`
+- `qa_fail_count = 0`
+
+## 8. The Real Role Of AI In Today’s System
+
+AI is not:
+
+- the final truth layer
+- a write-back engine
+- a client-ready decision-maker
+- a production-ready approval layer
+
+It is:
+
+- a text-adjudication candidate for ambiguous rows
+- an input layer for adoption simulation
+- a mid-layer constrained by deterministic rules, human review, and preview audit
+
+## 9. Safe Claims Today
+
+- AI improves dry-run adjudication quality and candidate suggestion quality
+- grounded review makes AI output more auditable
+- AI output is still constrained by human review and preview audit
+
+## 10. Unsafe Claims Today
+
+- AI has replaced human review
+- AI output can be used directly for client delivery
+- AI is now production-ready
+- AI output should be treated as investment advice
+
+## 11. Current Benchmark Limitation
+
+The current benchmark is still a limited real-PDF sample set. It proves the chain works on the current sample, not that it is stable at larger scale or across broader layout diversity.
+
+## 12. Summary
+
+> The main value of the 339A AI architecture today is not proving that the model is strong enough. It is proving that even a stronger model must remain constrained by deterministic rules, human-review closure, and preview audit. 

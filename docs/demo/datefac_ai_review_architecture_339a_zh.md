@@ -1,125 +1,125 @@
-# DateFac AI Review 架构说明 339A（中文）
+# DateFac AI Review 架构说明 339A（341A 状态同步）
 
-## 1. 这部分架构解决什么问题
+## 1. 这份架构文档现在的作用
 
-AI review 这条链路解决的不是“把模型接上就完事”，而是：
+这份文档不再只解释“AI 模型怎么比较”，而是解释 AI 在今天完整链路中的真实角色：
 
-> 如果我们已经有 reviewed 候选行，怎样在不越过硬规则和不写回的前提下，让模型给出可审计的文本裁决建议？
+> AI 是受 deterministic rules、grounding、人审闭环和 no-write-back 边界约束的 dry-run judgment layer，而不是正式决策层。
 
-## 2. 当前分层
+## 2. 当前全链路中的 AI 位置
 
-当前 AI review 分层如下：
+完整链路已经是：
 
-1. 337D：先把 reviewed 候选行用 deterministic QA 收紧
-2. 338A：用 DeepSeek flash 做 baseline dry-run
-3. 338B：让 `AI_REVIEW_MODEL` 对同一批行做 A/B 对比
-4. 338C：要求输出更 grounded，分离 raw quote 与 context quote
-5. 338D：再决定哪些模型建议在 dry-run policy 下可以接受
+`Real PDFs -> MinerU-first extraction -> AI dry-run review -> Human review -> 340C full validation -> 340D apply plan -> 340E post-human sidecar -> 340F client preview -> 340G audit -> 341A milestone package`
 
-## 3. 为什么 337D 必须在前
+AI 处在中间，不在末端。
 
-如果 reviewed 行本身还很松，AI review 会放大噪声。
+## 3. 当前状态
 
-337D 当前做了三件关键事：
+- `demo_ready = true`
+- `client_preview_ready = true`
+- `client_ready = false`
+- `production_ready = false`
+- `not investment advice`
+
+## 4. AI 之前必须先有 deterministic reviewed gate
+
+337D 之前如果 reviewed 候选仍然很松，AI 只会把噪声解释得更自信。
+
+所以 `337D` 的价值在于：
 
 - stricter reviewed gate
 - year alignment repair
 - suspicious row QA
 
-这一步之后 reviewed 才从 `148` 收紧到 `112`，让 AI 层面对的是更干净的输入。
+这一步把 AI 看到的输入收紧到了更可信的 reviewed pool。
 
-## 4. 338A 的角色
+## 5. 338A-338D 的架构意义
 
-338A 不是最终方案，它是 baseline。
+### 338A
 
-当前 baseline：
+- DeepSeek baseline dry-run
+- 提供保守对照组
 
-- model: `deepseek-v4-flash`
-- `low_confidence = 34 / 50`
-- `NEEDS_MORE_CONTEXT = 33 / 50`
+### 338B
 
-它的价值是提供一个保守对照组。
+- `AI_REVIEW_MODEL` 与 baseline 做 A/B
+- 验证更强模型是否真的减少 `NEEDS_MORE_CONTEXT` 与低置信度
 
-## 5. 338B 的角色
+### 338C
 
-338B 让 `AI_REVIEW_MODEL` 和 DeepSeek flash 对同一批 50 行做对比。
+- grounded schema tightening
+- 把 raw evidence、supporting context 和 conclusion 分层
 
-当前新模型结果：
+### 338D
 
-- model: `gpt-5.5`
-- `low_confidence = 0 / 50`
-- `NEEDS_MORE_CONTEXT = 3 / 50`
-- `invalid_response = 3`
+- adoption simulation
+- 把模型输出和正式 adoption policy 分开
 
-这说明新模型在文本裁决上更积极、更强，但还不等于可以直接默认采用。
-
-## 6. 338C 的角色
-
-338C 的重点不是换模型，而是收紧 schema 和 grounding：
-
-- `raw_evidence_quote`
-- `supporting_context_quote`
-- `grounding_source`
-
-当前结果：
-
-- `invalid_response_count_338c = 1`
-- `grounding_source BOTH = 49`
-
-这一步的意义是让模型结论更可审计，而不是只看最终标签。
-
-## 7. 338D 的角色
-
-338D 把模型输出和正式 adoption policy 分开。
-
-动作分为：
-
-- `ACCEPT_MODEL_CONFIRM`
-- `ACCEPT_MODEL_DOWNGRADE`
-- `ACCEPT_MODEL_REJECT`
-- `HOLD_FOR_HUMAN_REVIEW`
-- `REJECT_BY_DETERMINISTIC_RULE`
-- `INVALID_MODEL_RESPONSE`
-
-当前结果：
-
-- `ACCEPT_MODEL_CONFIRM = 39`
-- `ACCEPT_MODEL_REJECT = 3`
-- `HOLD_FOR_HUMAN_REVIEW = 3`
-- `REJECT_BY_DETERMINISTIC_RULE = 4`
-- `INVALID_MODEL_RESPONSE = 1`
-- `deterministic_rule_override_count = 0`
-
-最重要的是：
-
-- deterministic hard reject 不会被模型覆盖
-- invalid response 不会被接受
-- `NEEDS_MORE_CONTEXT` 仍然保留给人工
-
-## 8. 当前模型角色结论
-
-- `AI_REVIEW_MODEL`：主文本裁决候选模型
-- DeepSeek flash：fallback / baseline
-- vision model：未来版面与截图歧义的补充层
-
-但当前仍然：
-
-- 不是 client-ready
-- 不是 production-ready
-- 不是正式写回链路
-
-## 9. 为什么现在还不能默认采用
-
-虽然 `gpt-5.5` 在 338B/338C 的表现更强，但 338D 最终仍给出：
+这一层最关键的结论是：
 
 - `suggest_set_ai_review_model_default = false`
 
-原因很清楚：
+也就是说，AI 并没有因为局部表现更好就自动获得正式默认地位。
 
-- 还有 invalid cases
-- adoption policy 还需要更多证据
-- deterministic safety 仍然优先
+## 6. 为什么今天必须继续往 340B-341A 看
 
-## 10. 一句话结论
+因为 AI dry-run 之后仍然存在三类现实问题：
 
-> 当前 AI review 架构的重点不是“证明模型足够聪明”，而是“证明模型就算被引入，也必须被规则、证据和人工边界约束”。
+- 需要人工 confirm
+- 需要人工 correction 后再 confirm
+- 需要 reject 或 keep under review
+
+因此 340B-341A 的价值，就是证明：
+
+- 人工复核在 preview 前被明确插入
+- 所有 apply 相关结果仍然是 sidecar、no-write-back
+- 只有被 human-reviewed confirm 的结果才会进入 client preview
+
+## 7. 当前关键数字
+
+- `340B review queue = 77`
+- `340C filled = 77 / pending = 0`
+- `340D reviewed_after_human_candidate_count = 34`
+- `340E reviewed_after_human_total_count = 34`
+- `340F client_preview_core_metric_count = 34`
+- `340G audited_core_metric_count = 34`
+- `duplicate_issue_count = 0`
+- `unit_issue_count = 0`
+- `missing_source_trace_count = 0`
+- `unsafe_claim_count = 0`
+- `qa_fail_count = 0`
+
+## 8. AI 在当前系统里的真实角色
+
+- 不是 final truth
+- 不是 write-back engine
+- 不是 client-ready decision maker
+- 不是 production-ready approval layer
+
+而是：
+
+- ambiguous rows 的 text adjudication candidate
+- adoption simulation 的输入层
+- 被 deterministic rules、human review 和 preview audit 共同约束的中间层
+
+## 9. 今天可以安全讲什么
+
+- AI 提高了 dry-run adjudication 的表达能力与候选判断效率
+- grounded review 让 AI 输出更可审计
+- AI 结果会被人工复核与 preview audit 继续约束
+
+## 10. 今天绝不能讲什么
+
+- AI 已取代人工复核
+- AI 输出可以直接用于 client delivery
+- AI 现在已经 production-ready
+- AI 结果可以直接作为投资建议
+
+## 11. 当前 benchmark 限制
+
+当前 benchmark 仍然是有限真实 PDF 样本。它证明的是链路在当前样本上可用，不证明更大规模、更复杂版式下的稳定性。
+
+## 12. 总结
+
+> 339A AI 架构今天最重要的价值，不是证明模型够强，而是证明模型即使更强，也仍然必须被 deterministic rules、人审闭环和 preview audit 约束。 

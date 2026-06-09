@@ -2,282 +2,250 @@
 
 ## 中文
 
-### 项目定位
+### 一句话定位
 
-DateFac 是一个面向券商研报 PDF 的本地结构化与可信预览治理项目。它当前最有价值的部分，不是单纯“把表格抽出来”，而是把抽取后的候选行继续做 provenance 保留、风险分流、人工复核隔离、预览刷新和对外叙事审计。
+DateFac 是一个面向券商研报 PDF 的本地结构化与可信预览治理项目，当前最成熟的能力不是“自动交付”，而是把真实 PDF 解析、规则约束、AI dry-run、人审闭环、client preview 和审计说明组织成一条可追溯、可复核、不过度承诺的 demo 链路。
 
-当前仓库已经具备：
+### 当前阶段
 
-- MinerU-first 的真实 PDF 预览 intake
-- 规则驱动的 candidate precision 校准
-- 核心财务表上下文修复与 unit 补全
-- reviewed strictness 与 year alignment QA
-- AI 文本裁决 dry-run、A/B 对比、grounded schema 收紧、adoption simulation
-
-当前仓库仍然不是：
-
-- `client-ready`
-- `production-ready`
-- 正式生产写回系统
-- 无需人工复核的自动交付系统
-
-### 当前状态
-
-- `project_status` for 337A intake: `LOCAL_PREVIEW_ONLY_MINERU_FIRST`
-- 337D decision: `REVIEWED_STRICTNESS_YEAR_ALIGNMENT_337D_READY`
-- 338D decision: `AI_REVIEW_ADOPTION_SIMULATION_338D_READY`
+- `project_status = HUMAN_REVIEWED_CLIENT_PREVIEW_MILESTONE_341A_READY`
+- `demo_ready = true`
+- `client_preview_ready = true`
 - `client_ready = false`
 - `production_ready = false`
-- AI 决策当前仅用于 dry-run 评估与 adoption simulation，不写回上游 workbook 或 official assets
+- `not investment advice`
 
-### 当前真实 PDF -> 预览链路
+### 当前完整链路
 
-功能优先，阶段号其次：
+`Real PDFs -> MinerU-first extraction -> AI dry-run review -> Human review -> 340C full validation -> 340D apply plan -> 340E post-human sidecar -> 340F client preview -> 340G audit -> 341A milestone package`
 
-1. 把真实研报 PDF 放进 `D:\_datefac\input\real_test`
-2. 运行 MinerU-first intake，拿到原始解析与 DateFac debug 预览
-3. 做 precision calibration，压缩明显噪声 candidate
-4. 做 core financial context repair，补充表角色与单位上下文
-5. 做 reviewed strictness / year alignment QA，保守收紧 reviewed 集合
-6. 如需 AI 文本裁决，先跑 DeepSeek baseline dry-run
-7. 用 `AI_REVIEW_MODEL` 对比 DeepSeek flash，做 A/B 评估
-8. 做 grounded AI review，要求原始证据与上下文引用更严格
-9. 做 adoption simulation，只模拟哪些模型结论可以被安全吸收
+### 当前可以安全描述的能力
 
-对应命令：
+- 支持真实研报 PDF 的 MinerU-first intake 与侧车化预览
+- 支持规则驱动的 candidate precision calibration、context repair、reviewed strictness 与 year alignment QA
+- 支持 AI review dry-run、A/B 对比、grounded review 与 adoption simulation
+- 支持在 AI dry-run 之后把高风险行隔离到人工复核模板中
+- 支持人工复核完成后的 full validation、apply plan、post-human sidecar result、client preview 和 preview audit
+- 支持 no-write-back 的 milestone package 和 demo 文档同步
 
-```powershell
-python tools\run_mineru_real_pdf_intake_337a.py --input-pdf-dir D:\_datefac\input\real_test --output-dir D:\_datefac\output\mineru_real_test_337a
+### 当前绝不能承诺的内容
 
-python tools\run_mineru_candidate_precision_337b.py --mineru-real-test-dir D:\_datefac\output\mineru_real_test_337a --output-dir D:\_datefac\output\mineru_candidate_precision_337b
+- 宣称已经 client-ready
+- 宣称已经 production-ready
+- 正式 client delivery
+- 自动写回上游 workbook 或 official assets
+- 100% extraction accuracy
+- 无需人工复核
+- 投资建议或可直接用于投资决策
+- 已具备规模化生产稳定性
 
-python tools\run_core_financial_context_repair_337c.py --precision-337b-dir D:\_datefac\output\mineru_candidate_precision_337b --mineru-real-test-dir D:\_datefac\output\mineru_real_test_337a --output-dir D:\_datefac\output\core_financial_context_repair_337c
+### 341A 里程碑关键数字
 
-python tools\run_reviewed_strictness_year_alignment_337d.py --context-repair-337c-dir D:\_datefac\output\core_financial_context_repair_337c --mineru-real-test-dir D:\_datefac\output\mineru_real_test_337a --output-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d
+- `340B review queue = 77`
+- `340C filled = 77 / pending = 0`
+- `340D reviewed_after_human_candidate_count = 34`
+- `340E reviewed_after_human_total_count = 34`
+- `340F client_preview_core_metric_count = 34`
+- `340G audited_core_metric_count = 34`
+- `duplicate_issue_count = 0`
+- `unit_issue_count = 0`
+- `missing_source_trace_count = 0`
+- `unsafe_claim_count = 0`
+- `qa_fail_count = 0`
 
-python tools\run_deepseek_text_adjudicator_338a.py --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\deepseek_text_adjudicator_338a --limit 50
+### 337A-341A 阶段概览
 
-python tools\run_ai_review_model_ab_338b.py --baseline-338a-dir D:\_datefac\output\deepseek_text_adjudicator_338a --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\ai_review_model_ab_338b --limit 50
+#### Real PDF intake and deterministic repair
 
-python tools\run_grounded_ai_review_338c.py --ab-338b-dir D:\_datefac\output\ai_review_model_ab_338b --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\grounded_ai_review_338c --limit 50
+- `337A` MinerU-first real PDF intake
+- `337B` candidate precision calibration
+- `337C` core financial context repair
+- `337D` reviewed strictness / year alignment QA
 
-python tools\run_ai_review_adoption_simulation_338d.py --grounded-ai-review-338c-dir D:\_datefac\output\grounded_ai_review_338c --reviewed-strictness-337d-dir D:\_datefac\output\reviewed_strictness_year_alignment_337d --output-dir D:\_datefac\output\ai_review_adoption_simulation_338d
-```
+#### AI dry-run governance
 
-### 最新关键指标
+- `338A` DeepSeek flash baseline
+- `338B` `AI_REVIEW_MODEL` A/B evaluation
+- `338C` grounded AI review
+- `338D` adoption simulation
 
-真实 PDF intake 与规则修复：
+#### Human review and preview closure
 
-- 337A 使用 MinerU 成功解析 `3` 份真实 PDF
-- 337A metric candidates:
-  - `352620_1 = 134`
-  - `352906_1 = 111`
-  - `356439_1 = 102`
-- 337A reviewed / needs_review / rejected = `303 / 42 / 2`
-- 337B reviewed 从 `303` 降到 `98`
-- 337C reviewed 变为 `148`，其中：
-  - `table_role_repair_count = 35`
-  - `unit_filled_count = 119`
-- 337D reviewed 变为 `112`
-  - `year_alignment_repaired_count = 33`
-  - `percent_amount_guard_downgraded_count = 4`
-  - `reviewed_duplicate_removed_count = 27`
+- `340B` human review package after AI adoption
+- `340C` human review apply simulation with full validation support
+- `340D` full human review apply plan
+- `340E` post-human-review sidecar result
+- `340F` human-reviewed client preview export
+- `340G` client preview export audit
+- `341A` human-reviewed client preview milestone package
 
-AI dry-run 与 adoption simulation：
+### 340B-341A 的里程碑含义
 
-- 338A DeepSeek flash baseline:
-  - `low_confidence = 34 / 50`
-  - `NEEDS_MORE_CONTEXT = 33 / 50`
-- 338B `AI_REVIEW_MODEL` vs DeepSeek flash:
-  - baseline model = `deepseek-v4-flash`
-  - new model = `gpt-5.5`
-  - `low_confidence_new = 0 / 50`
-  - `needs_more_context_new = 3 / 50`
-  - `invalid_response_count_new = 3`
-- 338C grounded review:
-  - `invalid_response_count_338c = 1`
-  - `grounding_source BOTH = 49`
-  - `final_recommendation = PROMPT_CONTEXT_STILL_TOO_WEAK`
-- 338D adoption simulation:
-  - `ACCEPT_MODEL_CONFIRM = 39`
-  - `ACCEPT_MODEL_REJECT = 3`
-  - `HOLD_FOR_HUMAN_REVIEW = 3`
-  - `REJECT_BY_DETERMINISTIC_RULE = 4`
-  - `INVALID_MODEL_RESPONSE = 1`
-  - `deterministic_rule_override_count = 0`
-  - `suggest_set_ai_review_model_default = false`
+这组阶段证明的不是“系统已经可以正式交付”，而是：
 
-### 模型与规则角色
+1. AI 决策仍然是 dry-run only。
+2. 人工复核被明确放在 client preview 之前。
+3. 所有应用结果都以 sidecar / no-write-back 方式存在。
+4. client preview 经过了 duplicate、unit、source trace、unsafe claim 审计。
+5. 当前最适合展示的是 human-reviewed client preview milestone，而不是 production pipeline。
 
-- MinerU: 当前真实 PDF 版面与表格抽取的主解析器
-- Deterministic rules: 当前最优先的硬约束层，负责单位、重复、百分比误映射、明显噪声等安全拦截
-- `AI_REVIEW_MODEL`: 文本裁决候选模型，用于 ambiguous rows 的 dry-run 评估
-- DeepSeek flash: 当前保守 baseline / fallback
-- Vision model: 预留给未来版面、截图、图表或 image-table 不确定性场景，不是当前主线
-- Human review: held / invalid / conflicting rows 的最终安全层
+### 当前 demo 能展示什么
 
-### 当前可安全宣称的能力
+- 真实 PDF 如何进入 MinerU-first 解析链路
+- deterministic rules 如何压缩明显噪声并修复上下文
+- AI review 如何作为 dry-run 判断层，而不是最终 truth layer
+- 人审工作簿如何承接 AI adoption 之后仍需人工判断的队列
+- full validation、apply plan 和 post-human sidecar 如何保证不写回上游
+- client preview 如何只展示 34 条经过人审确认或修正确认的核心指标
+- preview audit 如何确认 duplicate/unit/source trace/claim 风险为零
 
-- 支持真实研报 PDF 的 MinerU-first preview intake
-- 支持 candidate precision calibration
-- 支持核心财务表上下文修复与 unit 相关保守增强
-- 支持 reviewed strictness、year alignment 与 suspicious row QA
-- 支持 AI 文本裁决 dry-run、A/B 评估、grounded schema 收紧、adoption simulation
-- 支持 no-write-back 的 sidecar 预览治理链路
+### 当前 benchmark 边界
 
-### 当前禁止宣称的内容
+- 当前 benchmark 仍然是有限真实 PDF 样本，不代表规模化生产稳定性
+- 当前结果最适合用于 demo、GitHub 说明、面试讲解、技术路线审计
+- 当前结果不代表 parser 在更多版式、更多券商、更多跨页表格上的稳定表现
+- 当前结果不代表 metadata extraction、batch reliability、权限治理、可运维性已经闭环
 
-- 已 client-ready
-- 已 production-ready
-- 100% 准确
-- fully automatic commercial SaaS
-- 可直接用于投资决策
-- 不再需要人工复核
-- AI 决策已成为最终正式结果
+### 下一阶段瓶颈
+
+- 更大 benchmark
+- parser robustness
+- metadata extraction
+- UI review workflow
+- batch reliability
 
 ### 推荐阅读顺序
 
 1. `README.md`
-2. `docs/demo/（中文项目总览）datefac_project_overview_333a_zh.md`
-3. `docs/demo/datefac_real_pdf_mineru_ai_review_runbook_339a_zh.md`
-4. `docs/demo/datefac_ai_review_architecture_339a_zh.md`
-5. `docs/demo/datefac_demo_release_checklist_332a.md`
-6. `docs/demo/datefac_interview_talking_points_332a.md`
-
-### 当前限制
-
-- 当前链路仍然是 `sidecar / demo / preview / no-write-back`
-- 真实 PDF intake 已可运行，但不代表生产可交付
-- AI review 仅是 dry-run 与 adoption simulation，不会写回
-- `gpt-5.5` 在 338B/338C 上表现更强，但 338D 仍不建议直接设为默认正式裁决器
-- 更大样本 benchmark、部署、安全、权限、数据隔离、持续运维能力仍未闭环
+2. `docs/demo/datefac_human_reviewed_client_preview_runbook_341b_zh.md`
+3. `docs/demo/datefac_human_reviewed_client_preview_architecture_341b_zh.md`
+4. `docs/demo/datefac_real_pdf_mineru_ai_review_runbook_339a_zh.md`
+5. `docs/demo/datefac_ai_review_architecture_339a_zh.md`
+6. `docs/demo/datefac_demo_release_checklist_332a.md`
+7. `docs/demo/（中文项目总览）datefac_project_overview_333a_zh.md`
+8. `docs/demo/（中文运行手册）datefac_current_runbook_333a_zh.md`
 
 ## English
 
-### Project Positioning
+### One-Line Positioning
 
-DateFac is a local engineering project for financial research PDF structuring and trust-governed preview generation. Its most important value is not merely “extract tables from PDFs,” but “preserve provenance, route risk conservatively, isolate human review, simulate adoption safely, and present the resulting preview state without overclaiming.”
-
-The repository now includes:
-
-- MinerU-first real PDF intake preview
-- rule-based candidate precision calibration
-- core financial context repair and unit recovery
-- reviewed strictness and year-alignment QA
-- AI text adjudication dry-runs, A/B evaluation, grounded schema tightening, and adoption simulation
-
-It still is not:
-
-- client-ready
-- production-ready
-- a production write-back system
-- a no-human-review automation claim
+DateFac is a local trust-governed structuring and preview project for financial research PDFs. Its most mature capability today is not automatic delivery, but a disciplined demo chain that combines real-PDF parsing, deterministic constraints, AI dry-run review, human review, client-preview packaging, and claim-safe auditability.
 
 ### Current Status
 
-- 337A status: `LOCAL_PREVIEW_ONLY_MINERU_FIRST`
-- 337D decision: `REVIEWED_STRICTNESS_YEAR_ALIGNMENT_337D_READY`
-- 338D decision: `AI_REVIEW_ADOPTION_SIMULATION_338D_READY`
+- `project_status = HUMAN_REVIEWED_CLIENT_PREVIEW_MILESTONE_341A_READY`
+- `demo_ready = true`
+- `client_preview_ready = true`
 - `client_ready = false`
 - `production_ready = false`
-- AI model decisions remain dry-run only and do not write back upstream
+- `not investment advice`
 
-### Current Real-PDF Pipeline
+### Current End-To-End Path
 
-1. Put real research PDFs in `D:\_datefac\input\real_test`
-2. Run MinerU-first intake
-3. Run precision calibration
-4. Run core financial context repair
-5. Run reviewed strictness and year-alignment QA
-6. Optionally run DeepSeek text adjudication baseline
-7. Run `AI_REVIEW_MODEL` A/B evaluation against DeepSeek flash
-8. Run grounded AI review
-9. Run AI adoption simulation
+`Real PDFs -> MinerU-first extraction -> AI dry-run review -> Human review -> 340C full validation -> 340D apply plan -> 340E post-human sidecar -> 340F client preview -> 340G audit -> 341A milestone package`
 
-The exact commands are shown in the Chinese section above and reused in the runbooks.
+### Safe Current Claims
 
-### Latest Headline Metrics
-
-Real PDF parsing and rule repair:
-
-- 337A parsed 3 real PDFs successfully with MinerU
-- 337A metric candidates:
-  - `352620_1 = 134`
-  - `352906_1 = 111`
-  - `356439_1 = 102`
-- 337A reviewed / needs_review / rejected = `303 / 42 / 2`
-- 337B reduced reviewed rows from `303` to `98`
-- 337C raised reviewed rows to `148`
-  - `table_role_repair_count = 35`
-  - `unit_filled_count = 119`
-- 337D reduced reviewed rows to `112`
-  - `year_alignment_repaired_count = 33`
-  - `percent_amount_guard_downgraded_count = 4`
-  - `reviewed_duplicate_removed_count = 27`
-
-AI dry-run and adoption simulation:
-
-- 338A DeepSeek flash baseline:
-  - `low_confidence = 34 / 50`
-  - `NEEDS_MORE_CONTEXT = 33 / 50`
-- 338B `AI_REVIEW_MODEL` A/B:
-  - baseline = `deepseek-v4-flash`
-  - new model = `gpt-5.5`
-  - `low_confidence_new = 0 / 50`
-  - `needs_more_context_new = 3 / 50`
-  - `invalid_response_count_new = 3`
-- 338C grounded review:
-  - `invalid_response_count_338c = 1`
-  - `grounding_source BOTH = 49`
-  - `final_recommendation = PROMPT_CONTEXT_STILL_TOO_WEAK`
-- 338D adoption simulation:
-  - `ACCEPT_MODEL_CONFIRM = 39`
-  - `ACCEPT_MODEL_REJECT = 3`
-  - `HOLD_FOR_HUMAN_REVIEW = 3`
-  - `REJECT_BY_DETERMINISTIC_RULE = 4`
-  - `INVALID_MODEL_RESPONSE = 1`
-  - `deterministic_rule_override_count = 0`
-  - `suggest_set_ai_review_model_default = false`
-
-### Role Split
-
-- MinerU: primary parser for layout and table extraction
-- deterministic rules: highest-priority safety layer for units, duplicates, percentage-as-amount guards, and obvious noise
-- `AI_REVIEW_MODEL`: candidate text adjudicator for ambiguous rows
-- DeepSeek flash: conservative fallback / baseline
-- vision models: reserved for future layout, screenshot, or image-table uncertainty
-- human review: final safety layer for held, invalid, or conflicting rows
-
-### Safe Claims
-
-- real PDF preview intake exists and runs with MinerU-first routing
-- the project performs conservative rule repair before AI review
-- AI review is available as dry-run evaluation only
-- grounded review and adoption simulation are explicit no-write-back layers
+- real research PDFs can enter a MinerU-first sidecar preview flow
+- deterministic calibration, context repair, reviewed strictness, and year-alignment QA exist
+- AI review exists as dry-run evaluation, A/B comparison, grounded review, and adoption simulation
+- human review is inserted before client preview
+- post-human sidecar result, client preview export, and client preview audit exist without write-back
+- milestone packaging and demo documentation now reflect the audited human-reviewed preview state
 
 ### Unsafe Claims
 
-- client-ready
-- production-ready
-- 100% accurate
-- fully automatic commercial SaaS
-- direct investment-decision suitability
-- no human review needed
-- AI decisions are final
+- claiming the project is already client-ready
+- claiming the project is already production-ready
+- official client delivery readiness
+- upstream workbook write-back
+- 100% extraction correctness
+- no-human-review automation
+- investment advice
+- scalable production stability
+
+### 341A Milestone Headline Metrics
+
+- `340B review queue = 77`
+- `340C filled = 77 / pending = 0`
+- `340D reviewed_after_human_candidate_count = 34`
+- `340E reviewed_after_human_total_count = 34`
+- `340F client_preview_core_metric_count = 34`
+- `340G audited_core_metric_count = 34`
+- `duplicate_issue_count = 0`
+- `unit_issue_count = 0`
+- `missing_source_trace_count = 0`
+- `unsafe_claim_count = 0`
+- `qa_fail_count = 0`
+
+### Stage Groups
+
+#### Real PDF intake and deterministic repair
+
+- `337A` MinerU-first real PDF intake
+- `337B` candidate precision calibration
+- `337C` core financial context repair
+- `337D` reviewed strictness / year alignment QA
+
+#### AI dry-run governance
+
+- `338A` DeepSeek flash baseline
+- `338B` `AI_REVIEW_MODEL` A/B evaluation
+- `338C` grounded AI review
+- `338D` adoption simulation
+
+#### Human review and preview closure
+
+- `340B` human review package after AI adoption
+- `340C` human review apply simulation with full validation support
+- `340D` full human review apply plan
+- `340E` post-human-review sidecar result
+- `340F` human-reviewed client preview export
+- `340G` client preview export audit
+- `341A` human-reviewed client preview milestone package
+
+### What 340B-341A Actually Prove
+
+These stages do not prove production adoption. They prove that:
+
+1. AI decisions remain dry-run only.
+2. Human review is explicitly required before client preview.
+3. All application results remain sidecar and no-write-back.
+4. The client preview was audited for duplicate, unit, source-trace, and unsafe-claim risk.
+5. The current strongest deliverable is a human-reviewed client preview milestone, not a production pipeline.
+
+### What The Current Demo Can Show
+
+- how real PDFs enter the MinerU-first parsing flow
+- how deterministic rules suppress obvious noise and repair context
+- how AI review stays assistive and dry-run only
+- how workbook-based human review closes the loop before preview promotion
+- how full validation, apply planning, and post-human sidecar handling preserve no-write-back boundaries
+- how the client preview includes only 34 human-reviewed core metrics
+- how the preview audit confirms zero duplicate, unit, source-trace, and unsafe-claim issues
+
+### Benchmark Boundary
+
+- the current benchmark is still a limited real-PDF sample set, not evidence of scalable production stability
+- the present state is strongest for demos, GitHub explanations, interviews, and technical audits
+- it does not prove broad parser robustness across more layouts, brokers, and cross-page tables
+- it does not prove metadata extraction, batch reliability, permissions, or operational hardening are solved
+
+### Next Bottlenecks
+
+- larger benchmark
+- parser robustness
+- metadata extraction
+- UI review workflow
+- batch reliability
 
 ### Recommended Reading
 
 1. `README.md`
-2. `docs/demo/（英文项目总览）datefac_project_overview_333a_en.md`
-3. `docs/demo/datefac_real_pdf_mineru_ai_review_runbook_339a_en.md`
-4. `docs/demo/datefac_ai_review_architecture_339a_en.md`
-5. `docs/demo/datefac_demo_release_checklist_332a.md`
-6. `docs/demo/datefac_interview_talking_points_332a.md`
-
-### Current Limitations
-
-- the current path is still sidecar, demo, preview, and no-write-back
-- the real PDF intake is useful for guarded preview work, not production delivery
-- AI review remains dry-run and adoption-simulation only
-- `gpt-5.5` looks stronger in 338B and 338C, but 338D still does not recommend making it the default adjudicator
-- broader benchmarking, deployment, security, permissions, data isolation, and operational hardening remain unfinished
+2. `docs/demo/datefac_human_reviewed_client_preview_runbook_341b_en.md`
+3. `docs/demo/datefac_human_reviewed_client_preview_architecture_341b_en.md`
+4. `docs/demo/datefac_real_pdf_mineru_ai_review_runbook_339a_en.md`
+5. `docs/demo/datefac_ai_review_architecture_339a_en.md`
+6. `docs/demo/datefac_demo_release_checklist_332a.md`
+7. `docs/demo/（英文项目总览）datefac_project_overview_333a_en.md`
+8. `docs/demo/（英文运行手册）datefac_current_runbook_333a_en.md`
