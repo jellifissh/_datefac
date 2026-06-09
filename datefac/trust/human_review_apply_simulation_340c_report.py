@@ -91,6 +91,10 @@ def report_markdown(summary: Dict[str, Any], qa_json: Dict[str, Any]) -> str:
     lines = [
         "# Human Review Apply Simulation After AI Adoption 340C",
         "",
+        "340C supports incremental manual review validation.",
+        "It can be rerun after each batch of filled reviewer rows.",
+        "The original first-5-row expectation was only an initial smoke expectation and is no longer hard-coded.",
+        "",
         "## Decision",
         f"- decision: {summary.get('decision', '')}",
         f"- qa_fail_count: {summary.get('qa_fail_count', 0)}",
@@ -113,6 +117,7 @@ def report_markdown(summary: Dict[str, Any], qa_json: Dict[str, Any]) -> str:
         f"- review_workbook_unchanged: {summary.get('review_workbook_unchanged', False)}",
         f"- upstream_workbooks_unchanged: {summary.get('upstream_workbooks_unchanged', False)}",
         f"- no_apply_proof_passed: {summary.get('no_apply_proof_passed', False)}",
+        f"- incremental_review_supported: {summary.get('incremental_review_supported', False)}",
         f"- apply_plan_workbook_path: {summary.get('apply_plan_workbook_path', '')}",
         "",
         "## QA Checks",

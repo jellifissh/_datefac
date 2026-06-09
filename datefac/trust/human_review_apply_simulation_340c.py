@@ -18,7 +18,8 @@ from datefac.trust.no_apply_proof import (
 )
 
 
-READY_DECISION = "HUMAN_REVIEW_APPLY_SIMULATION_340C_READY_FOR_PARTIAL_REVIEW_VALIDATION"
+READY_INCREMENTAL_DECISION = "HUMAN_REVIEW_APPLY_SIMULATION_340C_READY_FOR_INCREMENTAL_REVIEW_VALIDATION"
+READY_FULL_DECISION = "HUMAN_REVIEW_APPLY_SIMULATION_340C_READY_FOR_FULL_REVIEW_VALIDATION"
 NOT_READY_DECISION = "HUMAN_REVIEW_APPLY_SIMULATION_340C_NOT_READY"
 
 DEFAULT_HUMAN_REVIEW_340B_DIR = Path(r"D:\_datefac\output\human_review_after_ai_adoption_340b")
@@ -50,14 +51,6 @@ ACTION_BY_DECISION = {
     "KEEP_NEEDS_REVIEW": "WOULD_KEEP_NEEDS_REVIEW",
     "REJECT": "WOULD_REJECT",
     "NEEDS_MORE_CONTEXT": "WOULD_KEEP_NEEDS_MORE_CONTEXT",
-}
-
-EXPECTED_PARTIAL_COUNTS = {
-    "total_review_queue_count": 77,
-    "filled_review_row_count": 5,
-    "pending_review_row_count": 72,
-    "confirm_as_reviewed_count": 2,
-    "correct_and_confirm_count": 3,
 }
 
 REVIEW_QUEUE_COLUMNS = [
@@ -101,13 +94,6 @@ def _norm_text(value: Any) -> str:
     except Exception:
         pass
     return str(value).strip()
-
-
-def _safe_int(value: Any, default: int = 0) -> int:
-    try:
-        return int(value)
-    except Exception:
-        return default
 
 
 def _clean_frame(frame: pd.DataFrame) -> pd.DataFrame:
@@ -212,11 +198,14 @@ def _build_warning(
     }
 
 
-def _validate_filled_rows(review_queue_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, List[Dict[str, Any]], Dict[str, int]]:
+def _validate_filled_rows(
+    review_queue_df: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, List[Dict[str, Any]], Dict[str, int]]:
     queue_df = _clean_frame(review_queue_df.copy())
     queue_df["_sheet_row_number"] = [index + 2 for index in range(len(queue_df))]
     queue_df["_source_row_reference"] = queue_df["_sheet_row_number"].map(lambda value: f"01_REVIEW_QUEUE::row_{value}")
     queue_df["_reviewer_decision_norm"] = queue_df["reviewer_decision"].map(_norm_text)
+
     filled_mask = queue_df["_reviewer_decision_norm"] != ""
     filled_df = queue_df.loc[filled_mask].copy()
     pending_df = queue_df.loc[~filled_mask].copy()
@@ -363,11 +352,15 @@ def _build_readme_df() -> pd.DataFrame:
     rows = [
         {
             "topic": "Purpose",
-            "message": "340C validates the first manually filled 340B review rows and builds a dry-run apply plan only.",
+            "message": "340C validates the currently filled 340B review rows and builds a dry-run apply plan only.",
         },
         {
             "topic": "Write-back boundary",
             "message": "No upstream workbook is modified. This stage does not write back to 337D, 338D, 340B, or any client export.",
+        },
+        {
+            "topic": "Incremental review support",
+            "message": "340C supports incremental manual review validation and can be rerun after each batch of filled rows.",
         },
         {
             "topic": "Allowed reviewer_decision",
@@ -376,6 +369,10 @@ def _build_readme_df() -> pd.DataFrame:
         {
             "topic": "Action mapping",
             "message": "CONFIRM_AS_REVIEWED -> WOULD_CONFIRM_REVIEWED; CORRECT_AND_CONFIRM -> WOULD_APPLY_CORRECTION_AND_CONFIRM; KEEP_NEEDS_REVIEW -> WOULD_KEEP_NEEDS_REVIEW; REJECT -> WOULD_REJECT; NEEDS_MORE_CONTEXT -> WOULD_KEEP_NEEDS_MORE_CONTEXT",
+        },
+        {
+            "topic": "Legacy smoke note",
+            "message": "The original first-5-row expectation was only an initial smoke expectation and is no longer hard-coded in QA.",
         },
         {
             "topic": "Status boundary",
@@ -406,6 +403,22 @@ def _build_no_apply_proof_df(no_apply_proof_json: Mapping[str, Any]) -> pd.DataF
             }
         )
     return _clean_frame(pd.DataFrame(rows))
+
+
+def _decide_stage_status(
+    *,
+    qa_fail_count: int,
+    filled_review_row_count: int,
+    pending_review_row_count: int,
+    validation_warning_count: int,
+) -> str:
+    if qa_fail_count != 0 or validation_warning_count != 0:
+        return NOT_READY_DECISION
+    if filled_review_row_count <= 0:
+        return NOT_READY_DECISION
+    if pending_review_row_count == 0:
+        return READY_FULL_DECISION
+    return READY_INCREMENTAL_DECISION
 
 
 def build_human_review_apply_simulation_340c(
@@ -468,9 +481,11 @@ def build_human_review_apply_simulation_340c(
     needs_more_context_count = int(decision_counts.get("NEEDS_MORE_CONTEXT", 0))
     validation_warning_count = int(len(warnings_df))
     validation_fail_count = int(sum(1 for warning in warning_rows if warning["severity"] == "FAIL"))
+    decision_count_total = int(sum(decision_counts.values()))
 
     readme_df = _build_readme_df()
     readme_text = "\n".join(readme_df["message"].astype(str).tolist())
+
     no_apply_proof_json = build_no_apply_proof(
         stage="340C",
         files_read=files_read,
@@ -484,6 +499,12 @@ def build_human_review_apply_simulation_340c(
     no_apply_proof_json["upstream_workbooks_unchanged"] = upstream_workbooks_unchanged
     no_apply_proof_json["no_write_back"] = True
 
+    no_apply_proof_passed = (
+        bool(no_apply_proof_json.get("no_official_asset_modification_during_340c"))
+        and review_workbook_unchanged
+        and upstream_workbooks_unchanged
+    )
+
     checks = [
         {"check_name": "inputs::340b_review_workbook_exists", "status": "PASS" if review_workbook.exists() else "FAIL", "detail": str(review_workbook)},
         {"check_name": "inputs::340b_summary_exists", "status": "PASS" if summary_340b_path.exists() else "FAIL", "detail": str(summary_340b_path)},
@@ -491,17 +512,19 @@ def build_human_review_apply_simulation_340c(
         {"check_name": "inputs::338d_workbook_exists", "status": "PASS" if workbook_338d.exists() else "FAIL", "detail": str(workbook_338d)},
         {"check_name": "inputs::01_review_queue_sheet_loaded", "status": "PASS" if set(REVIEW_QUEUE_COLUMNS).issubset(set(review_queue_df.columns)) else "FAIL", "detail": json.dumps(list(review_queue_df.columns), ensure_ascii=False)},
         {"check_name": "readiness::340b_decision", "status": "PASS" if _norm_text(summary_340b.get("decision")) == READY_340B_DECISION else "FAIL", "detail": _norm_text(summary_340b.get("decision"))},
-        {"check_name": "quality::total_review_queue_count", "status": "PASS" if total_review_queue_count == EXPECTED_PARTIAL_COUNTS["total_review_queue_count"] else "FAIL", "detail": str(total_review_queue_count)},
-        {"check_name": "quality::filled_review_row_count", "status": "PASS" if filled_review_row_count == EXPECTED_PARTIAL_COUNTS["filled_review_row_count"] else "FAIL", "detail": str(filled_review_row_count)},
-        {"check_name": "quality::pending_review_row_count", "status": "PASS" if pending_review_row_count == EXPECTED_PARTIAL_COUNTS["pending_review_row_count"] else "FAIL", "detail": str(pending_review_row_count)},
-        {"check_name": "quality::confirm_as_reviewed_count", "status": "PASS" if confirm_as_reviewed_count == EXPECTED_PARTIAL_COUNTS["confirm_as_reviewed_count"] else "FAIL", "detail": str(confirm_as_reviewed_count)},
-        {"check_name": "quality::correct_and_confirm_count", "status": "PASS" if correct_and_confirm_count == EXPECTED_PARTIAL_COUNTS["correct_and_confirm_count"] else "FAIL", "detail": str(correct_and_confirm_count)},
+        {"check_name": "quality::total_review_queue_count_positive", "status": "PASS" if total_review_queue_count > 0 else "FAIL", "detail": str(total_review_queue_count)},
         {"check_name": "quality::filled_rows_detected", "status": "PASS" if filled_review_row_count > 0 else "FAIL", "detail": str(filled_review_row_count)},
+        {"check_name": "quality::filled_row_count_within_total", "status": "PASS" if 0 < filled_review_row_count <= total_review_queue_count else "FAIL", "detail": f"filled={filled_review_row_count} total={total_review_queue_count}"},
+        {"check_name": "quality::pending_rows_allowed", "status": "PASS", "detail": f"pending={pending_review_row_count}"},
+        {"check_name": "quality::pending_row_count_consistent", "status": "PASS" if pending_review_row_count == total_review_queue_count - filled_review_row_count else "FAIL", "detail": f"pending={pending_review_row_count} expected={total_review_queue_count - filled_review_row_count}"},
+        {"check_name": "quality::decision_count_total_consistent", "status": "PASS" if decision_count_total == filled_review_row_count else "FAIL", "detail": f"decision_total={decision_count_total} filled={filled_review_row_count}"},
         {"check_name": "quality::apply_plan_generated", "status": "PASS" if len(apply_plan_df) == filled_review_row_count else "FAIL", "detail": f"apply_plan={len(apply_plan_df)} filled={filled_review_row_count}"},
+        {"check_name": "quality::validation_warning_count_zero", "status": "PASS" if validation_warning_count == 0 else "FAIL", "detail": str(validation_warning_count)},
         {"check_name": "quality::validation_fail_count_zero", "status": "PASS" if validation_fail_count == 0 else "FAIL", "detail": str(validation_fail_count)},
         {"check_name": "safety::review_workbook_unchanged", "status": "PASS" if review_workbook_unchanged else "FAIL", "detail": json.dumps({"before": upstream_hashes_before.get(str(review_workbook), ""), "after": upstream_hashes_after.get(str(review_workbook), "")}, ensure_ascii=False)},
         {"check_name": "safety::upstream_workbooks_unchanged", "status": "PASS" if upstream_workbooks_unchanged else "FAIL", "detail": json.dumps(upstream_hashes_after, ensure_ascii=False)},
         {"check_name": "safety::official_assets_unchanged", "status": "PASS" if official_assets_before == official_assets_after else "FAIL", "detail": json.dumps(official_assets_after, ensure_ascii=False)},
+        {"check_name": "safety::no_apply_proof_passed", "status": "PASS" if no_apply_proof_passed else "FAIL", "detail": json.dumps({"review_workbook_unchanged": review_workbook_unchanged, "upstream_workbooks_unchanged": upstream_workbooks_unchanged, "official_assets_unchanged": bool(no_apply_proof_json.get("no_official_asset_modification_during_340c"))}, ensure_ascii=False)},
         {"check_name": "safety::protected_dirty_status_preserved", "status": "PASS" if protected_before == protected_after else "FAIL", "detail": json.dumps(protected_after, ensure_ascii=False)},
         {"check_name": "safety::protected_dirty_files_not_staged", "status": "PASS" if not protected_staged else "FAIL", "detail": json.dumps(protected_staged, ensure_ascii=False)},
         {"check_name": "safety::output_artifacts_not_staged", "status": "PASS" if not output_staged else "FAIL", "detail": json.dumps(output_staged, ensure_ascii=False)},
@@ -513,7 +536,12 @@ def build_human_review_apply_simulation_340c(
     ]
 
     qa_fail_count = sum(1 for check in checks if check["status"] == "FAIL")
-    decision = READY_DECISION if qa_fail_count == 0 else NOT_READY_DECISION
+    decision = _decide_stage_status(
+        qa_fail_count=qa_fail_count,
+        filled_review_row_count=filled_review_row_count,
+        pending_review_row_count=pending_review_row_count,
+        validation_warning_count=validation_warning_count,
+    )
 
     apply_plan_workbook_path = output_dir / "human_review_apply_simulation_340c_apply_plan.xlsx"
     summary = {
@@ -530,9 +558,10 @@ def build_human_review_apply_simulation_340c(
         "needs_more_context_count": needs_more_context_count,
         "validation_warning_count": validation_warning_count,
         "validation_fail_count": validation_fail_count,
+        "incremental_review_supported": True,
         "review_workbook_unchanged": review_workbook_unchanged,
         "upstream_workbooks_unchanged": upstream_workbooks_unchanged,
-        "no_apply_proof_passed": bool(no_apply_proof_json.get("no_official_asset_modification_during_340c")) and upstream_workbooks_unchanged,
+        "no_apply_proof_passed": no_apply_proof_passed,
         "no_write_back": True,
         "client_ready": False,
         "production_ready": False,
@@ -556,6 +585,7 @@ def build_human_review_apply_simulation_340c(
         },
         "allowed_reviewer_decisions": list(ALLOWED_DECISIONS),
         "dry_run_action_mapping": dict(ACTION_BY_DECISION),
+        "supports_incremental_manual_review_validation": True,
         "files_read": files_read,
     }
 
@@ -573,14 +603,13 @@ def build_human_review_apply_simulation_340c(
         "01_APPLY_PLAN": apply_plan_df,
         "02_FILLED_REVIEW_ROWS": _clean_frame(
             filled_df[
-                REVIEW_QUEUE_COLUMNS
-                + ["_source_row_reference", "validation_status", "dry_run_action", "action_status"]
+                REVIEW_QUEUE_COLUMNS + ["_source_row_reference", "validation_status", "dry_run_action", "action_status"]
             ].rename(columns={"_source_row_reference": "source_row_reference"})
         ),
         "03_PENDING_REVIEW_ROWS": _clean_frame(
-            pending_df[REVIEW_QUEUE_COLUMNS + ["_source_row_reference", "validation_status", "action_status"]].rename(
-                columns={"_source_row_reference": "source_row_reference"}
-            )
+            pending_df[
+                REVIEW_QUEUE_COLUMNS + ["_source_row_reference", "validation_status", "action_status"]
+            ].rename(columns={"_source_row_reference": "source_row_reference"})
         ),
         "04_VALIDATION_WARNINGS": warnings_df,
         "05_NO_APPLY_PROOF": _build_no_apply_proof_df(no_apply_proof_json),

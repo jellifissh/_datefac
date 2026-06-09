@@ -2,8 +2,8 @@
 
 ## Goal
 
-Create a sidecar dry-run apply simulation that reads the partially filled 340B human review workbook,
-validates reviewer decisions, and generates an apply plan for the first manual-review batch.
+Create a sidecar dry-run apply simulation that reads the filled portion of the 340B human review workbook,
+validates reviewer decisions, and generates an apply plan for the current review state.
 
 This task is dry-run only.
 It must not write back to 337D, 338D, 340B, or any upstream workbook.
@@ -60,15 +60,10 @@ It must not generate a refreshed client export.
    - `REJECT` without `reviewer_notes` should raise a warning.
    - `NEEDS_MORE_CONTEXT` without `reviewer_notes` should raise a warning.
 4. Unfilled rows remain pending and untouched.
-
-## Expected Partial-Test State
-
-- `total_review_queue_count = 77`
-- `filled_review_row_count = 5`
-- `pending_review_row_count = 72`
-- `CORRECT_AND_CONFIRM = 3`
-- `CONFIRM_AS_REVIEWED = 2`
-- `qa_fail_count = 0` if the workbook is filled correctly
+5. Pending rows are allowed.
+6. `pending_review_row_count` must equal `total_review_queue_count - filled_review_row_count`.
+7. 340C supports incremental manual review validation and can be rerun after each batch of filled rows.
+8. The original first-5-row expectation was only an initial smoke expectation and must not remain hard-coded in QA.
 
 ## Dry-Run Action Mapping
 
@@ -127,7 +122,10 @@ Summary must include:
 - `no_write_back = true`
 - `client_ready = false`
 - `production_ready = false`
-- `decision = HUMAN_REVIEW_APPLY_SIMULATION_340C_READY_FOR_PARTIAL_REVIEW_VALIDATION`
+- `decision = HUMAN_REVIEW_APPLY_SIMULATION_340C_READY_FOR_INCREMENTAL_REVIEW_VALIDATION`
+  when filled rows exist, pending rows remain, and QA passes
+- `decision = HUMAN_REVIEW_APPLY_SIMULATION_340C_READY_FOR_FULL_REVIEW_VALIDATION`
+  when all rows are filled and QA passes
 
 ## QA Requirements
 
@@ -135,14 +133,17 @@ Summary must include:
 - Sheet `01_REVIEW_QUEUE` exists.
 - Filled rows are detected.
 - Pending rows are counted.
+- Pending rows are allowed.
+- Count relationships remain internally consistent.
 - Apply plan is generated.
 - No upstream workbook is modified.
 - No write-back behavior exists.
 - No client-ready claim is introduced.
 - No production-ready claim is introduced.
+- Any validation warning keeps the stage not ready.
 - `qa_fail_count = 0` if validation passes.
 
-## Files To Create
+## Files
 
 - `docs/codex_tasks/340C_human_review_apply_simulation_after_ai_adoption.md`
 - `datefac/trust/human_review_apply_simulation_340c.py`
