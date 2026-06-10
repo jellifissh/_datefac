@@ -4,7 +4,7 @@
 1. `AGENTS.md`
 2. `.skills/git_workflow.md`
 3. `.skills/project_milestone_ledger.md`
-4. `docs/PROJECT_MILESTONE_LEDGER.md`
+4. `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
 5. `.skills/mineru_local_benchmark_workflow.md`
 6. `.skills/real_pdf_benchmark_workflow.md`
 7. `.skills/human_reviewed_client_preview_workflow.md`
@@ -12,7 +12,7 @@
 9. remaining specialized skills
 
 ## Skill Purposes
-- `project_milestone_ledger.md`: milestone ledger preflight, no-repeat rules, and required ledger updates after numbered tasks
+- `project_milestone_ledger.md`: numbered-task preflight, no-repeat rules, immediate ledger update requirements, 3-5 task rollup refresh rules, and `.skills` vs `docs` responsibility split
 - `asset_artifacts.md`: asset-layer meaning and evidence boundaries
 - `table_extraction.md`: parser strategy and extraction evidence order
 - `financial_standardizer.md`: standardization-layer rules and guardrails
