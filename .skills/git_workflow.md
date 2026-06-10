@@ -1,30 +1,48 @@
-# Skill: Git 工作流
+# Skill: Git Workflow
 
-## 每轮标准流程
-1. 开始先看 `git status`。  
-2. 完成修改后先 `py_compile`。  
-3. 验证通过后输出 `git diff --stat`。  
-4. 使用简洁英文 `commit message`。  
-5. 推送到 `origin/main`。  
-6. 推送后执行 `git log --oneline --decorate -5`。
+## Start Every Task With
+1. `git status -sb`
+2. Read the task boundary carefully
+3. Confirm which files are allowed to change
 
-## 提交边界
-- 不要提交 `output` 大文件、`debug_reports`、临时缓存。
-- 不要把本轮无关文件一起提交。
-- 仅提交本轮需求涉及文件，保证可审计。
+## Hard Staging Rules
+- never git add -A
+- never git add .
+- use precise `git add <path>` only
+- stage only files from the current task
 
-## 风险操作规范
-- 不要 `reset` / `rebase`，除非用户明确要求。
-- 遇到提交拦截（自动审查/权限）：
-  - 先说明拦截原因
-  - 等用户确认后重试
-- 遇到 `index.lock` 或权限问题：
-  - 先检查是否有 git 进程
-  - 不要盲删锁文件
+## Never Stage
+- `output/`
+- `temp/`
+- `input/semantic_adjudicator_responses_322d/`
+- `input/semantic_adjudicator_responses_322f/`
+- large benchmark or demo output artifacts
+- unrelated dirty files
 
-## 输出要求
-- 提交后回报：
-  - commit id
-  - push 结果
-  - 最新 5 条 log
-- 若未完成 push，必须明确阻塞原因和当前仓库状态。
+## Protected Dirty Files
+Keep these unstaged unless the user explicitly asks:
+- `datefac/benchmark/batch_row_text_delivery_benchmark.py`
+- `datefac/extraction/row_text_metric_extractor.py`
+- `datefac/pipeline/batch_ppstructure_row_text_pipeline.py`
+- `tools/run_batch_ppstructure_outputs_320g.py`
+- `input/semantic_adjudicator_responses_322d/`
+- `input/semantic_adjudicator_responses_322f/`
+- `temp/`
+
+## Before Commit
+1. `git status -sb`
+2. `git diff --stat`
+3. verify only intended files are staged
+4. verify protected dirty files remain unstaged
+5. verify output artifacts are not staged
+
+## Output Boundaries
+- output artifacts are evidence, not normal commit payloads
+- benchmark sidecar outputs are not source-of-truth production assets
+- human review / preview / audit outputs should not be committed unless the user explicitly asks
+
+## Risk Rules
+- do not use `git reset --hard`
+- do not use `git checkout --`
+- do not revert unrelated user changes
+- if rebase is explicitly required, protect dirty files first and recheck status after rebase

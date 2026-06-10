@@ -1,30 +1,48 @@
-# Skill: 抽取层策略
+# Skill: Table Extraction
 
-## 当前后端策略
-- `pdfplumber`：当前稳定主后端。
-- `marker`：optional backend；有缓存时可用，新 PDF 在 Windows 视觉阶段不稳定。
-- `docling`：已接入 probe，但当前样本多为 `completed_no_tables`，暂不作为主后端。
+## Current Parser Strategy
+- MinerU is the current primary benchmark parser candidate for real PDF financial reports
+- `pdfplumber` remains a legacy/stable baseline for some structured PDFs
+- `marker` remains an optional legacy backend, not the main path
+- `docling` remains probe-only unless benchmark evidence improves
 
-## 资产层定位
-- `02A` 保存后端抽到的原始表，是抽取层质量证据。
-- `02` 是后处理结果，不能反推抽取器真实质量。
-- 对抽取层结论，优先使用 `02A + 10 + 11` 交叉验证。
+## Current Benchmark Position
+- `342C` MinerU first run failed because of SSL / HuggingFace / environment issues
+- `342C2` after env fix produced real parse artifacts and is currently `3/5` success
+- `ready_for_342d = conditional`
+- Do not claim full MinerU benchmark pass
+- Must inspect failed retry rows before parser ensemble compare
 
-## 已知环境事实
-- `marker / surya / datalab` 在 Windows 的模型下载与临时目录权限存在不稳定。
-- 该问题暂不作为主线深挖；保持 `marker` 不阻塞主流程。
+## Extraction Evidence Order
+- Always inspect extraction artifacts first
+- Then inspect post-processing behavior
+- Then inspect financial standardization behavior
+- Do not jump to cleaning-rule changes before parser evidence is reviewed
 
-## 三样本现状
-- `H3_AP202605121822218343_1`：抽取层较好，`05` 已 8/8。
-- `H3_AP202605091822098939_1`：pdfplumber 表源不足，marker 曾更好。
-- `H3_AP202605121822223662_1`：`02A` 全 BAD，抽取层质量差。
+## MinerU Output Consumption Priority
+- Prefer `.md`
+- Prefer `*_content_list.json`
+- Review table-related JSON and structured sidecar evidence
+- Do not treat raw images as the primary downstream consumption surface
 
-## 排查优先级规则
-- 原始表质量差时，不要优先改 `05`。
-- 后处理未明显丢表时，不要优先改 `TableSegmenter`。
-- marker 失败不能阻塞批处理；必须落状态与错误信息。
+## Legacy Baselines
+- `pdfplumber` remains useful as a historical baseline for structured tables
+- `marker` history should be preserved as legacy context, not deleted
+- `docling` remains a probe path until stronger benchmark evidence exists
 
-## 实操动作
-- 先看 `02A` 的 `raw_good_ok_ratio` 与 `quality_level` 分布。
-- 再看 `02` 的 sheet 数量与 `11` 诊断。
-- 最后看 `05`，避免把上游问题误归因到标准化层。
+## Known Failure Modes
+- SSL certificate verify failed
+- HuggingFace / hf-mirror inaccessible
+- user site-packages pollution from `C:\Users\哥哥\AppData\Roaming\Python\Python312\site-packages`
+- `huggingface_hub >= 1.0` incompatible with the current `transformers / tokenizers` stack
+- base env cannot find `mineru`
+- `mineru_new` env may lack `pandas` for DateFac runner usage
+- Windows subprocess path issues for `.exe` / `.cmd`
+- runner may look silent while MinerU is still processing
+
+## Action Rules
+- Do not hand-write more PDF cleaning rules before MinerU benchmark evidence is inspected
+- Do not treat partial MinerU success as parser-compare readiness by default
+- Do not move to `342D` until failed retry rows are inspected and `qa_fail_count = 0`
+- Keep legacy parser context, but anchor new decisions on current MinerU benchmark evidence
+
