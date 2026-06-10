@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; and 342J reviewed client preview pilot is completed. The current next task is 342K LLM-assisted adjudication or reviewed preview polish rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; and 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper. The current next task is 342L LLM suggestion apply or human spot-check simulation rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342K LLM-Assisted Review Adjudication / Reviewed Preview Polish
+342L LLM Suggestion Apply Or Human Spot-Check Simulation
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -1675,6 +1675,124 @@ Hard boundaries:
 
 ---
 
+## 342K LLM-Assisted Review Adjudication Pilot
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342K_llm_assisted_review_adjudication_pilot`
+
+中文：
+342K 已完成。它读取当前真实的 342J reviewed client preview pilot、342I post-human-review sidecar result、342G review package，只从仍然 pending 的 1075 条 review rows 构建 LLM-assisted adjudication candidate pool。342K 默认不调用真实 LLM API，而是生成 rule baseline、prompt/request package、dry-run suggestions、human-required 视图，以及给 342L 使用的 review template draft。342K 仍然是 no-write-back sidecar adjudication pilot，不是正式 client delivery，也不是 production-ready。
+
+English:
+342K is completed. It consumes the current real 342J reviewed client preview pilot, 342I post-human-review sidecar result, and 342G review package, then builds an LLM-assisted adjudication candidate pool from the remaining 1075 pending review rows only. By default, 342K does not call a real LLM API. It generates rule baselines, prompt/request packages, dry-run suggestions, human-required views, and a next-stage review template draft for 342L. 342K remains a no-write-back sidecar adjudication pilot, not formal client delivery and not production-ready.
+
+Input dirs/files:
+
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j/table_first_reviewed_client_preview_pilot_342j.xlsx`
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i`
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i/table_first_post_human_review_sidecar_result_342i.xlsx`
+- `D:/_datefac/output/table_first_extraction_review_package_342g`
+- `D:/_datefac/output/table_first_extraction_review_package_342g/table_first_extraction_review_package_342g.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k`
+
+Output workbook/report:
+
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k.xlsx`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_report.md`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_prompt_pack.jsonl`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_request_pack.jsonl`
+
+Key metrics:
+
+- `input_review_template_row_count = 1155`
+- `reviewed_row_count = 80`
+- `pending_review_count = 1075`
+- `llm_candidate_pool_count = 1075`
+- `prompt_package_count = 358`
+- `request_pack_count = 358`
+- `rule_baseline_count = 1075`
+- `dry_run_suggestion_count = 1075`
+- `human_required_count = 717`
+- `auto_confirm_candidate_count = 254`
+- `conflict_count = 763`
+- `unit_year_risk_count = 577`
+- `duplicate_risk_count = 348`
+- `growth_row_risk_count = 152`
+- `source_trace_risk_count = 498`
+- `metric_mapping_risk_count = 309`
+- `high_priority_risk_count = 663`
+- `review_template_draft_count = 1075`
+- `ready_for_342l = true`
+- `recommended_342l_scope = llm_suggestion_apply_or_human_spot_check_simulation`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342J summary / QA / workbook detected
+- 342J `ready_for_342k = true` detected
+- 342I workbook detected and already-reviewed rows excluded
+- 342G workbook detected and review-template context reused
+- prompt package generated
+- expected schema generated
+- dry-run suggestions clearly labeled as dry-run only
+- auto-confirm rows remain candidates only
+- reviewer fields stay blank in the draft template
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+
+Decision:
+
+- `LLM_ASSISTED_REVIEW_ADJUDICATION_342K_READY`
+
+Next:
+
+- `342L LLM Suggestion Apply Or Human Spot-Check Simulation`
+
+Do not repeat:
+
+- Do not treat dry-run suggestions as real LLM output.
+- Do not treat LLM suggestions as human-review results.
+- Do not rerun MinerU for 342K.
+- Do not call VLM for 342K.
+- Do not write back to 342G / 342H / 342I / 342J workbooks.
+- Do not claim `client_ready = true` or `production_ready = true`.
+
+Touched source files:
+
+- `docs/codex_tasks/342K_llm_assisted_review_adjudication_pilot.md`
+- `datefac/benchmark/llm_assisted_review_adjudication_342k.py`
+- `datefac/benchmark/llm_assisted_review_adjudication_342k_report.py`
+- `tools/run_llm_assisted_review_adjudication_342k.py`
+- `tests/benchmark/test_llm_assisted_review_adjudication_342k.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\llm_assisted_review_adjudication_342k.py datefac\benchmark\llm_assisted_review_adjudication_342k_report.py tools\run_llm_assisted_review_adjudication_342k.py tests\benchmark\test_llm_assisted_review_adjudication_342k.py
+
+python -m pytest tests\benchmark\test_llm_assisted_review_adjudication_342k.py -q
+
+python tools\run_llm_assisted_review_adjudication_342k.py --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --post-human-review-342i-dir D:\_datefac\output\table_first_post_human_review_sidecar_result_342i --review-package-342g-dir D:\_datefac\output\table_first_extraction_review_package_342g --output-dir D:\_datefac\output\llm_assisted_review_adjudication_342k
+```
+
+Commit SHA, if known:
+
+- `pending current 342K commit`
+
+---
+
 # 6. 环境账本 / Environment Ledger
 
 ## MinerU Environment
@@ -1760,11 +1878,16 @@ Completed current chain:
 - 342E old text-candidate route is superseded.
 - 342E table-first audit completed: total_table_block_count=370, core_extractable_table_count=66, metadata_extractable_table_count=18, excluded_table_count=62, manual_review_required_count=224, pdf_with_core_extractable_table_count=5, ready_for_342f=true, recommended_342f_scope=table_first_core_extractable_only, qa_fail_count=0.
 - 342F completed table-first long-form extraction: input_core_extractable_table_count=66, parsed_core_table_count=66, long_form_cell_count=5607, trusted_cell_count=1428, review_required_cell_count=1005, rejected_cell_count=3174, metric_covered_count=17, metric_year_pair_count=94, unit_issue_count=18, year_header_issue_count=135, duplicate_cell_count=387, ready_for_342g=true, qa_fail_count=0.
+- 342G completed table-first extraction review package: review_template_row_count=1155, review_queue_count=1005, trusted_audit_sample_count=150, qa_fail_count=0.
+- 342H completed reviewed apply simulation: reviewed_row_count=80, pending_review_count=1075, confirmed_cell_count=31, corrected_cell_count=10, rejected_cell_count=39, qa_fail_count=0.
+- 342I completed post-human-review sidecar result: post_human_confirmed_count=41, pending_review_count=1075, qa_fail_count=0.
+- 342J completed reviewed client preview pilot: reviewed_preview_row_count=41, confirmed_preview_row_count=31, corrected_preview_row_count=10, pending_review_count=1075, qa_fail_count=0.
+- 342K completed LLM-assisted adjudication pilot: llm_candidate_pool_count=1075, prompt_package_count=358, request_pack_count=358, human_required_count=717, auto_confirm_candidate_count=254, ready_for_342l=true, qa_fail_count=0.
 
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-342K LLM-Assisted Review Adjudication / Reviewed Preview Polish.
+342L LLM Suggestion Apply Or Human Spot-Check Simulation.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -1817,7 +1940,8 @@ Current safe statements:
 - 342F table-first long-form extraction is completed.
 - 342H second reviewed batch apply simulation is the effective upstream human-review state.
 - 342I post-human-review sidecar result has been rerun with 80 reviewed rows.
-- 342J reviewed client preview pilot is completed, and the next concrete action is `342K LLM-Assisted Review Adjudication / Reviewed Preview Polish`.
+- 342J reviewed client preview pilot is completed.
+- 342K LLM-assisted review adjudication pilot is completed, and the next concrete action is `342L LLM Suggestion Apply Or Human Spot-Check Simulation`.
 
 Unsafe statements:
 
