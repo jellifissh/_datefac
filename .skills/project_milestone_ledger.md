@@ -74,10 +74,10 @@ Do not repeat these completed chains unless explicitly requested:
 - 340B-341A human-reviewed client preview milestone chain;
 - 342A-342E current MinerU real-PDF benchmark chain.
 
-Current effective next task after 342E table-first:
+Current effective next task after 342F:
 
 ```text
-342F Table-First Core Financial Table Long-Form Extraction
+342G Table-First Extraction Review Package
 ```
 
 ## Special Current Boundary
@@ -94,6 +94,13 @@ Therefore:
 - do not rerun MinerU;
 - do not call VLM/LLM;
 - do not redo 342D parser compare.
+
+342F is now completed:
+
+- do not rerun 342F unless revising extraction policy;
+- do not mix `BASIC_DATA` into core financial extraction;
+- do not use excluded tables for core extraction;
+- next task is `342G Table-First Extraction Review Package`.
 
 ## Git Discipline
 

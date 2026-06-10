@@ -64,7 +64,7 @@ legacy demo / Trust Engine / human-review work
 Current next task:
 
 ```text
-342F Table-First Core Financial Table Long-Form Extraction
+342G Table-First Extraction Review Package
 ```
 
 Do not restart these completed stages unless explicitly requested as a revision:
@@ -1092,11 +1092,11 @@ Do not repeat:
 
 ---
 
-# 6. Current Next Task: 342F
+# 6. Current Next Task: 342G
 
 ## 342F Table-First Core Financial Table Long-Form Extraction
 
-Status: `planned / next`
+Status: `completed`
 
 Input:
 
@@ -1105,7 +1105,48 @@ Input:
 - `D:/_datefac/output/parser_ensemble_compare_342d`
 - `D:/_datefac/output/core_metric_candidate_quality_342e`
 
-Required behavior:
+Key metrics:
+
+- `audited_pdf_count = 5`
+- `input_core_extractable_table_count = 66`
+- `parsed_core_table_count = 66`
+- `html_parse_failed_table_count = 0`
+- `long_form_cell_count = 5607`
+- `trusted_cell_count = 1428`
+- `review_required_cell_count = 1005`
+- `rejected_cell_count = 3174`
+- `metric_covered_count = 17`
+- `metric_year_pair_count = 94`
+- `unit_issue_count = 18`
+- `year_header_issue_count = 135`
+- `duplicate_cell_count = 387`
+- `ready_for_342g = true`
+- `recommended_342g_scope = table_first_extraction_review_package`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Output:
+
+- `D:/_datefac/output/table_first_core_financial_extraction_342f/table_first_core_financial_extraction_342f.xlsx`
+
+Decision:
+
+- `TABLE_FIRST_CORE_FINANCIAL_EXTRACTION_342F_READY`
+
+Next:
+
+- `342G Table-First Extraction Review Package`
+
+Do not repeat:
+
+- Do not rerun 342F unless revising extraction policy.
+- Do not return to the old 435 text-candidate route.
+- Do not mix BASIC_DATA into core financial extraction.
+- Do not use excluded tables for core extraction.
+- Do not rerun MinerU.
+- Do not call VLM/LLM.
+
+Effective behavior:
 
 - Read 342E table-first output.
 - Use `05_CORE_EXTRACTABLE` as the primary input.
@@ -1233,9 +1274,12 @@ Completed current chain:
 Do not repeat old 342E text candidate route. Do not rerun MinerU. Do not call VLM. Do not redo 342D.
 
 Current next task:
-342F Table-First Core Financial Table Long-Form Extraction.
+342G Table-First Extraction Review Package.
 
-342F should read D:/_datefac/output/core_metric_candidate_quality_342e, primarily sheet 05_CORE_EXTRACTABLE, and expand only core financial tables into long-form metric/year/value/unit cells. BASIC_DATA is metadata-only and must not be mixed into core financial extraction. EXCLUDED tables must not be used.
+342F has completed table-first long-form extraction from D:/_datefac/output/core_metric_candidate_quality_342e, primarily sheet 05_CORE_EXTRACTABLE. BASIC_DATA remained metadata-only and EXCLUDED tables were not used.
+
+Next:
+342G should package the table-first extraction review workflow on top of the completed 342F long-form output.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -1291,7 +1335,8 @@ Current safe statements:
 - `production_ready = false`.
 - MinerU 342C6 pilot is 5/5 successful.
 - 342E table-first table audit is the effective current candidate quality audit.
-- 342F should be table-first long-form extraction.
+- 342F table-first long-form extraction is completed.
+- 342G should be the next table-first extraction review package stage.
 
 Unsafe statements:
 
