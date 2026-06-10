@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; and 342H apply simulation is now completed in a waiting-for-human-review state because no reviewed workbook has been provided yet. The current next task is to fill the 342G review template rather than rerunning 342C6, 342D, old 342E, 342F, or 342G.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H first reviewed batch apply simulation is completed; and 342I post-human-review sidecar result is completed. The current next task is 342J reviewed client preview pilot rather than rerunning 342C6, 342D, old 342E, 342F, 342G, or 342H.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-fill_342g_review_template_first
+342J Table-First Reviewed Client Preview Pilot
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -233,24 +233,25 @@ python tools\run_table_first_extraction_review_package_342g.py --corpus-342b-dir
 
 ## 342H Table-First Human Review Apply Simulation
 
-Status: `completed_with_warnings / waiting_for_human_review`
+Status: `completed`
 
 Effective version:
 
-- `effective_current_342H_waiting_branch`
+- `effective_current_342H_first_reviewed_batch_applied`
+- old waiting branch = `superseded_by_reviewed_batch_state`
 
 中文：
-342H 已完成 sidecar 级的人审应用模拟实现，并且真实运行通过。当前由于 `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx` 还不存在，所以 342H 正确进入 `WAITING_FOR_HUMAN_REVIEW` 分支，而不是伪造任何 apply 结果。这个阶段已经能安全识别“尚无人审输入”的状态，并输出 waiting 报告、QA、no-write-back proof 和 workbook。
+342H 已完成，并且已经从最早的 waiting-for-human-review 状态推进到“首批 30 条人审已真实应用”的当前有效状态。它读取已填写的人审 workbook，验证 reviewer decisions，并以 no-write-back 方式生成 apply simulation 结果。当前这 30 条结果已经可供 342I 继续消费，但不代表全量人审已经完成。
 
 English:
-342H sidecar human-review apply simulation is implemented and passed a real run. Because `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx` does not exist yet, 342H correctly enters the `WAITING_FOR_HUMAN_REVIEW` branch instead of fabricating any apply result. The stage can now safely recognize the absence of reviewed human input and emit a waiting report, QA, no-write-back proof, and workbook.
+342H is completed and has moved beyond the original waiting-for-human-review branch into the current effective state where the first reviewed batch of 30 rows has been applied. It consumes the reviewed workbook, validates reviewer decisions, and produces a no-write-back apply simulation result. These 30 reviewed rows are now usable by 342I, but they do not mean the full review queue is complete.
 
 Input dirs/files:
 
 - `D:/_datefac/output/table_first_extraction_review_package_342g`
 - `D:/_datefac/output/table_first_extraction_review_package_342g/table_first_extraction_review_package_342g.xlsx`
-- optional reviewed input dir: `D:/_datefac/input/table_first_review_342g_reviewed`
-- preferred reviewed workbook path: `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx`
+- `D:/_datefac/input/table_first_review_342g_reviewed`
+- `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx`
 
 Output dir:
 
@@ -263,31 +264,32 @@ Output workbook/report:
 
 Key metrics:
 
-- `reviewed_workbook_exists = false`
+- `reviewed_workbook_exists = true`
 - `input_review_template_row_count = 1155`
-- `reviewed_row_count = 0`
-- `pending_review_count = 1155`
-- `confirmed_cell_count = 0`
-- `corrected_cell_count = 0`
+- `reviewed_row_count = 30`
+- `pending_review_count = 1125`
+- `confirmed_cell_count = 20`
+- `corrected_cell_count = 10`
 - `rejected_cell_count = 0`
 - `still_review_required_count = 0`
 - `needs_source_check_count = 0`
 - `validation_error_count = 0`
-- `net_confirmed_after_human_count = 0`
-- `net_review_reduction_count = 0`
-- `ready_for_342i = false`
-- `recommended_next_action = fill_342g_review_template_first`
+- `net_confirmed_after_human_count = 30`
+- `net_review_reduction_count = 30`
+- `ready_for_342i = true`
+- `recommended_342i_scope = table_first_post_human_review_sidecar_result`
+- `recommended_next_action = proceed_to_342i`
 - `qa_fail_count = 0`
 - `no-write-back proof passed`
 
 QA result:
 
 - 342G summary / QA / workbook detected
-- 342G `ready_for_342h = true` detected
-- review template detected with `1155` rows
-- reviewed workbook missing status recognized correctly
-- blank reviewer decisions treated as pending
-- no fake human decisions generated
+- reviewed workbook detected and consumed
+- blank reviewer decisions preserved as pending
+- allowed reviewer decisions enforced
+- corrected rows validated
+- source trace preserved
 - no upstream workbook modified
 - no protected dirty files staged
 - no output artifacts staged
@@ -295,12 +297,11 @@ QA result:
 
 Decision:
 
-- `TABLE_FIRST_HUMAN_REVIEW_APPLY_SIMULATION_342H_WAITING_FOR_HUMAN_REVIEW`
+- `TABLE_FIRST_HUMAN_REVIEW_APPLY_SIMULATION_342H_READY`
 
 Next recommended task:
 
-- `fill_342g_review_template_first`
-- after a valid reviewed workbook exists and passes 342H: `342I Table-First Post-Human-Review Sidecar Result`
+- `342I Table-First Post-Human-Review Sidecar Result`
 
 Do not repeat:
 
@@ -308,7 +309,7 @@ Do not repeat:
 - Do not call VLM / LLM for 342H.
 - Do not fabricate human review conclusions.
 - Do not write back to upstream 342G workbook or any earlier workbook.
-- Do not treat the waiting branch as a failure when the reviewed workbook is simply missing.
+- Do not claim full human review completion from this first reviewed batch of 30 rows.
 
 Touched source files:
 
@@ -326,6 +327,115 @@ python -m py_compile datefac\benchmark\table_first_human_review_apply_simulation
 python -m pytest tests\benchmark\test_table_first_human_review_apply_simulation_342h.py -q
 
 python tools\run_table_first_human_review_apply_simulation_342h.py --review-package-342g-dir D:\_datefac\output\table_first_extraction_review_package_342g --reviewed-input-dir D:\_datefac\input\table_first_review_342g_reviewed --output-dir D:\_datefac\output\table_first_human_review_apply_simulation_342h
+```
+
+Commit SHA, if known:
+
+- `9d749713be05beedaf9d3d6a08bf9fd180c45911`
+
+---
+
+## 342I Table-First Post-Human-Review Sidecar Result
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342I_first_post_human_sidecar_result`
+
+中文：
+342I 已完成。它读取当前真实的 342H apply simulation 结果，把首批 30 条已经通过人审确认/修正的 cells 整理成 post-human-review sidecar result，同时保留 1125 条 pending review 和剩余风险统计。342I 只是 sidecar result，不是正式财务结果，也不是正式 client delivery。
+
+English:
+342I is completed. It consumes the current real 342H apply simulation output, packages the first batch of 30 human-reviewed confirmed/corrected cells into a post-human-review sidecar result, and preserves the 1125 pending review rows plus remaining-risk summaries. 342I is a sidecar result only, not a formal financial output and not a formal client delivery package.
+
+Input dirs/files:
+
+- `D:/_datefac/output/table_first_human_review_apply_simulation_342h`
+- `D:/_datefac/output/table_first_human_review_apply_simulation_342h/table_first_human_review_apply_simulation_342h.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i`
+
+Output workbook/report:
+
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i/table_first_post_human_review_sidecar_result_342i.xlsx`
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i/table_first_post_human_review_sidecar_result_342i_report.md`
+
+Key metrics:
+
+- `input_review_template_row_count = 1155`
+- `reviewed_row_count = 30`
+- `pending_review_count = 1125`
+- `input_confirmed_cell_count = 20`
+- `input_corrected_cell_count = 10`
+- `input_rejected_cell_count = 0`
+- `final_confirmed_cell_count = 20`
+- `final_corrected_cell_count = 10`
+- `final_rejected_cell_count = 0`
+- `post_human_confirmed_count = 30`
+- `post_human_reviewed_cell_count = 30`
+- `metric_covered_after_human_count = 5`
+- `metric_year_pair_after_human_count = 25`
+- `remaining_review_count = 1125`
+- `unit_year_remaining_count = 939`
+- `duplicate_remaining_count = 387`
+- `growth_row_remaining_count = 140`
+- `source_check_remaining_count = 0`
+- `ready_for_342j = true`
+- `recommended_342j_scope = table_first_reviewed_client_preview_pilot`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342H summary / QA / workbook detected
+- 342H `ready_for_342i = true` detected
+- final confirmed rows come only from `CONFIRM_CELL`
+- final corrected rows come only from `CORRECT_AND_CONFIRM`
+- corrected rows actually use reviewer correction fields
+- pending rows preserved
+- source trace preserved
+- no upstream workbook modified
+- no reviewed input workbook staged
+- no protected dirty files staged
+- no output artifacts staged
+- no sheet name exceeds 31 chars
+
+Decision:
+
+- `TABLE_FIRST_POST_HUMAN_REVIEW_SIDECAR_RESULT_342I_READY`
+
+Next recommended task:
+
+- `342J Table-First Reviewed Client Preview Pilot`
+
+Do not repeat:
+
+- Do not rerun MinerU for 342I.
+- Do not call VLM / LLM for 342I.
+- Do not claim full human review completion from this first 30-row batch.
+- Do not claim `client_ready = true`.
+- Do not claim `production_ready = true`.
+- Do not write back to 342H or any earlier workbook.
+
+Touched source files:
+
+- `docs/codex_tasks/342I_table_first_post_human_review_sidecar_result.md`
+- `datefac/benchmark/table_first_post_human_review_sidecar_result_342i.py`
+- `datefac/benchmark/table_first_post_human_review_sidecar_result_342i_report.py`
+- `tools/run_table_first_post_human_review_sidecar_result_342i.py`
+- `tests/benchmark/test_table_first_post_human_review_sidecar_result_342i.py`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\table_first_post_human_review_sidecar_result_342i.py datefac\benchmark\table_first_post_human_review_sidecar_result_342i_report.py tools\run_table_first_post_human_review_sidecar_result_342i.py tests\benchmark\test_table_first_post_human_review_sidecar_result_342i.py
+
+python -m pytest tests\benchmark\test_table_first_post_human_review_sidecar_result_342i.py -q
+
+python tools\run_table_first_post_human_review_sidecar_result_342i.py --human-review-342h-dir D:\_datefac\output\table_first_human_review_apply_simulation_342h --output-dir D:\_datefac\output\table_first_post_human_review_sidecar_result_342i
 ```
 
 Commit SHA, if known:
@@ -1543,7 +1653,7 @@ Completed current chain:
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-fill_342g_review_template_first.
+342J Table-First Reviewed Client Preview Pilot.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -1594,7 +1704,8 @@ Current safe statements:
 - 342C6 pilot is 5/5 successful and is the effective pilot success baseline.
 - 342E table-first table audit is the effective current candidate quality audit.
 - 342F table-first long-form extraction is completed.
-- 342H waiting-for-human-review is the current sidecar stage, and the next concrete action is `fill_342g_review_template_first`.
+- 342H first reviewed batch apply simulation is completed and remains the effective upstream human-review state.
+- 342I post-human-review sidecar result is completed, and the next concrete action is `342J Table-First Reviewed Client Preview Pilot`.
 
 Unsafe statements:
 
