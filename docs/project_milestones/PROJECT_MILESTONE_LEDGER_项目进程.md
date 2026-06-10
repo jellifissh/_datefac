@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; and 342F table-first core financial long-form extraction is completed. The current next task remains 342G rather than rerunning 342C6, 342D, old 342E, or 342F.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; and 342G table-first extraction review package is completed. The current next task is 342H rather than rerunning 342C6, 342D, old 342E, 342F, or 342G.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342G Table-First Extraction Review Package
+342H Table-First Human Review Apply Simulation
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -137,6 +137,97 @@ Protected dirty files / dirs:
 - `blocked`: task could not proceed due to missing input/environment.
 - `planned`: task designed but not implemented.
 - `do_not_repeat`: completed stage should not be rerun without explicit revision request.
+
+---
+
+## 342G Table-First Extraction Review Package
+
+Status: `completed`
+
+中文：
+342G 已完成。它把 342F 的 table-first long-form extraction 结果整理成了可人工复核的 review workbook：`REVIEW_REQUIRED` 进入主复核队列，`TRUSTED_CELL` 进入受控抽样 spot-check，unit / year / duplicate / growth-row 风险被单独汇总，供下一步 342H apply simulation 使用。342G 仍然只是 sidecar review package，不是正式财务结果，不写回上游 workbook，不是 client-ready，也不是 production-ready。
+
+English:
+342G is completed. It packages the 342F table-first long-form extraction output into a human-review workbook: `REVIEW_REQUIRED` rows become the main review queue, `TRUSTED_CELL` rows become a bounded spot-check sample, and unit / year / duplicate / growth-row risks are rolled up for the next 342H apply simulation step. 342G remains a sidecar review package only, does not write back upstream workbooks, and is neither client-ready nor production-ready.
+
+Input:
+
+- `D:/_datefac/output/real_pdf_corpus_intake_342b`
+- `D:/_datefac/output/mineru_pilot_network_recovery_342c6`
+- `D:/_datefac/output/parser_ensemble_compare_342d`
+- `D:/_datefac/output/core_metric_candidate_quality_342e`
+- `D:/_datefac/output/table_first_core_financial_extraction_342f`
+
+Output:
+
+- `D:/_datefac/output/table_first_extraction_review_package_342g/table_first_extraction_review_package_342g.xlsx`
+
+Key metrics:
+
+- `audited_pdf_count = 5`
+- `input_long_form_cell_count = 5607`
+- `input_trusted_cell_count = 1428`
+- `input_review_required_cell_count = 1005`
+- `input_rejected_cell_count = 3174`
+- `review_queue_count = 1005`
+- `trusted_audit_sample_count = 150`
+- `unit_year_issue_count = 4128`
+- `duplicate_issue_count = 210`
+- `growth_row_issue_count = 174`
+- `high_priority_review_count = 702`
+- `medium_priority_review_count = 437`
+- `low_priority_review_count = 16`
+- `review_template_row_count = 1155`
+- `ready_for_342h = true`
+- `recommended_342h_scope = table_first_human_review_apply_simulation`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- all required 342F inputs detected
+- review queue generated from `05_REVIEW_REQUIRED` only
+- trusted audit generated from `04_TRUSTED_CELLS` only
+- rejected / excluded / `BASIC_DATA` rows not mixed into core review queue
+- source trace fields preserved
+- reviewer fields blank in generated template
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+
+Decision:
+
+- `TABLE_FIRST_EXTRACTION_REVIEW_PACKAGE_342G_READY`
+
+Next:
+
+- `342H Table-First Human Review Apply Simulation`
+
+Do not repeat:
+
+- Do not rerun MinerU for 342G.
+- Do not call VLM / LLM for 342G.
+- Do not go back to the old 435 text-candidate route.
+- Do not treat 342G workbook as formal client delivery.
+- Do not write back to upstream 342B / 342C6 / 342D / 342E / 342F workbooks.
+
+Touched source files:
+
+- `docs/codex_tasks/342G_table_first_extraction_review_package.md`
+- `datefac/benchmark/table_first_extraction_review_package_342g.py`
+- `datefac/benchmark/table_first_extraction_review_package_342g_report.py`
+- `tools/run_table_first_extraction_review_package_342g.py`
+- `tests/benchmark/test_table_first_extraction_review_package_342g.py`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\table_first_extraction_review_package_342g.py datefac\benchmark\table_first_extraction_review_package_342g_report.py tools\run_table_first_extraction_review_package_342g.py tests\benchmark\test_table_first_extraction_review_package_342g.py
+
+python -m pytest tests\benchmark\test_table_first_extraction_review_package_342g.py -q
+
+python tools\run_table_first_extraction_review_package_342g.py --corpus-342b-dir D:\_datefac\output\real_pdf_corpus_intake_342b --mineru-342c6-dir D:\_datefac\output\mineru_pilot_network_recovery_342c6 --parser-compare-342d-dir D:\_datefac\output\parser_ensemble_compare_342d --candidate-quality-342e-dir D:\_datefac\output\core_metric_candidate_quality_342e --core-extraction-342f-dir D:\_datefac\output\table_first_core_financial_extraction_342f --output-dir D:\_datefac\output\table_first_extraction_review_package_342g
+```
 
 ---
 
@@ -1349,7 +1440,7 @@ Completed current chain:
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-342G Table-First Extraction Review Package.
+342H Table-First Human Review Apply Simulation.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
