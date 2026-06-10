@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H first reviewed batch apply simulation is completed; and 342I post-human-review sidecar result is completed. The current next task is 342J reviewed client preview pilot rather than rerunning 342C6, 342D, old 342E, 342F, 342G, or 342H.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; and 342J reviewed client preview pilot is completed. The current next task is 342K LLM-assisted adjudication or reviewed preview polish rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342J Table-First Reviewed Client Preview Pilot
+342K LLM-Assisted Review Adjudication / Reviewed Preview Polish
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -237,14 +237,14 @@ Status: `completed`
 
 Effective version:
 
-- `effective_current_342H_first_reviewed_batch_applied`
+- `effective_current_342H_second_reviewed_batch_applied`
 - old waiting branch = `superseded_by_reviewed_batch_state`
 
 中文：
-342H 已完成，并且已经从最早的 waiting-for-human-review 状态推进到“首批 30 条人审已真实应用”的当前有效状态。它读取已填写的人审 workbook，验证 reviewer decisions，并以 no-write-back 方式生成 apply simulation 结果。当前这 30 条结果已经可供 342I 继续消费，但不代表全量人审已经完成。
+342H 已完成，并且已经从最早的 waiting-for-human-review 状态推进到“前两批共 80 条人审已真实应用”的当前有效状态。它读取已填写的人审 workbook，验证 reviewer decisions，并以 no-write-back 方式生成 apply simulation 结果。当前这 80 条结果已经可供 342I 继续消费，但不代表全量人审已经完成。
 
 English:
-342H is completed and has moved beyond the original waiting-for-human-review branch into the current effective state where the first reviewed batch of 30 rows has been applied. It consumes the reviewed workbook, validates reviewer decisions, and produces a no-write-back apply simulation result. These 30 reviewed rows are now usable by 342I, but they do not mean the full review queue is complete.
+342H is completed and has moved beyond the original waiting-for-human-review branch into the current effective state where the first two reviewed batches, totaling 80 rows, have been applied. It consumes the reviewed workbook, validates reviewer decisions, and produces a no-write-back apply simulation result. These 80 reviewed rows are now usable by 342I, but they do not mean the full review queue is complete.
 
 Input dirs/files:
 
@@ -266,16 +266,16 @@ Key metrics:
 
 - `reviewed_workbook_exists = true`
 - `input_review_template_row_count = 1155`
-- `reviewed_row_count = 30`
-- `pending_review_count = 1125`
-- `confirmed_cell_count = 20`
+- `reviewed_row_count = 80`
+- `pending_review_count = 1075`
+- `confirmed_cell_count = 31`
 - `corrected_cell_count = 10`
-- `rejected_cell_count = 0`
+- `rejected_cell_count = 39`
 - `still_review_required_count = 0`
 - `needs_source_check_count = 0`
 - `validation_error_count = 0`
-- `net_confirmed_after_human_count = 30`
-- `net_review_reduction_count = 30`
+- `net_confirmed_after_human_count = 41`
+- `net_review_reduction_count = 80`
 - `ready_for_342i = true`
 - `recommended_342i_scope = table_first_post_human_review_sidecar_result`
 - `recommended_next_action = proceed_to_342i`
@@ -309,7 +309,7 @@ Do not repeat:
 - Do not call VLM / LLM for 342H.
 - Do not fabricate human review conclusions.
 - Do not write back to upstream 342G workbook or any earlier workbook.
-- Do not claim full human review completion from this first reviewed batch of 30 rows.
+- Do not claim full human review completion from the current 80-row reviewed batch.
 
 Touched source files:
 
@@ -341,13 +341,13 @@ Status: `completed`
 
 Effective version:
 
-- `effective_current_342I_first_post_human_sidecar_result`
+- `effective_current_342I_rerun_with_80_reviewed_rows`
 
 中文：
-342I 已完成。它读取当前真实的 342H apply simulation 结果，把首批 30 条已经通过人审确认/修正的 cells 整理成 post-human-review sidecar result，同时保留 1125 条 pending review 和剩余风险统计。342I 只是 sidecar result，不是正式财务结果，也不是正式 client delivery。
+342I 已完成。它读取当前真实的 342H apply simulation 结果，并已基于最新 80 条 reviewed rows 重跑，把其中 41 条 confirmed/corrected cells 整理成 post-human-review sidecar result，同时保留 1075 条 pending review 和剩余风险统计。342I 只是 sidecar result，不是正式财务结果，也不是正式 client delivery。
 
 English:
-342I is completed. It consumes the current real 342H apply simulation output, packages the first batch of 30 human-reviewed confirmed/corrected cells into a post-human-review sidecar result, and preserves the 1125 pending review rows plus remaining-risk summaries. 342I is a sidecar result only, not a formal financial output and not a formal client delivery package.
+342I is completed. It consumes the current real 342H apply simulation output and has been rerun against the latest 80 reviewed rows, packaging 41 human-confirmed or human-corrected cells into a post-human-review sidecar result while preserving 1075 pending review rows plus remaining-risk summaries. 342I is a sidecar result only, not a formal financial output and not a formal client delivery package.
 
 Input dirs/files:
 
@@ -366,21 +366,21 @@ Output workbook/report:
 Key metrics:
 
 - `input_review_template_row_count = 1155`
-- `reviewed_row_count = 30`
-- `pending_review_count = 1125`
-- `input_confirmed_cell_count = 20`
+- `reviewed_row_count = 80`
+- `pending_review_count = 1075`
+- `input_confirmed_cell_count = 31`
 - `input_corrected_cell_count = 10`
 - `input_rejected_cell_count = 0`
-- `final_confirmed_cell_count = 20`
+- `final_confirmed_cell_count = 31`
 - `final_corrected_cell_count = 10`
-- `final_rejected_cell_count = 0`
-- `post_human_confirmed_count = 30`
-- `post_human_reviewed_cell_count = 30`
+- `final_rejected_cell_count = 39`
+- `post_human_confirmed_count = 41`
+- `post_human_reviewed_cell_count = 80`
 - `metric_covered_after_human_count = 5`
 - `metric_year_pair_after_human_count = 25`
-- `remaining_review_count = 1125`
-- `unit_year_remaining_count = 939`
-- `duplicate_remaining_count = 387`
+- `remaining_review_count = 1075`
+- `unit_year_remaining_count = 889`
+- `duplicate_remaining_count = 348`
 - `growth_row_remaining_count = 140`
 - `source_check_remaining_count = 0`
 - `ready_for_342j = true`
@@ -415,7 +415,7 @@ Do not repeat:
 
 - Do not rerun MinerU for 342I.
 - Do not call VLM / LLM for 342I.
-- Do not claim full human review completion from this first 30-row batch.
+- Do not claim full human review completion from the current 80-row batch.
 - Do not claim `client_ready = true`.
 - Do not claim `production_ready = true`.
 - Do not write back to 342H or any earlier workbook.
@@ -436,6 +436,117 @@ python -m py_compile datefac\benchmark\table_first_post_human_review_sidecar_res
 python -m pytest tests\benchmark\test_table_first_post_human_review_sidecar_result_342i.py -q
 
 python tools\run_table_first_post_human_review_sidecar_result_342i.py --human-review-342h-dir D:\_datefac\output\table_first_human_review_apply_simulation_342h --output-dir D:\_datefac\output\table_first_post_human_review_sidecar_result_342i
+```
+
+Commit SHA, if known:
+
+- `8d353142170cc3efedc169fcea5d9b568a53e120`
+
+---
+
+## 342J Table-First Reviewed Client Preview Pilot
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342J_reviewed_client_preview_pilot`
+
+中文：
+342J 已完成。它读取当前真实的 342I post-human-review sidecar result，把 80 条 reviewed rows 中可进入 preview 的 41 条 confirmed/corrected cells 整理成 reviewed client preview pilot，并把 1075 条 pending review、39 条 rejected/not-core 以及剩余风险显式保留下来。342J 只是 reviewed client preview pilot，不是正式 client delivery，也不是 production-ready。
+
+English:
+342J is completed. It consumes the current real 342I post-human-review sidecar result, packages the 41 preview-eligible confirmed/corrected rows from the current 80 reviewed rows into a reviewed client preview pilot, and explicitly preserves the 1075 pending review rows, 39 rejected or not-core rows, and remaining-risk counts. 342J is a reviewed client preview pilot only, not formal client delivery and not production-ready.
+
+Input dirs/files:
+
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i`
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i/table_first_post_human_review_sidecar_result_342i.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j`
+
+Output workbook/report:
+
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j/table_first_reviewed_client_preview_pilot_342j.xlsx`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j/table_first_reviewed_client_preview_pilot_342j_report.md`
+
+Key metrics:
+
+- `input_review_template_row_count = 1155`
+- `reviewed_row_count = 80`
+- `pending_review_count = 1075`
+- `input_post_human_confirmed_count = 41`
+- `reviewed_preview_row_count = 41`
+- `confirmed_preview_row_count = 31`
+- `corrected_preview_row_count = 10`
+- `rejected_in_batch_count = 39`
+- `metric_covered_count = 5`
+- `metric_year_pair_count = 25`
+- `pdf_covered_count = 1`
+- `table_covered_count = 4`
+- `remaining_review_count = 1075`
+- `unit_year_remaining_count = 889`
+- `duplicate_remaining_count = 348`
+- `growth_row_remaining_count = 140`
+- `source_trace_missing_count = 0`
+- `ready_for_342k = true`
+- `recommended_342k_scope = llm_assisted_review_adjudication_or_preview_polish`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342I summary / QA / workbook detected
+- 342I `ready_for_342j = true` detected
+- preview rows come only from confirmed / corrected rows
+- rejected rows are not included in preview
+- pending review rows are not included in preview
+- `NOT_A_CORE_METRIC` rows are not included in preview
+- source trace fields are preserved
+- no upstream workbook modified
+- no reviewed input workbook staged
+- no protected dirty files staged
+- no output artifacts staged
+- no sheet name exceeds 31 chars
+
+Decision:
+
+- `TABLE_FIRST_REVIEWED_CLIENT_PREVIEW_PILOT_342J_READY`
+
+Next recommended task:
+
+- `342K LLM-Assisted Review Adjudication`
+- `342K Reviewed Preview Polish`
+
+Do not repeat:
+
+- Do not rerun MinerU for 342J.
+- Do not call VLM / LLM for 342J.
+- Do not claim full human review completion from the current 80-row batch.
+- Do not claim `client_ready = true`.
+- Do not claim `production_ready = true`.
+- Do not write back to 342I or any earlier workbook.
+
+Touched source files:
+
+- `docs/codex_tasks/342J_table_first_reviewed_client_preview_pilot.md`
+- `datefac/benchmark/table_first_reviewed_client_preview_pilot_342j.py`
+- `datefac/benchmark/table_first_reviewed_client_preview_pilot_342j_report.py`
+- `tools/run_table_first_reviewed_client_preview_pilot_342j.py`
+- `tests/benchmark/test_table_first_reviewed_client_preview_pilot_342j.py`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\table_first_reviewed_client_preview_pilot_342j.py datefac\benchmark\table_first_reviewed_client_preview_pilot_342j_report.py tools\run_table_first_reviewed_client_preview_pilot_342j.py tests\benchmark\test_table_first_reviewed_client_preview_pilot_342j.py
+
+python -m pytest tests\benchmark\test_table_first_reviewed_client_preview_pilot_342j.py -q
+
+python tools\run_table_first_reviewed_client_preview_pilot_342j.py --post-human-review-342i-dir D:\_datefac\output\table_first_post_human_review_sidecar_result_342i --output-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j
 ```
 
 Commit SHA, if known:
@@ -1653,7 +1764,7 @@ Completed current chain:
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-342J Table-First Reviewed Client Preview Pilot.
+342K LLM-Assisted Review Adjudication / Reviewed Preview Polish.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -1704,8 +1815,9 @@ Current safe statements:
 - 342C6 pilot is 5/5 successful and is the effective pilot success baseline.
 - 342E table-first table audit is the effective current candidate quality audit.
 - 342F table-first long-form extraction is completed.
-- 342H first reviewed batch apply simulation is completed and remains the effective upstream human-review state.
-- 342I post-human-review sidecar result is completed, and the next concrete action is `342J Table-First Reviewed Client Preview Pilot`.
+- 342H second reviewed batch apply simulation is the effective upstream human-review state.
+- 342I post-human-review sidecar result has been rerun with 80 reviewed rows.
+- 342J reviewed client preview pilot is completed, and the next concrete action is `342K LLM-Assisted Review Adjudication / Reviewed Preview Polish`.
 
 Unsafe statements:
 
