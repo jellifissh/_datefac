@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; and 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper. The current next task is 342L LLM suggestion apply or human spot-check simulation rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; and 342L suggestion-apply simulation is completed as a no-write-back control layer. The current next task is 342M LLM suggestion spot-check apply or controlled real LLM response ingestion rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342L LLM Suggestion Apply Or Human Spot-Check Simulation
+342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -1789,7 +1789,122 @@ python tools\run_llm_assisted_review_adjudication_342k.py --reviewed-preview-342
 
 Commit SHA, if known:
 
-- `pending current 342K commit`
+- `cfeedd563ea009271823eba1c177c58dd38b675e`
+
+---
+
+## 342L LLM Suggestion Apply Or Human Spot-Check Simulation
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342L_suggestion_apply_simulation`
+
+中文：
+342L 已完成。它读取当前真实的 342K adjudication pilot 与 342J reviewed preview boundary，不把 dry-run suggestions 当成真实 LLM 输出，也不把 auto-confirm candidates 当成最终确认，而是生成 suggestion-apply simulation、mandatory spot-check sample、prefill review draft、conflict blockers 和 reduction simulation。342L 仍然是 no-write-back sidecar，不是正式 client delivery，也不是 production-ready。
+
+English:
+342L is completed. It consumes the current real 342K adjudication pilot plus the 342J reviewed-preview boundary. It does not treat dry-run suggestions as real LLM outputs, and it does not treat auto-confirm candidates as final confirmations. Instead, it generates a suggestion-apply simulation, a mandatory spot-check sample, a prefilled review draft, conflict blockers, and a review-reduction simulation. 342L remains a no-write-back sidecar, not formal client delivery and not production-ready.
+
+Input dirs/files:
+
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k.xlsx`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_prompt_pack.jsonl`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_request_pack.jsonl`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j/table_first_reviewed_client_preview_pilot_342j.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/llm_suggestion_apply_simulation_342l`
+
+Output workbook/report:
+
+- `D:/_datefac/output/llm_suggestion_apply_simulation_342l/llm_suggestion_apply_simulation_342l.xlsx`
+- `D:/_datefac/output/llm_suggestion_apply_simulation_342l/llm_suggestion_apply_simulation_342l_report.md`
+
+Key metrics:
+
+- `pending_review_count = 1075`
+- `auto_confirm_candidate_count = 254`
+- `spot_check_sample_count = 50`
+- `human_required_count = 717`
+- `conflict_count = 763`
+- `prefill_review_draft_count = 1075`
+- `prompt_pack_count = 358`
+- `request_pack_count = 358`
+- `jsonl_parse_error_count = 0`
+- `theoretical_review_reduction_count = 254`
+- `risk_adjusted_reduction_count = 204`
+- `required_human_review_after_strategy = 767`
+- `reduction_rate = 0.236279`
+- `conservative_reduction_rate = 0.189767`
+- `unit_year_risk_count = 577`
+- `duplicate_risk_count = 348`
+- `growth_row_risk_count = 152`
+- `source_trace_risk_count = 498`
+- `metric_mapping_risk_count = 309`
+- `ready_for_342m = true`
+- `recommended_342m_scope = llm_suggestion_spot_check_apply_or_real_llm_response_ingestion`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342K summary / QA / workbook / prompt pack / request pack detected
+- 342K `ready_for_342l = true` detected
+- auto-confirm candidates remain candidates only
+- human-required rows remain outside auto-apply
+- conflict blockers remain outside auto-apply
+- reviewer fields stay blank in prefill review draft
+- spot-check sample generated
+- prompt/request jsonl parsed successfully
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+
+Decision:
+
+- `LLM_SUGGESTION_APPLY_SIMULATION_342L_READY`
+
+Next:
+
+- `342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion`
+
+Do not repeat:
+
+- Do not treat dry-run suggestions as real LLM output.
+- Do not treat auto-confirm candidates as final confirmations.
+- Do not skip human spot-check before any broader adoption.
+- Do not write back to 342J / 342K or earlier workbooks.
+- Do not claim `client_ready = true` or `production_ready = true`.
+
+Touched source files:
+
+- `docs/codex_tasks/342L_llm_suggestion_apply_or_human_spot_check_simulation.md`
+- `datefac/benchmark/llm_suggestion_apply_simulation_342l.py`
+- `datefac/benchmark/llm_suggestion_apply_simulation_342l_report.py`
+- `tools/run_llm_suggestion_apply_simulation_342l.py`
+- `tests/benchmark/test_llm_suggestion_apply_simulation_342l.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\llm_suggestion_apply_simulation_342l.py datefac\benchmark\llm_suggestion_apply_simulation_342l_report.py tools\run_llm_suggestion_apply_simulation_342l.py tests\benchmark\test_llm_suggestion_apply_simulation_342l.py
+
+python -m pytest tests\benchmark\test_llm_suggestion_apply_simulation_342l.py -q
+
+python tools\run_llm_suggestion_apply_simulation_342l.py --llm-review-342k-dir D:\_datefac\output\llm_assisted_review_adjudication_342k --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --output-dir D:\_datefac\output\llm_suggestion_apply_simulation_342l
+```
+
+Commit SHA, if known:
+
+- `pending current 342L commit`
 
 ---
 
@@ -1883,11 +1998,12 @@ Completed current chain:
 - 342I completed post-human-review sidecar result: post_human_confirmed_count=41, pending_review_count=1075, qa_fail_count=0.
 - 342J completed reviewed client preview pilot: reviewed_preview_row_count=41, confirmed_preview_row_count=31, corrected_preview_row_count=10, pending_review_count=1075, qa_fail_count=0.
 - 342K completed LLM-assisted adjudication pilot: llm_candidate_pool_count=1075, prompt_package_count=358, request_pack_count=358, human_required_count=717, auto_confirm_candidate_count=254, ready_for_342l=true, qa_fail_count=0.
+- 342L completed LLM suggestion apply simulation: auto_confirm_candidate_count=254, spot_check_sample_count=50, human_required_count=717, conflict_count=763, risk_adjusted_reduction_count=204, ready_for_342m=true, qa_fail_count=0.
 
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-342L LLM Suggestion Apply Or Human Spot-Check Simulation.
+342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -1941,7 +2057,8 @@ Current safe statements:
 - 342H second reviewed batch apply simulation is the effective upstream human-review state.
 - 342I post-human-review sidecar result has been rerun with 80 reviewed rows.
 - 342J reviewed client preview pilot is completed.
-- 342K LLM-assisted review adjudication pilot is completed, and the next concrete action is `342L LLM Suggestion Apply Or Human Spot-Check Simulation`.
+- 342K LLM-assisted review adjudication pilot is completed.
+- 342L suggestion-apply simulation is completed, and the next concrete action is `342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion`.
 
 Unsafe statements:
 
