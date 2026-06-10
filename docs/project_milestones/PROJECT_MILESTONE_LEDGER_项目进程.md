@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; and 342G table-first extraction review package is completed. The current next task is 342H rather than rerunning 342C6, 342D, old 342E, 342F, or 342G.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; and 342H apply simulation is now completed in a waiting-for-human-review state because no reviewed workbook has been provided yet. The current next task is to fill the 342G review template rather than rerunning 342C6, 342D, old 342E, 342F, or 342G.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342H Table-First Human Review Apply Simulation
+fill_342g_review_template_first
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -228,6 +228,109 @@ python -m pytest tests\benchmark\test_table_first_extraction_review_package_342g
 
 python tools\run_table_first_extraction_review_package_342g.py --corpus-342b-dir D:\_datefac\output\real_pdf_corpus_intake_342b --mineru-342c6-dir D:\_datefac\output\mineru_pilot_network_recovery_342c6 --parser-compare-342d-dir D:\_datefac\output\parser_ensemble_compare_342d --candidate-quality-342e-dir D:\_datefac\output\core_metric_candidate_quality_342e --core-extraction-342f-dir D:\_datefac\output\table_first_core_financial_extraction_342f --output-dir D:\_datefac\output\table_first_extraction_review_package_342g
 ```
+
+---
+
+## 342H Table-First Human Review Apply Simulation
+
+Status: `completed_with_warnings / waiting_for_human_review`
+
+Effective version:
+
+- `effective_current_342H_waiting_branch`
+
+中文：
+342H 已完成 sidecar 级的人审应用模拟实现，并且真实运行通过。当前由于 `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx` 还不存在，所以 342H 正确进入 `WAITING_FOR_HUMAN_REVIEW` 分支，而不是伪造任何 apply 结果。这个阶段已经能安全识别“尚无人审输入”的状态，并输出 waiting 报告、QA、no-write-back proof 和 workbook。
+
+English:
+342H sidecar human-review apply simulation is implemented and passed a real run. Because `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx` does not exist yet, 342H correctly enters the `WAITING_FOR_HUMAN_REVIEW` branch instead of fabricating any apply result. The stage can now safely recognize the absence of reviewed human input and emit a waiting report, QA, no-write-back proof, and workbook.
+
+Input dirs/files:
+
+- `D:/_datefac/output/table_first_extraction_review_package_342g`
+- `D:/_datefac/output/table_first_extraction_review_package_342g/table_first_extraction_review_package_342g.xlsx`
+- optional reviewed input dir: `D:/_datefac/input/table_first_review_342g_reviewed`
+- preferred reviewed workbook path: `D:/_datefac/input/table_first_review_342g_reviewed/table_first_extraction_review_package_342g_reviewed.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/table_first_human_review_apply_simulation_342h`
+
+Output workbook/report:
+
+- `D:/_datefac/output/table_first_human_review_apply_simulation_342h/table_first_human_review_apply_simulation_342h.xlsx`
+- `D:/_datefac/output/table_first_human_review_apply_simulation_342h/table_first_human_review_apply_simulation_342h_report.md`
+
+Key metrics:
+
+- `reviewed_workbook_exists = false`
+- `input_review_template_row_count = 1155`
+- `reviewed_row_count = 0`
+- `pending_review_count = 1155`
+- `confirmed_cell_count = 0`
+- `corrected_cell_count = 0`
+- `rejected_cell_count = 0`
+- `still_review_required_count = 0`
+- `needs_source_check_count = 0`
+- `validation_error_count = 0`
+- `net_confirmed_after_human_count = 0`
+- `net_review_reduction_count = 0`
+- `ready_for_342i = false`
+- `recommended_next_action = fill_342g_review_template_first`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342G summary / QA / workbook detected
+- 342G `ready_for_342h = true` detected
+- review template detected with `1155` rows
+- reviewed workbook missing status recognized correctly
+- blank reviewer decisions treated as pending
+- no fake human decisions generated
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+- no sheet name exceeds 31 chars
+
+Decision:
+
+- `TABLE_FIRST_HUMAN_REVIEW_APPLY_SIMULATION_342H_WAITING_FOR_HUMAN_REVIEW`
+
+Next recommended task:
+
+- `fill_342g_review_template_first`
+- after a valid reviewed workbook exists and passes 342H: `342I Table-First Post-Human-Review Sidecar Result`
+
+Do not repeat:
+
+- Do not rerun MinerU for 342H.
+- Do not call VLM / LLM for 342H.
+- Do not fabricate human review conclusions.
+- Do not write back to upstream 342G workbook or any earlier workbook.
+- Do not treat the waiting branch as a failure when the reviewed workbook is simply missing.
+
+Touched source files:
+
+- `docs/codex_tasks/342H_table_first_human_review_apply_simulation.md`
+- `datefac/benchmark/table_first_human_review_apply_simulation_342h.py`
+- `datefac/benchmark/table_first_human_review_apply_simulation_342h_report.py`
+- `tools/run_table_first_human_review_apply_simulation_342h.py`
+- `tests/benchmark/test_table_first_human_review_apply_simulation_342h.py`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\table_first_human_review_apply_simulation_342h.py datefac\benchmark\table_first_human_review_apply_simulation_342h_report.py tools\run_table_first_human_review_apply_simulation_342h.py tests\benchmark\test_table_first_human_review_apply_simulation_342h.py
+
+python -m pytest tests\benchmark\test_table_first_human_review_apply_simulation_342h.py -q
+
+python tools\run_table_first_human_review_apply_simulation_342h.py --review-package-342g-dir D:\_datefac\output\table_first_extraction_review_package_342g --reviewed-input-dir D:\_datefac\input\table_first_review_342g_reviewed --output-dir D:\_datefac\output\table_first_human_review_apply_simulation_342h
+```
+
+Commit SHA, if known:
+
+- pending
 
 ---
 
@@ -1440,7 +1543,7 @@ Completed current chain:
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-342H Table-First Human Review Apply Simulation.
+fill_342g_review_template_first.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -1491,7 +1594,7 @@ Current safe statements:
 - 342C6 pilot is 5/5 successful and is the effective pilot success baseline.
 - 342E table-first table audit is the effective current candidate quality audit.
 - 342F table-first long-form extraction is completed.
-- 342G should be the next table-first extraction review package stage.
+- 342H waiting-for-human-review is the current sidecar stage, and the next concrete action is `fill_342g_review_template_first`.
 
 Unsafe statements:
 
