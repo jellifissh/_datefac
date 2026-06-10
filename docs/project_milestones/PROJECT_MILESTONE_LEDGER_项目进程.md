@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成。当前下一步仍应是 342G，而不是回头重跑 342C6、342D、旧 342E 或 342F。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; and 342L suggestion-apply simulation is completed as a no-write-back control layer. The current next task is 342M LLM suggestion spot-check apply or controlled real LLM response ingestion rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; 342L suggestion-apply simulation is completed as a no-write-back control layer; and 342M spot-check / real-response gate is completed in a waiting-for-evidence state. The current next task is to collect the 342M reviewed spot-check workbook or real LLM response evidence rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion
+Collect 342M spot-check workbook or real LLM responses
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -1908,6 +1908,122 @@ Commit SHA, if known:
 
 ---
 
+## 342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion
+
+Status: `completed_with_warnings`
+
+Effective version:
+
+- `effective_current_342M_waiting_for_evidence_gate`
+
+中文：
+342M 已完成，但当前完成态是严格的 waiting-for-evidence gate。它读取真实的 342L / 342K / 342J 产物，生成人工 spot-check review template、real LLM response schema 和 ingestion template，并在没有人工 spot-check workbook、也没有真实 LLM response jsonl 的前提下，明确停在 WAITING_FOR_EVIDENCE，而不是误报成 ready/apply 完成。342M 仍然是 no-write-back sidecar，不写回上游 workbook，不是 client-ready，也不是 production-ready。
+
+English:
+342M is completed, but its current effective state is a strict waiting-for-evidence gate. It consumes the real 342L / 342K / 342J artifacts, generates a human spot-check review template plus a real LLM response schema and ingestion template, and correctly stops at WAITING_FOR_EVIDENCE when neither the reviewed spot-check workbook nor real LLM response jsonl files are present. 342M remains a no-write-back sidecar, does not write back to upstream workbooks, and is neither client-ready nor production-ready.
+
+Input dirs/files:
+
+- `D:/_datefac/output/llm_suggestion_apply_simulation_342l`
+- `D:/_datefac/output/llm_suggestion_apply_simulation_342l/llm_suggestion_apply_simulation_342l.xlsx`
+- `D:/_datefac/output/llm_suggestion_apply_simulation_342l/llm_suggestion_apply_simulation_342l_summary.json`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_prompt_pack.jsonl`
+- `D:/_datefac/output/llm_assisted_review_adjudication_342k/llm_assisted_review_adjudication_342k_request_pack.jsonl`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j/table_first_reviewed_client_preview_pilot_342j_summary.json`
+- optional reviewed evidence dir: `D:/_datefac/input/spot_check_reviewed_342m`
+- optional real response dir: `D:/_datefac/input/llm_review_responses_342m`
+
+Output dir:
+
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m`
+
+Output workbook/report:
+
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m/llm_suggestion_spot_check_gate_342m.xlsx`
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m/llm_suggestion_spot_check_gate_342m_report.md`
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m/llm_suggestion_spot_check_review_template_342m.xlsx`
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m/real_llm_response_schema_342m.json`
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m/real_llm_response_ingestion_template_342m.jsonl`
+
+Key metrics:
+
+- `pending_review_count = 1075`
+- `auto_confirm_candidate_count = 254`
+- `spot_check_sample_count = 50`
+- `reviewed_spot_check_count = 0`
+- `spot_check_validation_error_count = 0`
+- `response_count = 0`
+- `valid_llm_response_count = 0`
+- `jsonl_parse_error_count = 0`
+- `schema_validation_error_count = 0`
+- `adoption_candidate_count = 0`
+- `blocked_candidate_count = 254`
+- `risk_adjusted_reduction_count = 0`
+- `required_human_review_after_gate = 1075`
+- `conservative_reduction_rate_after_gate = 0.0`
+- `waiting_for_human_spot_check = true`
+- `waiting_for_real_llm_responses = true`
+- `ready_for_342n = false`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342L summary / QA / workbook detected
+- 342L `ready_for_342m = true` detected
+- 342K prompt pack / request pack parsed successfully
+- 342J boundary summary confirmed `client_ready=false` and `production_ready=false`
+- spot-check template generated with blank reviewer fields
+- real LLM response schema and ingestion template generated
+- no fake human spot-check result generated
+- no fake real LLM response generated
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+
+Decision:
+
+- `LLM_SUGGESTION_SPOT_CHECK_GATE_342M_WAITING_FOR_EVIDENCE`
+
+Next recommended task:
+
+- collect `342M` reviewed spot-check workbook or real LLM response files
+
+Do not repeat:
+
+- Do not claim 342M is a real apply stage.
+- Do not treat dry-run suggestions as real LLM output.
+- Do not treat auto-confirm candidates as final confirmations.
+- Do not fabricate spot-check evidence or real LLM responses.
+- Do not write back to 342J / 342K / 342L or earlier workbooks.
+
+Touched source files:
+
+- `docs/codex_tasks/342M_llm_suggestion_spot_check_apply_or_real_llm_response_ingestion.md`
+- `datefac/benchmark/llm_suggestion_spot_check_gate_342m.py`
+- `datefac/benchmark/llm_suggestion_spot_check_gate_342m_report.py`
+- `tools/run_llm_suggestion_spot_check_gate_342m.py`
+- `tests/benchmark/test_llm_suggestion_spot_check_gate_342m.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\llm_suggestion_spot_check_gate_342m.py datefac\benchmark\llm_suggestion_spot_check_gate_342m_report.py tools\run_llm_suggestion_spot_check_gate_342m.py tests\benchmark\test_llm_suggestion_spot_check_gate_342m.py
+
+python -m pytest tests\benchmark\test_llm_suggestion_spot_check_gate_342m.py -q
+
+python tools\run_llm_suggestion_spot_check_gate_342m.py --llm-suggestion-342l-dir D:\_datefac\output\llm_suggestion_apply_simulation_342l --llm-review-342k-dir D:\_datefac\output\llm_assisted_review_adjudication_342k --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --spot-check-reviewed-dir D:\_datefac\input\spot_check_reviewed_342m --llm-response-dir D:\_datefac\input\llm_review_responses_342m --output-dir D:\_datefac\output\llm_suggestion_spot_check_gate_342m
+```
+
+Commit SHA, if known:
+
+- `pending current 342M commit`
+
+---
+
 # 6. 环境账本 / Environment Ledger
 
 ## MinerU Environment
@@ -1999,11 +2115,12 @@ Completed current chain:
 - 342J completed reviewed client preview pilot: reviewed_preview_row_count=41, confirmed_preview_row_count=31, corrected_preview_row_count=10, pending_review_count=1075, qa_fail_count=0.
 - 342K completed LLM-assisted adjudication pilot: llm_candidate_pool_count=1075, prompt_package_count=358, request_pack_count=358, human_required_count=717, auto_confirm_candidate_count=254, ready_for_342l=true, qa_fail_count=0.
 - 342L completed LLM suggestion apply simulation: auto_confirm_candidate_count=254, spot_check_sample_count=50, human_required_count=717, conflict_count=763, risk_adjusted_reduction_count=204, ready_for_342m=true, qa_fail_count=0.
+- 342M completed waiting-state spot-check / response gate: reviewed_spot_check_count=0, response_count=0, adoption_candidate_count=0, required_human_review_after_gate=1075, ready_for_342n=false, qa_fail_count=0.
 
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion.
+Collect the 342M reviewed spot-check workbook or real LLM response evidence.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
@@ -2058,7 +2175,8 @@ Current safe statements:
 - 342I post-human-review sidecar result has been rerun with 80 reviewed rows.
 - 342J reviewed client preview pilot is completed.
 - 342K LLM-assisted review adjudication pilot is completed.
-- 342L suggestion-apply simulation is completed, and the next concrete action is `342M LLM Suggestion Spot-Check Apply Or Real LLM Response Ingestion`.
+- 342L suggestion-apply simulation is completed.
+- 342M spot-check / real-response gate is completed in `WAITING_FOR_EVIDENCE`, and the next concrete action is to collect the reviewed spot-check workbook or real LLM responses.
 
 Unsafe statements:
 
