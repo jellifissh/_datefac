@@ -2596,6 +2596,130 @@ Commit SHA, if known:
 
 ---
 
+## 342S Package Audit Snapshot Or Demo Handoff
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342S_package_audit_snapshot_demo_handoff`
+
+English:
+342S is completed. It reads the real 342R audit-labeled export candidate package and generates a bounded package audit snapshot / demo handoff bundle. 342S does not create a formal client export, does not write back to upstream workbooks, does not convert simulated rows into final confirmations, and must keep `formal_client_export_allowed=false`, `client_ready=false`, and `production_ready=false`.
+
+Input dirs/files:
+
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r`
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r/audit_labeled_export_candidate_package_342r.xlsx`
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r/audit_labeled_export_candidate_package_342r_summary.json`
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r/audit_labeled_export_candidate_package_342r_qa.json`
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q`
+- `D:/_datefac/output/reviewed_plus_simulated_client_preview_342p`
+- `D:/_datefac/output/post_adoption_sidecar_simulation_342o`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j`
+
+Output dir:
+
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s`
+
+Output workbook/report:
+
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s/package_audit_snapshot_demo_handoff_342s.xlsx`
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s/package_audit_snapshot_demo_handoff_342s_report.md`
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s/package_audit_snapshot_demo_handoff_342s_demo_readme.md`
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s/package_audit_snapshot_demo_handoff_342s_handoff_checklist.md`
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s/package_audit_snapshot_demo_handoff_342s_next_step_plan.md`
+
+Key metrics:
+
+- `latest_completed_milestone = 342R`
+- `current_milestone = 342S`
+- `current_mainline = MinerU-first / table-first`
+- `export_candidate_package_row_count = 130`
+- `human_reviewed_candidate_count = 30`
+- `simulated_candidate_count = 100`
+- `simulated_direct_candidate_count = 61`
+- `simulated_corrected_candidate_count = 39`
+- `disclaimer_required_count = 100`
+- `later_audit_required_count = 100`
+- `export_risk_level = HIGH`
+- `collision_logged_count = 99`
+- `duplicate_metric_year_source_count = 99`
+- `severe_collision_count = 20`
+- `unresolved_collision_count = 0`
+- `human_over_simulation_override_count = 9`
+- `simulated_duplicate_dropped_count = 79`
+- `still_human_required_count = 66`
+- `remaining_review_count = 887`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `demo_handoff_ready = true`
+- `ready_for_343a = true`
+- `recommended_343a_scope = review_queue_schema_and_human_review_ui_pilot`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342R summary / QA / workbook / candidates CSV / metadata detected
+- 342R decision `AUDIT_LABELED_EXPORT_CANDIDATE_PACKAGE_342R_READY` confirmed
+- 342R required sheets detected
+- supporting 342Q / 342P / 342O / 342J ready summaries detected
+- 342R workbook counts matched summary counts
+- trust-level split remained consistent with 30 HUMAN_REVIEWED + 100 SIMULATED rows
+- risk boundary preserved with `formal_client_export_allowed=false`, `client_ready=false`, `production_ready=false`
+- demo guide generated
+- artifact index generated
+- handoff checklist generated
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+- no sheet name exceeds 31 chars
+
+Decision:
+
+- `PACKAGE_AUDIT_SNAPSHOT_DEMO_HANDOFF_342S_READY`
+
+Next recommended task:
+
+- `343A Review Queue Schema And Human Review UI Pilot`
+
+Do not repeat:
+
+- Do not treat 342S as formal client export.
+- Do not treat 342S as final human-review completion.
+- Do not treat 342S as real LLM review completion.
+- Do not claim `formal_client_export_allowed = true`.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not write 342S outputs back to 342R / 342Q / 342P / 342O / 342J or earlier workbooks.
+- Do not use 342S as investment advice.
+
+Touched source files:
+
+- `docs/codex_tasks/342S_package_audit_snapshot_demo_handoff.md`
+- `datefac/benchmark/package_audit_snapshot_demo_handoff_342s.py`
+- `datefac/benchmark/package_audit_snapshot_demo_handoff_342s_report.py`
+- `tools/run_package_audit_snapshot_demo_handoff_342s.py`
+- `tests/benchmark/test_package_audit_snapshot_demo_handoff_342s.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\package_audit_snapshot_demo_handoff_342s.py datefac\benchmark\package_audit_snapshot_demo_handoff_342s_report.py tools\run_package_audit_snapshot_demo_handoff_342s.py tests\benchmark\test_package_audit_snapshot_demo_handoff_342s.py
+
+python -m pytest tests\benchmark\test_package_audit_snapshot_demo_handoff_342s.py -q
+
+python tools\run_package_audit_snapshot_demo_handoff_342s.py --audit-labeled-package-342r-dir D:\_datefac\output\audit_labeled_export_candidate_package_342r --preview-audit-342q-dir D:\_datefac\output\preview_audit_export_readiness_gate_342q --reviewed-plus-preview-342p-dir D:\_datefac\output\reviewed_plus_simulated_client_preview_342p --post-adoption-sidecar-342o-dir D:\_datefac\output\post_adoption_sidecar_simulation_342o --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --output-dir D:\_datefac\output\package_audit_snapshot_demo_handoff_342s
+```
+
+Commit SHA, if known:
+
+- `pending current 342S commit`
+
+---
+
 # 6. 环境账本 / Environment Ledger
 
 ## MinerU Environment
