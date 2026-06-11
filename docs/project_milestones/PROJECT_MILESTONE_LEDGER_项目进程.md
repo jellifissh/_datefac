@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成；342G、342H、342I、342J、342K、342L、342M、342N 也已经沿着当前有效主线推进完成。当前下一步应是 342O，而不是回头重跑 342C6、342D、旧 342E、342F、342G、342H 或 342I。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; 342L suggestion-apply simulation is completed as a no-write-back control layer; 342M spot-check / real-response gate has been rerun with reviewed spot-check evidence and is now ready for 342N; 342N correction-aware adoption simulation is completed as the no-write-back adoption-control layer; 342O post-adoption sidecar simulation is completed as the simulated sidecar rollup layer; and 342P reviewed plus simulated client preview pilot is now completed as the current bounded preview aggregation layer. The current next task is 342Q preview audit and export-readiness gate rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, 342I, 342J, or 342O.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; 342L suggestion-apply simulation is completed as a no-write-back control layer; 342M spot-check / real-response gate has been rerun with reviewed spot-check evidence and is now ready for 342N; 342N correction-aware adoption simulation is completed as the no-write-back adoption-control layer; 342O post-adoption sidecar simulation is completed as the simulated sidecar rollup layer; 342P reviewed plus simulated client preview pilot is completed as the bounded preview aggregation layer; and 342Q preview audit and export-readiness gate is now completed as the current preview-boundary control layer. The current next task is 342R audit-labeled export candidate package rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, 342I, 342J, 342O, or 342P.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342Q preview audit and export-readiness gate
+342R audit-labeled export candidate package
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -2365,6 +2365,123 @@ Commit SHA, if known:
 
 ---
 
+## 342Q Preview Audit And Export Readiness Gate
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342Q_preview_audit_export_readiness_gate`
+
+English:
+342Q is completed. It reads the real 342P reviewed-plus-simulated preview package, audits trust-level separation, simulation-only boundary labels, collision handling, dropped-duplicate exclusion, and human-over-simulation override behavior, and then produces an audit-only readiness gate for a later 342R package. 342Q does not generate a formal client export, does not write back to upstream workbooks, does not mark any output as client-ready or production-ready, and must not be used as investment advice.
+
+Input dirs/files:
+
+- `D:/_datefac/output/reviewed_plus_simulated_client_preview_342p`
+- `D:/_datefac/output/reviewed_plus_simulated_client_preview_342p/reviewed_plus_simulated_client_preview_342p.xlsx`
+- `D:/_datefac/output/reviewed_plus_simulated_client_preview_342p/reviewed_plus_simulated_client_preview_342p_summary.json`
+- `D:/_datefac/output/post_adoption_sidecar_simulation_342o`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j`
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i`
+- `D:/_datefac/output/correction_aware_adoption_simulation_342n`
+
+Output dir:
+
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q`
+
+Output workbook/report:
+
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q/preview_audit_export_readiness_gate_342q.xlsx`
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q/preview_audit_export_readiness_gate_342q_report.md`
+
+Key metrics:
+
+- `human_reviewed_preview_count = 30`
+- `simulated_preview_count = 100`
+- `simulated_direct_preview_count = 61`
+- `simulated_corrected_preview_count = 39`
+- `combined_preview_row_count = 130`
+- `export_candidate_row_count = 130`
+- `unknown_trust_level_count = 0`
+- `trust_level_mismatch_count = 0`
+- `simulated_final_confirmed_true_count = 0`
+- `simulated_client_ready_true_count = 0`
+- `simulated_production_ready_true_count = 0`
+- `missing_display_warning_count = 0`
+- `collision_logged_count = 99`
+- `duplicate_metric_year_source_count = 99`
+- `human_over_simulation_override_count = 9`
+- `simulated_duplicate_dropped_count = 79`
+- `unresolved_collision_count = 0`
+- `severe_collision_count = 20`
+- `formal_client_export_allowed = false`
+- `export_candidate_scope_allowed = true`
+- `export_risk_level = HIGH`
+- `still_human_required_count = 66`
+- `remaining_review_count = 887`
+- `ready_for_342r = true`
+- `recommended_342r_scope = audit_labeled_export_candidate_package`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342P summary / QA / workbook detected and `REVIEWED_PLUS_SIMULATED_CLIENT_PREVIEW_342P_READY` confirmed
+- 342P required sheets detected
+- combined preview rows loaded and consistent with 342P summary counts
+- trust levels remained valid with no source/trust mismatch
+- no simulated row became final confirmed, client-ready, or production-ready
+- dropped duplicate simulated rows stayed outside export candidate scope
+- human-over-simulation override kept human priority
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+
+Decision:
+
+- `PREVIEW_AUDIT_EXPORT_READINESS_GATE_342Q_READY`
+
+Next recommended task:
+
+- `342R Audit-Labeled Export Candidate Package`
+
+Do not repeat:
+
+- Do not treat 342Q as formal client export.
+- Do not treat 342Q as final human-review completion.
+- Do not treat 342Q as real LLM review completion.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not write 342Q results back to 342P / 342O / 342J / 342I / 342N or earlier workbooks.
+- Do not use 342Q as investment advice.
+
+Touched source files:
+
+- `docs/codex_tasks/342Q_preview_audit_export_readiness_gate.md`
+- `datefac/benchmark/preview_audit_export_readiness_gate_342q.py`
+- `datefac/benchmark/preview_audit_export_readiness_gate_342q_report.py`
+- `tools/run_preview_audit_export_readiness_gate_342q.py`
+- `tests/benchmark/test_preview_audit_export_readiness_gate_342q.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\preview_audit_export_readiness_gate_342q.py datefac\benchmark\preview_audit_export_readiness_gate_342q_report.py tools\run_preview_audit_export_readiness_gate_342q.py tests\benchmark\test_preview_audit_export_readiness_gate_342q.py
+
+python -m pytest tests\benchmark\test_preview_audit_export_readiness_gate_342q.py -q
+
+python tools\run_preview_audit_export_readiness_gate_342q.py --reviewed-plus-preview-342p-dir D:\_datefac\output\reviewed_plus_simulated_client_preview_342p --post-adoption-sidecar-342o-dir D:\_datefac\output\post_adoption_sidecar_simulation_342o --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --post-human-sidecar-342i-dir D:\_datefac\output\table_first_post_human_review_sidecar_result_342i --adoption-simulation-342n-dir D:\_datefac\output\correction_aware_adoption_simulation_342n --output-dir D:\_datefac\output\preview_audit_export_readiness_gate_342q
+```
+
+Commit SHA, if known:
+
+- `pending current 342Q commit`
+
+---
+
 # 6. 环境账本 / Environment Ledger
 
 ## MinerU Environment
@@ -2459,11 +2576,13 @@ Completed current chain:
 - 342M completed reviewed spot-check gate: reviewed_spot_check_count=50, spot_check_confirm_count=17, spot_check_correct_count=33, adoption_candidate_count=254, required_human_review_after_gate=821, ready_for_342n=true, qa_fail_count=0.
 - 342N completed correction-aware adoption simulation: input_adoption_candidate_count=254, direct_adopt_sim_count=110, correction_adopt_sim_count=78, still_human_required_count=66, adoption_sim_total_count=188, required_human_review_after_342n=887, ready_for_342o=true, qa_fail_count=0.
 - 342O completed post-adoption sidecar simulation: input_adoption_candidate_count=254, direct_adopted_count=110, corrected_adopted_count=78, simulated_adopted_cell_count=188, still_human_required_count=66, remaining_review_count=887, ready_for_342p=true, qa_fail_count=0.
+- 342P completed reviewed plus simulated client preview pilot: human_reviewed_preview_count=30, simulated_preview_count=100, combined_preview_row_count=130, duplicate_metric_year_source_count=99, human_over_simulation_override_count=9, simulated_duplicate_dropped_count=79, ready_for_342q=true, qa_fail_count=0.
+- 342Q completed preview audit and export-readiness gate: export_candidate_row_count=130, unknown_trust_level_count=0, trust_level_mismatch_count=0, collision_logged_count=99, formal_client_export_allowed=false, export_candidate_scope_allowed=true, ready_for_342r=true, qa_fail_count=0.
 
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-Proceed to 342P reviewed plus simulated client preview pilot.
+Proceed to 342R audit-labeled export candidate package.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
