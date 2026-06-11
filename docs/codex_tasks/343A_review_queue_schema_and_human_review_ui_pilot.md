@@ -325,3 +325,6 @@ Report in Chinese:
 24. 最该打开哪个 schema/json/ui contract artifact
 25. 是否已更新 PROJECT_MILESTONE_LEDGER_项目进程.md
 26. 是否没有提交 output/temp/input reviewed workbook/LLM response/受保护脏文件
+## 19. Implementation note
+
+343A must remain a read-only schema and pilot-package task. Do not silently expand it into production apply logic, full Argilla integration, or a full frontend rewrite inside this task.

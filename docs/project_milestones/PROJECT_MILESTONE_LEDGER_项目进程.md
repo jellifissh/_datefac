@@ -2887,3 +2887,117 @@ Unsafe statements:
 - Do not say all financial tables are fully extracted.
 - Do not say old 435 text candidates are the current main input.
 - Do not call generated outputs official financial advice or investment advice.
+---
+
+Task ID:
+
+- `343A Review Queue Schema And Human Review UI Pilot`
+
+Status:
+
+- `completed`
+
+Effective version:
+
+- `review_queue_schema_343a`
+- Current mainline remains `MinerU-first / table-first`
+- 343A is a schema/pilot package stage, not a production UI, not a formal client export, and not an upstream rerun
+
+Input dirs/files:
+
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s`
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r`
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q`
+- `D:/_datefac/output/reviewed_plus_simulated_client_preview_342p`
+- Primary row source: `audit_labeled_export_candidate_package_342r.xlsx` -> `03_EXPORT_CANDIDATES`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output workbook/report:
+
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a.xlsx`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_report.md`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_schema.json`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_json_schema.json`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_excel_template_spec.json`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_argilla_mapping.json`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_ui_contract.md`
+- `D:/_datefac/output/review_queue_schema_343a/review_queue_schema_343a_sample_items.jsonl`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `field_count = 58`
+- `required_field_count = 29`
+- `status_count = 13`
+- `reason_code_count = 12`
+- `priority_level_count = 5`
+- `sample_queue_item_count = 51`
+- `human_reviewed_sample_count = 10`
+- `simulated_sample_count = 40`
+- `summary_derived_sample_count = 1`
+- `argilla_mapping_generated = true`
+- `excel_template_spec_generated = true`
+- `ui_contract_generated = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+QA result:
+
+- 342S ready summary / qa / report / demo README were detected
+- 342R workbook / summary / qa were detected
+- 342Q and 342P ready summaries were detected
+- queue fields, lifecycle, reason codes, priorities, trust mapping, sample queue, Excel spec, Argilla mapping, and UI contract were generated
+- simulated rows were kept non-final and all readiness flags remained false
+- no upstream workbook was modified
+- no protected dirty files were staged
+- no output / temp / forbidden input paths were staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `REVIEW_QUEUE_SCHEMA_HUMAN_REVIEW_UI_PILOT_343A_READY`
+
+Next recommended task:
+
+- `343B Argilla Human Review UI Pilot`
+- Rationale: 343A now provides a stable queue contract, deterministic pilot sample, Excel round-trip spec, and Argilla mapping, so the next safe step is to validate a pluggable human review UI against this schema rather than expand production logic.
+
+Do not repeat:
+
+- Do not treat 343A as a production UI implementation.
+- Do not treat Argilla as the core system contract.
+- Do not write back 343A queue results to 342R / 342S / 342Q / 342P or earlier workbooks.
+- Do not claim `formal_client_export_allowed = true`.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not treat simulated preview rows as final confirmed export rows.
+- Do not convert 343A into investment advice or formal client delivery.
+
+Touched source files:
+
+- `docs/codex_tasks/343A_review_queue_schema_and_human_review_ui_pilot.md`
+- `datefac/review_queue/__init__.py`
+- `datefac/review_queue/schema_343a.py`
+- `datefac/benchmark/review_queue_schema_343a.py`
+- `datefac/benchmark/review_queue_schema_343a_report.py`
+- `tools/run_review_queue_schema_343a.py`
+- `tests/benchmark/test_review_queue_schema_343a.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_椤圭洰杩涚▼.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\review_queue\schema_343a.py datefac\benchmark\review_queue_schema_343a.py datefac\benchmark\review_queue_schema_343a_report.py tools\run_review_queue_schema_343a.py tests\benchmark\test_review_queue_schema_343a.py
+
+python -m pytest tests\benchmark\test_review_queue_schema_343a.py -q
+
+python tools\run_review_queue_schema_343a.py --snapshot-342s-dir D:\_datefac\output\package_audit_snapshot_demo_handoff_342s --audit-labeled-package-342r-dir D:\_datefac\output\audit_labeled_export_candidate_package_342r --preview-audit-342q-dir D:\_datefac\output\preview_audit_export_readiness_gate_342q --reviewed-plus-preview-342p-dir D:\_datefac\output\reviewed_plus_simulated_client_preview_342p --output-dir D:\_datefac\output\review_queue_schema_343a
+```
+
+Commit SHA, if known:
+
+- `pending current 343A commit`
