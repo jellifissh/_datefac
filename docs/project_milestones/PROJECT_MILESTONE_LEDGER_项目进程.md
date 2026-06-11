@@ -2482,6 +2482,120 @@ Commit SHA, if known:
 
 ---
 
+## 342R Audit-Labeled Export Candidate Package
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342R_audit_labeled_export_candidate_package`
+
+English:
+342R is completed. It reads the real 342Q export-candidate scope, preserves trust-level separation and risk disclosures, and packages the approved 130 candidate rows into an audit-labeled export candidate package. 342R does not generate a formal client export, does not write back to upstream workbooks, does not turn simulated rows into final confirmations, and must keep `formal_client_export_allowed=false`, `client_ready=false`, and `production_ready=false`.
+
+Input dirs/files:
+
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q`
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q/preview_audit_export_readiness_gate_342q.xlsx`
+- `D:/_datefac/output/preview_audit_export_readiness_gate_342q/preview_audit_export_readiness_gate_342q_summary.json`
+- `D:/_datefac/output/reviewed_plus_simulated_client_preview_342p`
+- `D:/_datefac/output/post_adoption_sidecar_simulation_342o`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j`
+
+Output dir:
+
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r`
+
+Output workbook/report:
+
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r/audit_labeled_export_candidate_package_342r.xlsx`
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r/audit_labeled_export_candidate_package_342r_report.md`
+
+Key metrics:
+
+- `export_candidate_package_row_count = 130`
+- `human_reviewed_candidate_count = 30`
+- `simulated_candidate_count = 100`
+- `simulated_direct_candidate_count = 61`
+- `simulated_corrected_candidate_count = 39`
+- `formal_client_export_allowed = false`
+- `export_candidate_scope_allowed = true`
+- `export_risk_level = HIGH`
+- `collision_logged_count = 99`
+- `duplicate_metric_year_source_count = 99`
+- `severe_collision_count = 20`
+- `human_over_simulation_override_count = 9`
+- `simulated_duplicate_dropped_count = 79`
+- `still_human_required_count = 66`
+- `remaining_review_count = 887`
+- `disclaimer_required_count = 100`
+- `later_audit_required_count = 100`
+- `package_row_fail_count = 0`
+- `ready_for_342s = true`
+- `recommended_342s_scope = package_audit_snapshot_or_demo_handoff`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342Q summary / QA / workbook detected and `PREVIEW_AUDIT_EXPORT_READINESS_GATE_342Q_READY` confirmed
+- 342Q required sheets detected
+- 342P context workbook detected for source-trace enrichment
+- package row count matched `342Q export_candidate_row_count`
+- trust-level separation preserved with no invalid trust labels
+- no package row became final confirmed, client-ready, or production-ready
+- all simulated package rows retained later-audit boundary
+- required disclaimers preserved
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+- no sheet name exceeds 31 chars
+
+Decision:
+
+- `AUDIT_LABELED_EXPORT_CANDIDATE_PACKAGE_342R_READY`
+
+Next recommended task:
+
+- `342S Package Audit Snapshot Or Demo Handoff`
+
+Do not repeat:
+
+- Do not treat 342R as formal client export.
+- Do not treat 342R as final human-review completion.
+- Do not treat 342R as real LLM review completion.
+- Do not claim `formal_client_export_allowed = true`.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not write 342R package rows back to 342Q / 342P / 342O / 342J or earlier workbooks.
+- Do not use 342R as investment advice.
+
+Touched source files:
+
+- `docs/codex_tasks/342R_audit_labeled_export_candidate_package.md`
+- `datefac/benchmark/audit_labeled_export_candidate_package_342r.py`
+- `datefac/benchmark/audit_labeled_export_candidate_package_342r_report.py`
+- `tools/run_audit_labeled_export_candidate_package_342r.py`
+- `tests/benchmark/test_audit_labeled_export_candidate_package_342r.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\audit_labeled_export_candidate_package_342r.py datefac\benchmark\audit_labeled_export_candidate_package_342r_report.py tools\run_audit_labeled_export_candidate_package_342r.py tests\benchmark\test_audit_labeled_export_candidate_package_342r.py
+
+python -m pytest tests\benchmark\test_audit_labeled_export_candidate_package_342r.py -q
+
+python tools\run_audit_labeled_export_candidate_package_342r.py --preview-audit-342q-dir D:\_datefac\output\preview_audit_export_readiness_gate_342q --reviewed-plus-preview-342p-dir D:\_datefac\output\reviewed_plus_simulated_client_preview_342p --post-adoption-sidecar-342o-dir D:\_datefac\output\post_adoption_sidecar_simulation_342o --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --output-dir D:\_datefac\output\audit_labeled_export_candidate_package_342r
+```
+
+Commit SHA, if known:
+
+- `pending current 342R commit`
+
+---
+
 # 6. 环境账本 / Environment Ledger
 
 ## MinerU Environment
