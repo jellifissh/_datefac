@@ -2301,7 +2301,7 @@ Key metrics:
 - `duplicate_metric_year_source_count = 99`
 - `human_over_simulation_override_count = 9`
 - `simulated_duplicate_dropped_count = 79`
-- `collision_logged_count = 88`
+- `collision_logged_count = 99`
 - `ready_for_342q = true`
 - `recommended_342q_scope = preview_audit_and_export_readiness_gate`
 - `client_ready = false`
