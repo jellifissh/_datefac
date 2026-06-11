@@ -1,6 +1,6 @@
 # DateFac 项目进程账本 / Project Milestone Ledger
 
-Generated / last refreshed: 2026-06-10
+Generated / last refreshed: 2026-06-11
 
 ## 用途 / Purpose
 
@@ -16,7 +16,7 @@ This ledger is the project-level source of truth for numbered DateFac work. It r
 当前有效主线已经不是旧的 text-candidate 路线，而是 MinerU-first / table-first。342E 的旧 435 条 text-candidate 路线已经 superseded；342E 的 table-first 版本才是当前有效版本；342F table-first core financial long-form extraction 已完成；342G、342H、342I、342J、342K、342L、342M、342N 也已经沿着当前有效主线推进完成。当前下一步应是 342O，而不是回头重跑 342C6、342D、旧 342E、342F、342G、342H 或 342I。
 
 English:
-The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; 342L suggestion-apply simulation is completed as a no-write-back control layer; 342M spot-check / real-response gate has been rerun with reviewed spot-check evidence and is now ready for 342N; and 342N correction-aware adoption simulation is completed as the current no-write-back adoption-control layer. The current next task is 342O post-adoption sidecar simulation or review template generation rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
+The effective mainline is no longer the old text-candidate route. It is now MinerU-first / table-first. The old 342E 435-row text-candidate route is superseded; the table-first 342E route is the effective version; 342F table-first core financial long-form extraction is completed; 342G table-first extraction review package is completed; 342H second reviewed batch apply simulation is the effective upstream human-review state; 342I post-human-review sidecar result has been rerun with 80 reviewed rows; 342J reviewed client preview pilot is completed; 342K LLM-assisted review adjudication pilot is completed as a no-write-back adjudication helper; 342L suggestion-apply simulation is completed as a no-write-back control layer; 342M spot-check / real-response gate has been rerun with reviewed spot-check evidence and is now ready for 342N; 342N correction-aware adoption simulation is completed as the no-write-back adoption-control layer; and 342O post-adoption sidecar simulation is completed as the current simulated sidecar rollup layer. The current next task is 342P reviewed plus simulated client preview pilot rather than rerunning 342C6, 342D, old 342E, 342F, 342G, 342H, or 342I.
 
 ```text
 legacy demo / Trust Engine / human-review work
@@ -28,7 +28,7 @@ legacy demo / Trust Engine / human-review work
 Current next task / 当前下一步:
 
 ```text
-342O post-adoption sidecar simulation or review template generation
+342P reviewed plus simulated client preview pilot
 ```
 
 ## 文档目录职责 / Docs And Skills Responsibilities
@@ -2143,6 +2143,116 @@ Commit SHA, if known:
 
 ---
 
+## 342O Post-Adoption Sidecar Simulation
+
+Status: `completed`
+
+Effective version:
+
+- `effective_current_342O_post_adoption_sidecar_simulation`
+
+English:
+342O is completed. It consumes the real 342N correction-aware adoption simulation output plus 342M / 342J / 342I boundary summaries, then builds a no-write-back post-adoption sidecar simulation package. 342O does not turn simulated rows into final confirmations, does not write back to upstream workbooks, and does not change `client_ready=false` or `production_ready=false`.
+
+Input dirs/files:
+
+- `D:/_datefac/output/correction_aware_adoption_simulation_342n`
+- `D:/_datefac/output/correction_aware_adoption_simulation_342n/correction_aware_adoption_simulation_342n.xlsx`
+- `D:/_datefac/output/correction_aware_adoption_simulation_342n/correction_aware_adoption_simulation_342n_summary.json`
+- `D:/_datefac/output/llm_suggestion_spot_check_gate_342m/llm_suggestion_spot_check_gate_342m_summary.json`
+- `D:/_datefac/output/table_first_reviewed_client_preview_pilot_342j/table_first_reviewed_client_preview_pilot_342j_summary.json`
+- `D:/_datefac/output/table_first_post_human_review_sidecar_result_342i/table_first_post_human_review_sidecar_result_342i_summary.json`
+
+Output dir:
+
+- `D:/_datefac/output/post_adoption_sidecar_simulation_342o`
+
+Output workbook/report:
+
+- `D:/_datefac/output/post_adoption_sidecar_simulation_342o/post_adoption_sidecar_simulation_342o.xlsx`
+- `D:/_datefac/output/post_adoption_sidecar_simulation_342o/post_adoption_sidecar_simulation_342o_report.md`
+
+Key metrics:
+
+- `pending_review_count = 1075`
+- `input_adoption_candidate_count = 254`
+- `direct_adopted_count = 110`
+- `corrected_adopted_count = 78`
+- `simulated_adopted_cell_count = 188`
+- `still_human_required_count = 66`
+- `remaining_review_count = 887`
+- `reduction_rate_after_342o = 0.174884`
+- `metric_covered_count = 17`
+- `metric_year_pair_count = 50`
+- `direct_metric_year_pair_count = 39`
+- `correction_metric_year_pair_count = 15`
+- `correction_pattern_count = 3`
+- `REVENUE_AMOUNT_NOT_YOY_count = 58`
+- `REVENUE_YOY_PERCENT_count = 10`
+- `NET_PROFIT_YOY_PERCENT_count = 10`
+- `ready_for_342p = true`
+- `recommended_342p_scope = reviewed_plus_simulated_client_preview_pilot`
+- `client_ready = false`
+- `production_ready = false`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 342N summary / QA / workbook detected
+- 342N `ready_for_342o = true` and `qa_fail_count = 0` detected
+- required 342N workbook sheets detected
+- direct + corrected simulated rows = 188
+- simulated + still-human-required rows = 254
+- remaining review count reduced from 1075 to 887
+- no simulated row became final confirmed
+- correction before/after trace preserved for all 78 correction-aware rows
+- no upstream workbook modified
+- no protected dirty files staged
+- no output artifacts staged
+- no optional reviewed / response input dirs staged
+
+Decision:
+
+- `POST_ADOPTION_SIDECAR_SIMULATION_342O_READY`
+
+Next recommended task:
+
+- `342P Reviewed Plus Simulated Client Preview Pilot`
+
+Do not repeat:
+
+- Do not treat 342O as final human-review completion.
+- Do not treat 342O as real LLM review completion.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not write simulated adoption rows back to 342I / 342J / 342M / 342N or earlier workbooks.
+- Do not use 342O as formal client delivery or investment advice.
+
+Touched source files:
+
+- `docs/codex_tasks/342O_post_adoption_sidecar_simulation.md`
+- `datefac/benchmark/post_adoption_sidecar_simulation_342o.py`
+- `datefac/benchmark/post_adoption_sidecar_simulation_342o_report.py`
+- `tools/run_post_adoption_sidecar_simulation_342o.py`
+- `tests/benchmark/test_post_adoption_sidecar_simulation_342o.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\benchmark\post_adoption_sidecar_simulation_342o.py datefac\benchmark\post_adoption_sidecar_simulation_342o_report.py tools\run_post_adoption_sidecar_simulation_342o.py tests\benchmark\test_post_adoption_sidecar_simulation_342o.py
+
+python -m pytest tests\benchmark\test_post_adoption_sidecar_simulation_342o.py -q
+
+python tools\run_post_adoption_sidecar_simulation_342o.py --adoption-simulation-342n-dir D:\_datefac\output\correction_aware_adoption_simulation_342n --spot-check-gate-342m-dir D:\_datefac\output\llm_suggestion_spot_check_gate_342m --reviewed-preview-342j-dir D:\_datefac\output\table_first_reviewed_client_preview_pilot_342j --post-human-sidecar-342i-dir D:\_datefac\output\table_first_post_human_review_sidecar_result_342i --output-dir D:\_datefac\output\post_adoption_sidecar_simulation_342o
+```
+
+Commit SHA, if known:
+
+- `pending current 342O commit`
+
+---
+
 # 6. 环境账本 / Environment Ledger
 
 ## MinerU Environment
@@ -2236,11 +2346,12 @@ Completed current chain:
 - 342L completed LLM suggestion apply simulation: auto_confirm_candidate_count=254, spot_check_sample_count=50, human_required_count=717, conflict_count=763, risk_adjusted_reduction_count=204, ready_for_342m=true, qa_fail_count=0.
 - 342M completed reviewed spot-check gate: reviewed_spot_check_count=50, spot_check_confirm_count=17, spot_check_correct_count=33, adoption_candidate_count=254, required_human_review_after_gate=821, ready_for_342n=true, qa_fail_count=0.
 - 342N completed correction-aware adoption simulation: input_adoption_candidate_count=254, direct_adopt_sim_count=110, correction_adopt_sim_count=78, still_human_required_count=66, adoption_sim_total_count=188, required_human_review_after_342n=887, ready_for_342o=true, qa_fail_count=0.
+- 342O completed post-adoption sidecar simulation: input_adoption_candidate_count=254, direct_adopted_count=110, corrected_adopted_count=78, simulated_adopted_cell_count=188, still_human_required_count=66, remaining_review_count=887, ready_for_342p=true, qa_fail_count=0.
 
 Do not repeat 342C6. Do not redo 342D. Do not use the old 342E 435 text candidate route. Do not rerun 342F. Do not rerun MinerU. Do not call VLM/LLM. Do not mix BASIC_DATA into core financial extraction.
 
 Current next task:
-Proceed to 342O post-adoption sidecar simulation or review template generation.
+Proceed to 342P reviewed plus simulated client preview pilot.
 
 Keep client_ready=false and production_ready=false.
 Do not modify production pipeline/parser/extraction/delivery.
