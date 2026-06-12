@@ -339,3 +339,7 @@ Report in Chinese:
 26. validation command results
 27. git status summary
 28. confirmation that output/temp/input reviewed workbook/LLM response/protected dirty files were not modified or staged
+
+## 16. Implementation note
+
+343B must stay a deterministic Excel round-trip pilot. It should validate the queue contract and import/export mechanics without being reframed as real human review evidence, Argilla integration, or production apply logic.

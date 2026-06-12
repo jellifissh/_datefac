@@ -3001,3 +3001,119 @@ python tools\run_review_queue_schema_343a.py --snapshot-342s-dir D:\_datefac\out
 Commit SHA, if known:
 
 - `pending current 343A commit`
+
+---
+
+Task ID:
+
+- `343B Excel Round-trip Review Queue Pilot`
+
+Status:
+
+- `completed`
+
+Effective version:
+
+- `review_queue_excel_round_trip_343b`
+- Current mainline remains `MinerU-first / table-first`
+- 343B validates the 343A Review Queue contract through deterministic Excel round-trip only
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_schema_343a`
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s`
+- `D:/_datefac/output/audit_labeled_export_candidate_package_342r`
+- Primary 343A inputs: summary / qa / schema / json schema / Excel template spec / sample items JSONL / workbook
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_excel_round_trip_343b`
+
+Output workbook/report:
+
+- `D:/_datefac/output/review_queue_excel_round_trip_343b/review_queue_excel_round_trip_343b.xlsx`
+- `D:/_datefac/output/review_queue_excel_round_trip_343b/review_queue_excel_round_trip_343b_report.md`
+- `D:/_datefac/output/review_queue_excel_round_trip_343b/review_queue_excel_round_trip_343b_review_template.xlsx`
+- `D:/_datefac/output/review_queue_excel_round_trip_343b/review_queue_excel_round_trip_343b_import_simulation.xlsx`
+- `D:/_datefac/output/review_queue_excel_round_trip_343b/review_queue_excel_round_trip_343b_reviewed_result.jsonl`
+- `D:/_datefac/output/review_queue_excel_round_trip_343b/review_queue_excel_round_trip_343b_validation_errors.json`
+
+Key metrics:
+
+- `source_milestone = 343A`
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `template_row_count = 51`
+- `import_simulation_row_count = 51`
+- `reviewed_result_row_count = 51`
+- `confirmed_count = 10`
+- `corrected_count = 10`
+- `rejected_count = 10`
+- `needs_source_check_count = 11`
+- `skipped_count = 10`
+- `validation_error_count = 0`
+- `validation_warning_count = 1`
+- `excel_template_generated = true`
+- `import_simulation_generated = true`
+- `reviewed_result_jsonl_generated = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+QA result:
+
+- 343A input exists and is ready
+- schema JSON / JSON schema / Excel template spec / sample JSONL detected
+- review template generated
+- import simulation generated
+- reviewed result JSONL generated
+- happy-path validation has zero errors
+- intentional error cases were captured separately without failing the happy path
+- no Argilla call was made
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `REVIEW_QUEUE_EXCEL_ROUND_TRIP_343B_READY`
+
+Next recommended task:
+
+- `343C Argilla Human Review UI Pilot`
+- Rationale: 343B has validated that the Review Queue contract can survive deterministic Excel export/import/validation, so Argilla can now be added as a pluggable UI layer instead of becoming the core system contract.
+
+Do not repeat:
+
+- Do not treat 343B import simulation as real human review evidence.
+- Do not treat 343B as formal client export.
+- Do not implement production apply logic in 343B.
+- Do not call or import Argilla inside 343B.
+- Do not write back 343B reviewed results to 343A / 342R / 342S or earlier artifacts.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not convert 343B outputs into investment advice or formal client delivery.
+
+Touched source files:
+
+- `docs/codex_tasks/343B_excel_round_trip_review_queue_pilot.md`
+- `datefac/review_queue/excel_round_trip_343b.py`
+- `datefac/benchmark/review_queue_excel_round_trip_343b.py`
+- `datefac/benchmark/review_queue_excel_round_trip_343b_report.py`
+- `tools/run_review_queue_excel_round_trip_343b.py`
+- `tests/benchmark/test_review_queue_excel_round_trip_343b.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_椤圭洰杩涚▼.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\review_queue\excel_round_trip_343b.py datefac\benchmark\review_queue_excel_round_trip_343b.py datefac\benchmark\review_queue_excel_round_trip_343b_report.py tools\run_review_queue_excel_round_trip_343b.py tests\benchmark\test_review_queue_excel_round_trip_343b.py
+
+python -m pytest tests\benchmark\test_review_queue_excel_round_trip_343b.py -q
+
+python tools\run_review_queue_excel_round_trip_343b.py --review-queue-schema-343a-dir D:\_datefac\output\review_queue_schema_343a --snapshot-342s-dir D:\_datefac\output\package_audit_snapshot_demo_handoff_342s --audit-labeled-package-342r-dir D:\_datefac\output\audit_labeled_export_candidate_package_342r --output-dir D:\_datefac\output\review_queue_excel_round_trip_343b
+```
+
+Commit SHA, if known:
+
+- `pending current 343B commit`
