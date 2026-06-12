@@ -3274,3 +3274,78 @@ AI-assisted disclosure:
 Next recommended task:
 
 - `343E AI-assisted Review Result Apply Simulation And Audit Gate`
+
+---
+
+Task ID:
+
+- `343E AI-assisted Review Result Apply Simulation And Audit Gate`
+
+Status:
+
+- `completed`
+- simulation-only apply gate for AI-assisted review results
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_excel_ingestion_343d`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_apply_simulation_343e`
+
+Output workbook/report/sidecars:
+
+- `D:/_datefac/output/review_queue_apply_simulation_343e/review_queue_apply_simulation_343e.xlsx`
+- `D:/_datefac/output/review_queue_apply_simulation_343e/review_queue_apply_simulation_343e_apply_plan.jsonl`
+- `D:/_datefac/output/review_queue_apply_simulation_343e/review_queue_apply_simulation_343e_simulated_sidecar.jsonl`
+- `D:/_datefac/output/review_queue_apply_simulation_343e/review_queue_apply_simulation_343e_audit_gate.json`
+- `D:/_datefac/output/review_queue_apply_simulation_343e/review_queue_apply_simulation_343e_risk_register.json`
+- `D:/_datefac/output/review_queue_apply_simulation_343e/review_queue_apply_simulation_343e_ai_assisted_boundary.md`
+
+Key metrics:
+
+- `apply_mode = SIMULATION_ONLY`
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_human_spot_check = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+QA result:
+
+- 343D input exists and is ready
+- reviewed-result JSONL exists and is readable
+- AI-assisted disclosure preserved on all rows
+- no row claims strict pure human review
+- apply plan generated
+- simulated sidecar generated for simulation-eligible rows only
+- hold rows classified
+- audit gate generated
+- risk register generated
+- no real production apply performed
+- no Argilla call made
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `AI_ASSISTED_REVIEW_APPLY_SIMULATION_343E_READY`
+
+AI-assisted boundary:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_human_spot_check = true`
+- `apply_mode = SIMULATION_ONLY`
+
+Next recommended task:
+
+- `343F AI-assisted Review Spot-check Package`
