@@ -3426,3 +3426,113 @@ Next required user action:
 Next recommended task after user fills workbook:
 
 - `343G ai_assisted_review_spot_check_result_ingestion_after_user_fills_workbook`
+
+---
+
+Task ID:
+
+- `343G AI-assisted Review Spot-check Result Ingestion`
+
+Status:
+
+- `completed`
+- Current ingestion is explicitly AI-assisted spot-check, not strict pure human spot-check
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_spot_check_package_343f`
+- `D:/_datefac/output/review_queue_apply_simulation_343e`
+- `D:/_datefac/output/review_queue_schema_343a`
+- `D:/_datefac/input/review_queue_spot_check_package_343f_filled/review_queue_spot_check_package_343f_review_template_filled.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g`
+
+Output workbook/report/result:
+
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g/review_queue_spot_check_ingestion_343g.xlsx`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g/review_queue_spot_check_ingestion_343g_result.jsonl`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g/review_queue_spot_check_ingestion_343g_decision_summary.json`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g/review_queue_spot_check_ingestion_343g_ai_assisted_spot_check_disclosure.md`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g/review_queue_spot_check_ingestion_343g_report.md`
+
+Key metrics:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `spot_check_source_type = AI_ASSISTED_SPOT_CHECK`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_strict_human_review = true`
+- `apply_mode = SIMULATION_ONLY`
+- `spot_check_result_ingested = true` only when validation errors are zero
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+QA result:
+
+- 343F input exists and is waiting for spot-check
+- filled workbook exists and is readable
+- expected sheet resolved
+- identity columns and editable spot-check columns validated
+- allowed spot-check decisions enforced
+- correction rows validated
+- source-check rows require notes
+- AI-assisted spot-check disclosure written to every ingested row
+- strict human review is not claimed
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `AI_ASSISTED_SPOT_CHECK_INGESTION_343G_READY`
+
+AI-assisted spot-check disclosure:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `spot_check_source_type = AI_ASSISTED_SPOT_CHECK`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_strict_human_review = true`
+- `apply_mode = SIMULATION_ONLY`
+
+Next recommended task:
+
+- `343H AI-assisted Spot-check Audit Summary And Strict Human Gap Report`
+
+Do not repeat:
+
+- Do not treat 343G as strict pure human spot-check completion.
+- Do not perform real write-back or production apply in 343G.
+- Do not generate formal client export from 343G.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not write back 343G results to 343F / 343E / 343A or earlier artifacts.
+
+Touched source files:
+
+- `datefac/review_queue/ingest_spot_check_343g.py`
+- `datefac/benchmark/review_queue_spot_check_ingestion_343g.py`
+- `datefac/benchmark/review_queue_spot_check_ingestion_343g_report.py`
+- `tools/run_review_queue_spot_check_ingestion_343g.py`
+- `tests/benchmark/test_review_queue_spot_check_ingestion_343g.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\review_queue\ingest_spot_check_343g.py datefac\benchmark\review_queue_spot_check_ingestion_343g.py datefac\benchmark\review_queue_spot_check_ingestion_343g_report.py tools\run_review_queue_spot_check_ingestion_343g.py tests\benchmark\test_review_queue_spot_check_ingestion_343g.py
+
+python -m pytest tests\benchmark\test_review_queue_spot_check_ingestion_343g.py -q
+
+python tools\run_review_queue_spot_check_ingestion_343g.py --spot-check-package-343f-dir D:\_datefac\output\review_queue_spot_check_package_343f --apply-simulation-343e-dir D:\_datefac\output\review_queue_apply_simulation_343e --review-queue-schema-343a-dir D:\_datefac\output\review_queue_schema_343a --filled-workbook D:\_datefac\input\review_queue_spot_check_package_343f_filled\review_queue_spot_check_package_343f_review_template_filled.xlsx --output-dir D:\_datefac\output\review_queue_spot_check_ingestion_343g
+```
+
+Commit SHA, if known:
+
+- `pending current 343G commit`
