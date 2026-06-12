@@ -3536,3 +3536,126 @@ python tools\run_review_queue_spot_check_ingestion_343g.py --spot-check-package-
 Commit SHA, if known:
 
 - `pending current 343G commit`
+
+---
+
+Task ID:
+
+- `343H AI-assisted Spot-check Audit Summary And Strict Human Gap Report`
+
+Status:
+
+- `completed`
+- Current summary remains explicitly AI-assisted review plus AI-assisted spot-check, not strict pure human review
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g`
+- `D:/_datefac/output/review_queue_spot_check_package_343f`
+- `D:/_datefac/output/review_queue_apply_simulation_343e`
+- `D:/_datefac/output/review_queue_excel_ingestion_343d`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_audit_summary_343h`
+
+Output workbook/report/result:
+
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h.xlsx`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_report.md`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_strict_human_gap_report.md`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_audit_matrix.json`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_gap_items.jsonl`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_confirmed_ai_assisted_items.jsonl`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_source_check_backlog.jsonl`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_client_export_gate.json`
+- `D:/_datefac/output/review_queue_audit_summary_343h/review_queue_audit_summary_343h_next_action_plan.json`
+
+Key metrics:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `spot_check_source_type = AI_ASSISTED_SPOT_CHECK`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_strict_human_review = true`
+- `apply_mode = SIMULATION_ONLY`
+- `ai_assisted_confirmed_count = 10`
+- `source_check_required_count = 19`
+- `keep_hold_count = 1`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+QA result:
+
+- 343G input exists and is ready
+- 343G result JSONL exists and is readable
+- all rows preserve AI-assisted disclosure
+- no row claims strict pure human review
+- no formal/client/production readiness flag is true
+- audit matrix generated
+- strict-human-gap report generated
+- source-check backlog generated
+- client export gate generated and remains false
+- next action plan generated
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `AI_ASSISTED_SPOT_CHECK_AUDIT_SUMMARY_343H_READY`
+
+Strict human gap summary:
+
+- 10 rows are AI-assisted spot-check confirmed only, not strict-human confirmed
+- 19 rows still require source check
+- 1 row remains keep-hold
+
+Client export gate summary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `strict_human_review_completed = false`
+- `requires_strict_human_review = true`
+
+Next recommended task:
+
+- `343I Strict Human Review Package For AI-assisted Confirmed Rows`
+
+Do not repeat:
+
+- Do not treat 343H as strict pure human review completion.
+- Do not perform real write-back or production apply in 343H.
+- Do not generate formal client export from 343H.
+- Do not claim `client_ready = true` or `production_ready = true`.
+- Do not write back 343H results to 343G / 343F / 343E / 343D or earlier artifacts.
+
+Touched source files:
+
+- `datefac/review_queue/audit_summary_343h.py`
+- `datefac/benchmark/review_queue_audit_summary_343h.py`
+- `datefac/benchmark/review_queue_audit_summary_343h_report.py`
+- `tools/run_review_queue_audit_summary_343h.py`
+- `tests/benchmark/test_review_queue_audit_summary_343h.py`
+- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+
+Validation commands:
+
+```powershell
+python -m py_compile datefac\review_queue\audit_summary_343h.py datefac\benchmark\review_queue_audit_summary_343h.py datefac\benchmark\review_queue_audit_summary_343h_report.py tools\run_review_queue_audit_summary_343h.py tests\benchmark\test_review_queue_audit_summary_343h.py
+
+python -m pytest tests\benchmark\test_review_queue_audit_summary_343h.py -q
+
+python tools\run_review_queue_audit_summary_343h.py --spot-check-ingestion-343g-dir D:\_datefac\output\review_queue_spot_check_ingestion_343g --spot-check-package-343f-dir D:\_datefac\output\review_queue_spot_check_package_343f --apply-simulation-343e-dir D:\_datefac\output\review_queue_apply_simulation_343e --review-queue-schema-343a-dir D:\_datefac\output\review_queue_schema_343a --output-dir D:\_datefac\output\review_queue_audit_summary_343h
+```
+
+Commit SHA, if known:
+
+- `pending current 343H commit`
