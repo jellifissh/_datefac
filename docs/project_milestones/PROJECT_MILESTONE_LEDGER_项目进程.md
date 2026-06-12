@@ -3117,3 +3117,90 @@ python tools\run_review_queue_excel_round_trip_343b.py --review-queue-schema-343
 Commit SHA, if known:
 
 - `pending current 343B commit`
+
+---
+
+Task ID:
+
+- `343C Real Excel Review Queue Pilot`
+
+Status:
+
+- `completed`
+- 343C completed as waiting-for-human-review template generation
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_excel_round_trip_343b`
+- `D:/_datefac/output/review_queue_schema_343a`
+- `D:/_datefac/output/package_audit_snapshot_demo_handoff_342s`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_real_excel_review_343c`
+
+Output workbook/report/template:
+
+- `D:/_datefac/output/review_queue_real_excel_review_343c/review_queue_real_excel_review_343c.xlsx`
+- `D:/_datefac/output/review_queue_real_excel_review_343c/review_queue_real_excel_review_343c_review_template.xlsx`
+- `D:/_datefac/output/review_queue_real_excel_review_343c/review_queue_real_excel_review_343c_reviewer_instructions.md`
+- `D:/_datefac/output/review_queue_real_excel_review_343c/review_queue_real_excel_review_343c_fill_guide.md`
+- `D:/_datefac/output/review_queue_real_excel_review_343c/review_queue_real_excel_review_343c_expected_import_contract.json`
+- `D:/_datefac/output/review_queue_real_excel_review_343c/review_queue_real_excel_review_343c_report.md`
+
+Key metrics:
+
+- `source_milestone = 343B`
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `real_review_template_row_count = up to 30 deterministic pilot rows`
+- `allowed_decision_count = 5`
+- `real_review_template_generated = true`
+- `reviewer_instructions_generated = true`
+- `fill_guide_generated = true`
+- `expected_import_contract_generated = true`
+- `waiting_for_human_review = true`
+- `reviewed_result_ingested = false`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `ready_for_343d = false`
+
+QA result:
+
+- 343B input exists and is ready
+- 343A schema and sample inputs exist
+- real review template generated
+- reviewer instructions generated
+- fill guide generated
+- expected import contract generated
+- editable reviewer columns exist
+- allowed decision list is present
+- no simulated/imported reviewer decision is treated as real human evidence
+- no Argilla call made
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `REVIEW_QUEUE_REAL_EXCEL_REVIEW_343C_WAITING_FOR_HUMAN_REVIEW`
+
+Next required user action:
+
+- Open the dedicated `review_queue_real_excel_review_343c_review_template.xlsx`
+- Fill the reviewer columns with real human review decisions
+- Save a human-filled workbook copy for later ingestion
+
+Next recommended task after user fills workbook:
+
+- `343D real_excel_review_result_ingestion_after_user_fills_workbook`
+
+Do not repeat:
+
+- Do not treat 343C as completed human review.
+- Do not ingest reviewed results inside 343C.
+- Do not call Argilla or implement a production UI in 343C.
+- Do not write back to upstream workbooks.
+- Do not claim `client_ready = true` or `production_ready = true`.
