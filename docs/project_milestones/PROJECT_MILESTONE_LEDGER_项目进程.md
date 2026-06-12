@@ -4214,3 +4214,110 @@ Client export boundary:
 Next recommended task:
 
 - `343M Human-confirmed Sidecar Apply Simulation And Limited Export Gate`
+
+---
+
+Task ID:
+
+- `343M Human-confirmed Sidecar Apply Simulation And Limited Export Gate`
+
+Status:
+
+- `completed`
+- Current output is a limited package-scope sidecar simulation only
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_pure_human_attestation_ingestion_343l`
+- `D:/_datefac/output/review_queue_pure_human_attestation_package_343k`
+- `D:/_datefac/output/review_queue_source_evidence_enrichment_343i2`
+- `D:/_datefac/output/review_queue_audit_summary_343h`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m`
+
+Output workbook/sidecar/gate artifacts:
+
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m.xlsx`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_summary.json`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_qa.json`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_sidecar.jsonl`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_apply_plan.jsonl`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_limited_export_gate.json`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_limited_export_candidate.jsonl`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_remaining_backlog.jsonl`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_scope_boundary.md`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m/review_queue_human_confirmed_sidecar_simulation_343m_report.md`
+
+Key metrics:
+
+- `source_milestone = 343L`
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_human_attested_row_count = 10`
+- `valid_human_attested_row_count = 10`
+- `sidecar_row_count = 10`
+- `sidecar_human_accept_count = 10`
+- `sidecar_human_correct_count = 0`
+- `sidecar_blocked_count = 0`
+- `limited_export_candidate_row_count = 10`
+- `remaining_source_check_backlog_count = 19`
+- `package_strict_human_review_completed = true`
+- `strict_human_review_completed_scope = 343K_PACKAGE_ONLY`
+- `global_strict_human_review_completed = false`
+- `sidecar_apply_simulation_completed = true`
+- `limited_export_gate_evaluated = true`
+- `limited_package_export_candidate_allowed = true`
+- `limited_export_scope = 343K_PACKAGE_ONLY`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `ready_for_343n = true`
+- `recommended_343n_scope = limited_human_confirmed_export_package_generation_for_demo_only`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 343L input exists and is ready
+- package-level human confirmation is true
+- global strict human review remains false
+- formal/client/production flags remain false
+- sidecar row count matches accepted/corrected human rows
+- limited export candidate row count matches sidecar row count
+- limited export candidate explicitly carries `343K_PACKAGE_ONLY`
+- remaining backlog is carried forward with `19` source-check rows
+- limited export gate is generated
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `HUMAN_CONFIRMED_SIDECAR_SIMULATION_343M_READY`
+
+Sidecar simulation summary:
+
+- The 10 package-confirmed rows were simulated into a sidecar-only result set
+- All 10 current sidecar rows are human-confirmed accepts
+- No blocked package rows remain inside the current 343K scope
+
+Limited export gate summary:
+
+- `limited_package_export_candidate_allowed = true`
+- `limited_export_scope = 343K_PACKAGE_ONLY`
+- This is only a scoped audited sample/demo candidate, not formal client export approval
+
+Remaining backlog summary:
+
+- `remaining_source_check_backlog_count = 19`
+- Global strict-human review remains incomplete outside the package scope
+
+Next recommended task:
+
+- `343N Limited Human-confirmed Export Package Generation For Demo Only`
