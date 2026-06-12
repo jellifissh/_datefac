@@ -3659,3 +3659,112 @@ python tools\run_review_queue_audit_summary_343h.py --spot-check-ingestion-343g-
 Commit SHA, if known:
 
 - `pending current 343H commit`
+
+---
+
+Task ID:
+
+- `343I Strict Human Review Package For AI-assisted Confirmed Rows`
+
+Status:
+
+- `completed`
+- waiting-for-strict-human-review package generation only
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_audit_summary_343h`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i`
+
+Output workbook/report/template:
+
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i.xlsx`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_review_template.xlsx`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_review_items.jsonl`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_reviewer_instructions.md`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_fill_guide.md`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_expected_import_contract.json`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_client_export_boundary.md`
+- `D:/_datefac/output/review_queue_strict_human_review_package_343i/review_queue_strict_human_review_package_343i_report.md`
+
+Key metrics:
+
+- `source_milestone = 343H`
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_ai_assisted_confirmed_count = 10`
+- `strict_review_item_count = 10`
+- `source_check_backlog_context_count = 19`
+- `strict_human_gap_item_count = 30`
+- `strict_human_review_package_generated = true`
+- `review_template_generated = true`
+- `reviewer_instructions_generated = true`
+- `fill_guide_generated = true`
+- `expected_import_contract_generated = true`
+- `waiting_for_strict_human_review = true`
+- `strict_human_review_result_ingested = false`
+- `strict_human_review_completed = false`
+- `requires_strict_human_review = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `ready_for_343j = false`
+- `recommended_343j_scope = strict_human_review_result_ingestion_after_user_fills_workbook`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+QA result:
+
+- 343H input exists and is ready
+- confirmed AI-assisted items JSONL exists and is readable
+- client export gate remains false
+- strict review item count matches input confirmed count
+- review template generated
+- reviewer instructions generated
+- fill guide generated
+- expected import contract generated
+- editable strict review columns exist
+- allowed decision list is present
+- no strict review decision is prefilled as completed
+- waiting state remains true
+- strict human review result ingestion remains false
+- no strict human completion claim is made
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `STRICT_HUMAN_REVIEW_PACKAGE_343I_WAITING_FOR_STRICT_REVIEW`
+
+Strict human review package summary:
+
+- Only the 10 AI-assisted confirmed rows are included in the fillable strict review template
+- The 19 source-check-required rows remain separate backlog context, not fillable strict-review rows
+- The generated package is waiting for user strict human review and does not ingest results yet
+
+Client export boundary:
+
+- `strict_human_review_completed = false`
+- `requires_strict_human_review = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+Next required user action:
+
+- Open `review_queue_strict_human_review_package_343i_review_template.xlsx`
+- Fill the `strict_review_*` columns plus `strict_reviewer_id` and `strict_reviewed_at`
+- Save the filled workbook under `D:/_datefac/input/review_queue_strict_human_review_343i_filled/`
+
+Next recommended task after user fills workbook:
+
+- `343J Strict Human Review Result Ingestion After User Fills Workbook`
