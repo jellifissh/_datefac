@@ -4321,3 +4321,104 @@ Remaining backlog summary:
 Next recommended task:
 
 - `343N Limited Human-confirmed Export Package Generation For Demo Only`
+
+---
+
+Task ID:
+
+- `343O Demo Package Audit Snapshot And Handoff Summary`
+
+Status:
+
+- `completed`
+- Current output closes only the 10-row trusted demo arc; it does not expand trusted coverage.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_limited_demo_export_package_343n`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m`
+- `D:/_datefac/output/review_queue_pure_human_attestation_ingestion_343l`
+- `D:/_datefac/output/review_queue_audit_summary_343h`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+
+Output workbook/report/artifacts:
+
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o.xlsx`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o_report.md`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o_handoff_summary.md`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o_executive_summary.md`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o_trust_chain.md`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o_artifact_index.json`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o/review_queue_demo_audit_snapshot_343o_export_gate_snapshot.json`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_demo_export_row_count = 10`
+- `audit_label_row_count = 10`
+- `limited_export_scope = 343K_PACKAGE_ONLY`
+- `export_usage = DEMO_ONLY`
+- `remaining_source_check_backlog_count = 19`
+- `package_strict_human_review_completed = true`
+- `global_strict_human_review_completed = false`
+- `demo_only_export_package_generated = true`
+- `demo_handoff_ready = true`
+- `demo_audit_snapshot_generated = true`
+- `handoff_summary_generated = true`
+- `executive_summary_generated = true`
+- `trust_chain_generated = true`
+- `artifact_index_generated = true`
+- `export_gate_snapshot_generated = true`
+- `demo_arc_closed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `ready_for_344a = true`
+- `recommended_344a_scope = source_check_backlog_resolution_package`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 343N input exists and is ready
+- demo package row count is 10
+- audit label row count is 10
+- limited export scope remains `343K_PACKAGE_ONLY`
+- export usage remains `DEMO_ONLY`
+- demo README / scope boundary / export gate are all present
+- trust chain, handoff summary, executive summary, artifact index, and gate snapshot are generated
+- demo arc is closed only for the current 10-row package scope
+- formal client export remains forbidden
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `DEMO_PACKAGE_AUDIT_SNAPSHOT_343O_READY`
+
+Demo audit snapshot summary:
+
+- 343O turns the 343N demo-only export package into a handoff-ready audit snapshot bundle.
+- The trust chain is documented from schema through AI-assisted audit, evidence enrichment reference, pure human attestation, sidecar simulation, and limited demo export packaging.
+- The current trusted arc is now documentation-complete for the 10-row package scope.
+
+Boundary summary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- remaining backlog outside the package scope still blocks any global export claim
+
+Next recommended task:
+
+- `344A Source-check Backlog Resolution Package`
