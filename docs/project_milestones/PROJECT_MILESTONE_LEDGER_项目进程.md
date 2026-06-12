@@ -3349,3 +3349,80 @@ AI-assisted boundary:
 Next recommended task:
 
 - `343F AI-assisted Review Spot-check Package`
+
+---
+
+Task ID:
+
+- `343F AI-assisted Review Spot-check Package`
+
+Status:
+
+- `completed`
+- waiting-for-spot-check package generation only
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_apply_simulation_343e`
+- `D:/_datefac/output/review_queue_excel_ingestion_343d`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_spot_check_package_343f`
+
+Output workbook/report/template:
+
+- `D:/_datefac/output/review_queue_spot_check_package_343f/review_queue_spot_check_package_343f.xlsx`
+- `D:/_datefac/output/review_queue_spot_check_package_343f/review_queue_spot_check_package_343f_review_template.xlsx`
+- `D:/_datefac/output/review_queue_spot_check_package_343f/review_queue_spot_check_package_343f_spot_check_items.jsonl`
+- `D:/_datefac/output/review_queue_spot_check_package_343f/review_queue_spot_check_package_343f_source_check_todo.jsonl`
+- `D:/_datefac/output/review_queue_spot_check_package_343f/review_queue_spot_check_package_343f_priority_plan.json`
+- `D:/_datefac/output/review_queue_spot_check_package_343f/review_queue_spot_check_package_343f_expected_import_contract.json`
+
+Key metrics:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_human_spot_check = true`
+- `apply_mode = SIMULATION_ONLY`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `waiting_for_spot_check = true`
+- `spot_check_result_ingested = false`
+
+QA result:
+
+- 343E input exists and is ready
+- apply plan / simulated sidecar readable
+- audit gate passed for spot-check package
+- AI-assisted boundary preserved
+- no row claims strict pure human review
+- spot-check package workbook generated
+- review template generated
+- source-check todo generated
+- expected import contract generated
+- editable spot-check columns exist
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `AI_ASSISTED_REVIEW_SPOT_CHECK_PACKAGE_343F_WAITING_FOR_SPOT_CHECK`
+
+Next required user action:
+
+- Open the dedicated 343F spot-check workbook
+- Fill the `spot_check_*` columns for all 30 rows
+- Save a filled copy for later 343G ingestion
+
+Next recommended task after user fills workbook:
+
+- `343G ai_assisted_review_spot_check_result_ingestion_after_user_fills_workbook`
