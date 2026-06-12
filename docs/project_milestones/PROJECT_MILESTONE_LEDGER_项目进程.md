@@ -4422,3 +4422,116 @@ Boundary summary:
 Next recommended task:
 
 - `344A Source-check Backlog Resolution Package`
+
+---
+
+Task ID:
+
+- `344A Source-check Backlog Resolution Package`
+
+Status:
+
+- `completed`
+- Current output is intentionally waiting for reviewer source-check input and does not ingest results yet.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+- `D:/_datefac/output/review_queue_limited_demo_export_package_343n`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m`
+- `D:/_datefac/output/review_queue_audit_summary_343h`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g`
+- `D:/_datefac/output/review_queue_spot_check_package_343f`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a`
+
+Output workbook/package artifacts:
+
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a.xlsx`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_review_template.xlsx`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_backlog_items.jsonl`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_evidence_map.json`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_reviewer_instructions.md`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_fill_guide.md`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_expected_import_contract.json`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a/review_queue_source_check_backlog_package_344a_report.md`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_remaining_source_check_backlog_count = 19`
+- `source_check_backlog_item_count = 19`
+- `deduplicated_backlog_item_count = 19`
+- `evidence_resolved_count = 0`
+- `evidence_partial_count = 0`
+- `evidence_unresolved_count = 19`
+- `source_pdf_name_available_count = 0`
+- `source_text_snippet_available_count = 0`
+- `source_check_backlog_package_generated = true`
+- `review_template_generated = true`
+- `reviewer_instructions_generated = true`
+- `fill_guide_generated = true`
+- `expected_import_contract_generated = true`
+- `waiting_for_source_check_review = true`
+- `source_check_result_ingested = false`
+- `source_check_backlog_resolved = false`
+- `demo_arc_closed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `ready_for_344b = false`
+- `recommended_344b_scope = source_check_backlog_result_ingestion_after_user_fills_workbook`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 343O input exists and is ready
+- backlog source exists and is readable
+- deduplicated backlog count matches the expected 19 rows
+- every backlog item has a stable identity key
+- every backlog item has an evidence resolution status
+- unresolved evidence is explicitly disclosed
+- review template, reviewer instructions, fill guide, and expected import contract are generated
+- editable source-check columns exist and no source-check decision is prefilled
+- waiting-for-source-check-review state is preserved
+- source-check results are not ingested yet
+- formal/client/production readiness flags remain false
+- 343O demo arc remains unchanged
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `SOURCE_CHECK_BACKLOG_PACKAGE_344A_WAITING_FOR_SOURCE_CHECK_REVIEW`
+
+Backlog package summary:
+
+- 344A creates a focused review package for the 19 remaining source-check backlog rows after the 10-row trusted demo arc was closed by 343O.
+- Current upstream backlog artifacts contain almost no usable PDF/page/table evidence locators for these 19 rows, so the package discloses them conservatively as unresolved rather than fabricating evidence.
+
+Export/global boundary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `source_check_result_ingested = false`
+- `source_check_backlog_resolved = false`
+
+Next required user action:
+
+- Open the 344A review template workbook
+- Review each backlog row conservatively against whatever source evidence can be independently located
+- Save the filled workbook under `D:/_datefac/input/review_queue_source_check_backlog_344a_filled/`
+
+Next recommended task after user fills workbook:
+
+- `344B Source-check Backlog Result Ingestion After User Fills Workbook`
