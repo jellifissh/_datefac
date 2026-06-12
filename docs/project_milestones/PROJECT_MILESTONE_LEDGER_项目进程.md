@@ -3204,3 +3204,73 @@ Do not repeat:
 - Do not call Argilla or implement a production UI in 343C.
 - Do not write back to upstream workbooks.
 - Do not claim `client_ready = true` or `production_ready = true`.
+
+---
+
+Task ID:
+
+- `343D Real Excel Review Result Ingestion`
+
+Status:
+
+- `completed`
+- Current ingestion is explicitly AI-assisted review, not strict pure human review
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_real_excel_review_343c`
+- `D:/_datefac/output/review_queue_schema_343a`
+- `D:/_datefac/input/review_queue_real_excel_review_343c_filled/review_queue_real_excel_review_343c_review_template_filled.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_excel_ingestion_343d`
+
+Output workbook/report/result:
+
+- `D:/_datefac/output/review_queue_excel_ingestion_343d/review_queue_excel_ingestion_343d.xlsx`
+- `D:/_datefac/output/review_queue_excel_ingestion_343d/review_queue_excel_ingestion_343d_reviewed_result.jsonl`
+- `D:/_datefac/output/review_queue_excel_ingestion_343d/review_queue_excel_ingestion_343d_decision_summary.json`
+- `D:/_datefac/output/review_queue_excel_ingestion_343d/review_queue_excel_ingestion_343d_ai_assisted_review_disclosure.md`
+- `D:/_datefac/output/review_queue_excel_ingestion_343d/review_queue_excel_ingestion_343d_report.md`
+
+Key metrics:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_human_spot_check = true`
+- `reviewed_result_ingested = true` only when validation errors are zero
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+QA result:
+
+- 343C input exists and is waiting for review
+- filled workbook exists and is readable
+- expected sheet resolved
+- identity columns and reviewer columns validated
+- allowed decisions enforced
+- AI-assisted disclosure written to every ingested row
+- no Argilla call made
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `REVIEW_QUEUE_EXCEL_INGESTION_343D_READY`
+
+AI-assisted disclosure:
+
+- `review_source_type = AI_ASSISTED_REVIEW`
+- `not_pure_human_review = true`
+- `strict_human_review_completed = false`
+- `requires_human_spot_check = true`
+
+Next recommended task:
+
+- `343E AI-assisted Review Result Apply Simulation And Audit Gate`
