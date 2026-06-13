@@ -5021,3 +5021,192 @@ Export/global boundary:
 Next recommended task:
 
 - `344E Expanded Trusted Demo Audit Snapshot And Final Handoff Summary`
+
+---
+
+Task ID:
+
+- `344E Expanded Trusted Demo Audit Snapshot And Final Handoff Summary`
+
+Status:
+
+- `completed`
+- Current output closes the 29-row expanded trusted review/demo arc with the final audit snapshot, final handoff summary, executive summary, trust-chain report, artifact index, final export gate snapshot, and scope boundary.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+- `D:/_datefac/output/review_queue_limited_demo_export_package_343n`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e`
+
+Output workbook/report/artifacts:
+
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e.xlsx`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_summary.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_manifest.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_qa.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_report.md`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_final_handoff_summary.md`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_executive_summary.md`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_trust_chain_report.md`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_artifact_index.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_artifact_index.md`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_final_export_gate_snapshot.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_lineage_audit_summary.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_metric_distribution.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_scope_boundary.md`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_next_action_plan.json`
+- `D:/_datefac/output/review_queue_expanded_demo_audit_snapshot_344e/review_queue_expanded_demo_audit_snapshot_344e_no_write_back_proof.json`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_expanded_export_row_count = 29`
+- `audit_label_row_count = 29`
+- `prior_demo_trusted_row_count = 10`
+- `source_check_trusted_row_count = 19`
+- `source_check_confirmed_row_count = 10`
+- `source_check_corrected_row_count = 9`
+- `correction_row_count = 9`
+- `expanded_export_scope = 343O_DEMO_PLUS_344B_SOURCE_CHECK_RESOLVED`
+- `export_usage = REVIEW_DEMO_ONLY`
+- `expanded_demo_audit_snapshot_generated = true`
+- `final_handoff_summary_generated = true`
+- `executive_summary_generated = true`
+- `trust_chain_report_generated = true`
+- `artifact_index_generated = true`
+- `final_export_gate_snapshot_generated = true`
+- `lineage_audit_summary_generated = true`
+- `metric_distribution_generated = true`
+- `expanded_demo_arc_closed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `ready_for_345a = true`
+- `recommended_345a_scope = formal_export_readiness_gap_assessment`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 344D input exists and is ready
+- expanded export rows count is 29
+- audit labels count is 29
+- expanded export scope is correct
+- export usage is `REVIEW_DEMO_ONLY`
+- lineage summary matches `10 + 19 = 29`
+- source-check corrected rows count is 9
+- corrected row semantics `YOY / %` are disclosed
+- final handoff summary is generated
+- executive summary is generated
+- trust-chain report is generated
+- artifact index is generated
+- final export gate snapshot is generated
+- final boundary still blocks formal/client/production readiness
+- no production write-back occurred
+- no formal client export occurred
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `EXPANDED_TRUSTED_DEMO_AUDIT_SNAPSHOT_344E_READY`
+
+Final expanded demo audit snapshot summary:
+
+- 344E closes the expanded 29-row review/demo arc formed by the 10 earlier demo rows plus 19 source-check resolved rows.
+- The package remains review/demo-only and should not be described as formal client export.
+
+Final handoff summary:
+
+- open 344E executive summary, trust-chain report, artifact index, and final export gate snapshot first
+- then open the 344D workbook to inspect the 29-row expanded trusted package itself
+- 9 corrected rows must be interpreted as `YOY / %`, not revenue amount rows
+
+Trust-chain summary:
+
+- trust accumulation now spans schema -> audit baseline -> evidence enrichment -> package human confirmation -> limited gate -> 10-row demo arc -> 19-row source-check resolution -> expanded 29-row package -> final audit snapshot
+- the earlier 10-row arc and later 19-row source-check resolution are both explicitly represented
+
+Artifact index summary:
+
+- indexes the key 344D / 344C / 344B / 344A2 / 343O artifacts
+- every indexed artifact remains non-formal-export and review/demo scoped
+
+Final export gate snapshot:
+
+- `expanded_review_demo_package_generated = true`
+- `expanded_demo_handoff_ready = true`
+- `expanded_demo_audit_snapshot_generated = true`
+- `final_handoff_summary_generated = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+Export/global boundary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+Next recommended task:
+
+- `345A Formal Export Readiness Gap Assessment`
+
+## 344F Strict Human Review Package
+
+Status: completed
+
+Decision:
+
+- `STRICT_HUMAN_REVIEW_PACKAGE_344F_READY`
+
+Output:
+
+- `D:\_datefac\output\review_queue_strict_human_review_package_344f`
+
+Key metrics:
+
+- `strict_review_row_count = 29`
+- `prior_demo_trusted_row_count = 10`
+- `source_check_trusted_row_count = 19`
+- `source_check_confirmed_row_count = 10`
+- `corrected_row_count = 9`
+- `qa_fail_count = 0`
+- `no_write_back_proof_passed = true`
+- `upstream_workbooks_unchanged = true`
+- `strict_human_review_package_generated = true`
+- `global_strict_human_review_completed = false`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `export_usage = STRICT_HUMAN_REVIEW_ONLY`
+
+Validation result:
+
+- `py_compile` passed
+- `pytest` passed: `2 passed`
+- real runner passed
+
+Boundary reminder:
+
+- 344F only generates a strict human review package for the 29-row expanded trusted demo set
+- 344F does not enable formal client export
+- `global_strict_human_review_completed = false`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
