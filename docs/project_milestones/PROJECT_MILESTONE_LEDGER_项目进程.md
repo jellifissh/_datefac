@@ -4669,3 +4669,105 @@ Next required user action:
 Next recommended task after user fills workbook:
 
 - `344B Source-check Evidence Review Result Ingestion After User Fills Workbook`
+
+---
+
+Task ID:
+
+- `344B Source-check Evidence Review Result Ingestion`
+
+Status:
+
+- `completed`
+- Current output ingests the filled 344A2 enriched source-check workbook into sidecar-only result artifacts.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2`
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+- `D:/_datefac/output/review_queue_schema_343a`
+- `D:/_datefac/input/review_queue_source_check_evidence_344a2_filled/review_queue_source_check_evidence_enrichment_344a2_enriched_review_template_filled_independent.xlsx`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b`
+
+Output workbook/report/artifacts:
+
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b.xlsx`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_summary.json`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_qa.json`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_result.jsonl`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_validated_sidecar.jsonl`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_corrections.jsonl`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_audit_gate.json`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_scope_boundary.md`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b/review_queue_source_check_evidence_review_ingestion_344b_report.md`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `filled_row_count = 19`
+- `valid_row_count = 19`
+- `invalid_row_count = 0`
+- `source_confirm_count = 10`
+- `source_correct_count = 9`
+- `source_reject_count = 0`
+- `source_still_insufficient_count = 0`
+- `source_defer_count = 0`
+- `validated_sidecar_row_count = 19`
+- `correction_row_count = 9`
+- `source_check_result_ingested = true`
+- `source_check_backlog_resolved = true`
+- `validated_sidecar_generated = true`
+- `correction_sidecar_generated = true`
+- `audit_gate_generated = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `ready_for_344c = true`
+- `recommended_344c_scope = source_check_confirmed_sidecar_apply_simulation_and_expanded_trust_gate`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 344A2 input exists and remains in waiting-for-source-check-review state
+- filled workbook exists and sheet `04_REVIEW_TEMPLATE` is readable
+- exactly 19 filled rows are ingested
+- filled row identities match the 344A2 enriched backlog rows
+- all source-check decisions are allowed
+- 10 rows are `SOURCE_CONFIRM`
+- 9 rows are `SOURCE_CORRECT`
+- all 9 corrected rows preserve source year/value and correct `revenue / 亿元` to `YOY / %`
+- validated sidecar and corrections JSONL are generated
+- audit gate is generated
+- no production write-back occurred
+- no formal client export occurred
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `SOURCE_CHECK_EVIDENCE_REVIEW_INGESTION_344B_READY`
+
+Source-check result summary:
+
+- 344B resolves the 19-row source-check backlog only as a sidecar review-result ingestion scope.
+- The 9 corrected rows are YOY percentage rows, not revenue amount rows.
+
+Export/global boundary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+Next recommended task:
+
+- `344C Source-check Confirmed Sidecar Apply Simulation And Expanded Trust Gate`
