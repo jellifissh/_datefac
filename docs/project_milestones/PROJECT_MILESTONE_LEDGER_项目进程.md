@@ -4771,3 +4771,113 @@ Export/global boundary:
 Next recommended task:
 
 - `344C Source-check Confirmed Sidecar Apply Simulation And Expanded Trust Gate`
+
+---
+
+Task ID:
+
+- `344C Source-check Confirmed Sidecar Apply Simulation And Expanded Trust Gate`
+
+Status:
+
+- `completed`
+- Current output expands trusted coverage only as a sidecar apply simulation across the prior 10-row demo arc plus 19 source-check resolved rows.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+- `D:/_datefac/output/review_queue_limited_demo_export_package_343n`
+- `D:/_datefac/output/review_queue_human_confirmed_sidecar_simulation_343m`
+- `D:/_datefac/output/review_queue_pure_human_attestation_ingestion_343l`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c`
+
+Output workbook/report/artifacts:
+
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c.xlsx`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_summary.json`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_qa.json`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_source_check_apply_plan.jsonl`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_source_check_applied_sidecar.jsonl`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_expanded_trusted_candidates.jsonl`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_corrections_applied.jsonl`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_dedup_audit.jsonl`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_expanded_trust_gate.json`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_scope_boundary.md`
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c/review_queue_source_check_sidecar_simulation_344c_report.md`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `source_check_input_sidecar_row_count = 19`
+- `source_check_apply_plan_row_count = 19`
+- `source_check_apply_confirm_count = 10`
+- `source_check_apply_correct_count = 9`
+- `source_check_apply_blocked_count = 0`
+- `source_check_applied_sidecar_row_count = 19`
+- `corrections_applied_count = 9`
+- `prior_demo_trusted_row_count = 10`
+- `source_check_trusted_row_count = 19`
+- `expanded_trusted_candidate_count = 29`
+- `deduplicated_expanded_trusted_candidate_count = 29`
+- `dedup_conflict_count = 0`
+- `expanded_trusted_scope = 343O_DEMO_PLUS_344B_SOURCE_CHECK_RESOLVED`
+- `source_check_sidecar_apply_simulation_completed = true`
+- `source_check_applied_sidecar_generated = true`
+- `expanded_trusted_candidates_generated = true`
+- `expanded_trust_gate_evaluated = true`
+- `dedup_audit_generated = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `ready_for_344d = true`
+- `recommended_344d_scope = expanded_trusted_export_package_generation_for_review_demo_only`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 344B input exists and is ready
+- 344B validated sidecar has 19 rows
+- source-check confirm/correct counts match 10/9
+- apply plan has 19 rows and no blocked rows
+- source-check applied sidecar has 19 rows
+- correction semantics are carried forward as YOY/% rows
+- 343N/343O demo trusted rows are readable and count 10
+- expanded trusted candidate count is 29
+- dedup audit is generated
+- dedup conflict count is 0
+- expanded trust gate is generated
+- no production write-back occurred
+- no formal client export occurred
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `SOURCE_CHECK_SIDECAR_SIMULATION_344C_READY`
+
+Expanded trusted candidate summary:
+
+- 344C combines the prior 10-row demo trusted arc with the 19 source-check resolved rows from 344B.
+- The resulting 29-row expanded trusted coverage remains simulation-only and review/demo scoped.
+
+Export/global boundary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+Next recommended task:
+
+- `344D Expanded Trusted Export Package Generation For Review Demo Only`
