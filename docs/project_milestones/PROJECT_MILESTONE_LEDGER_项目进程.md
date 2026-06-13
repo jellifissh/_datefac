@@ -5210,3 +5210,134 @@ Boundary reminder:
 - `formal_client_export_allowed = false`
 - `client_ready = false`
 - `production_ready = false`
+
+## 345A Full Structured Data Inventory
+
+Status: completed
+
+Decision:
+
+- `FULL_STRUCTURED_DATA_INVENTORY_345A_READY`
+
+Output:
+
+- `D:\_datefac\output\full_structured_data_inventory_345a`
+
+Input stage:
+
+- `POST_344F_FULL_STRUCTURED_INVENTORY`
+
+Key metrics:
+
+- `qa_fail_count = 0`
+- `no_write_back_proof_passed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `total_inventory_row_count = 14788`
+- `LONG_FORM_CELL = 5607`
+- `TRUSTED_CELL = 1578`
+- `REVIEW_REQUIRED = 4240`
+- `REJECTED_OR_EXCLUDED = 3213`
+- `HUMAN_REVIEW_APPLIED = 121`
+- `STRICT_HUMAN_REVIEW_PENDING_ROW = 29`
+- `UNKNOWN_STAGE = 0`
+- `missing_unit_count = 3949`
+- `missing_period_count = 399`
+- `missing_source_page_count = 5232`
+- `missing_metric_name_count = 0`
+- `downstream_ready_candidate_count = 11575`
+- `blocked_rejected_status_count = 3213`
+- `blocked_missing_metric_name_count = 0`
+- `blocked_missing_value_count = 0`
+- `blocked_missing_source_trace_count = 0`
+
+Validation result:
+
+- `py_compile` passed
+- `pytest` passed: `3 passed`
+- real runner passed
+
+Boundary reminder:
+
+- 345A only inventories existing structured artifacts
+- it does not rerun MinerU
+- it does not call LLM / VLM
+- it does not enable formal client export
+- 344G still waits for a genuinely human-filled 344F workbook
+
+Next recommended tasks:
+
+- `345B Full Extraction Quality Audit`
+- `345C Metric Candidate Normalization Coverage`
+- `345D Full Structured Demo Export Package`
+- `345E Full Structured QA Gate`
+
+## 345C Metric Candidate Normalization Coverage
+
+Status: completed
+
+Decision:
+
+- `METRIC_CANDIDATE_NORMALIZATION_COVERAGE_345C_READY`
+
+Output:
+
+- `D:\_datefac\output\metric_candidate_normalization_coverage_345c`
+
+Input stage:
+
+- `POST_345B_NORMALIZATION_COVERAGE`
+
+Key metrics:
+
+- `qa_fail_count = 0`
+- `no_write_back_proof_passed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `input_inventory_row_count = 14788`
+- `input_audited_row_count = 14788`
+- `metric_candidate_row_count = 14788`
+- `normalized_metric_row_count = 6691`
+- `unnormalized_metric_row_count = 8097`
+- `normalization_coverage_ratio = 0.452461`
+- `unique_raw_metric_name_count = 207`
+- `unique_normalized_metric_name_count = 18`
+- `unique_unnormalized_raw_metric_name_count = 134`
+- `alias_candidate_count = 134`
+- `high_priority_alias_candidate_count = 26`
+- `stage_with_lowest_coverage = REJECTED_OR_EXCLUDED`
+- `pdf_with_lowest_coverage = H3_AP202606061823323264_1.pdf`
+- `ready_candidate_count_before_normalization_filter = 11575`
+- `ready_candidate_count_after_normalization_filter = 6676`
+
+Validation result:
+
+- `py_compile` passed
+- `pytest` passed: `3 passed`
+- real runner passed
+
+Top blind spots:
+
+- `财务费用`
+- `利润总额`
+- `EV/EBITDA`
+- `成本`
+- `营业利润`
+
+Boundary reminder:
+
+- 345C is analysis-only across existing 345A / 345B artifacts
+- it does not modify normalization rules
+- it does not rerun MinerU
+- it does not call LLM / VLM
+- it does not enable formal client export
+- 344G still waits for a genuinely human-filled 344F workbook
+
+Next recommended tasks:
+
+- `345D Full Structured Demo Export Package`
+- `345E Full Structured QA Gate`
