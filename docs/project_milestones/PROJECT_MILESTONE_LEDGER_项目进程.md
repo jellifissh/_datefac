@@ -4881,3 +4881,143 @@ Export/global boundary:
 Next recommended task:
 
 - `344D Expanded Trusted Export Package Generation For Review Demo Only`
+
+---
+
+Task ID:
+
+- `344D Expanded Trusted Export Package Generation For Review Demo Only`
+
+Status:
+
+- `completed`
+- Current output packages the 29-row expanded trusted candidate set into a review/demo-only export package with audit labels, lineage summary, export gate, and scope boundary.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_source_check_sidecar_simulation_344c`
+- `D:/_datefac/output/review_queue_source_check_evidence_review_ingestion_344b`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+- `D:/_datefac/output/review_queue_limited_demo_export_package_343n`
+- `D:/_datefac/output/review_queue_schema_343a`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d`
+
+Output workbook/report/artifacts:
+
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d.xlsx`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_summary.json`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_manifest.json`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_qa.json`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_report.md`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_demo_readme.md`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_export_rows.jsonl`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_export_rows.csv`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_audit_labels.jsonl`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_export_gate.json`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_lineage_summary.json`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_scope_boundary.md`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_handoff_summary.md`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_metric_distribution.json`
+- `D:/_datefac/output/review_queue_expanded_trusted_demo_export_package_344d/review_queue_expanded_trusted_demo_export_package_344d_no_write_back_proof.json`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_expanded_trusted_candidate_count = 29`
+- `expanded_export_row_count = 29`
+- `audit_label_row_count = 29`
+- `prior_demo_trusted_row_count = 10`
+- `source_check_trusted_row_count = 19`
+- `source_check_confirmed_row_count = 10`
+- `source_check_corrected_row_count = 9`
+- `correction_row_count = 9`
+- `dedup_conflict_count = 0`
+- `expanded_export_scope = 343O_DEMO_PLUS_344B_SOURCE_CHECK_RESOLVED`
+- `export_usage = REVIEW_DEMO_ONLY`
+- `expanded_review_demo_package_generated = true`
+- `expanded_demo_handoff_ready = true`
+- `expanded_export_gate_generated = true`
+- `lineage_summary_generated = true`
+- `audit_labels_generated = true`
+- `source_check_backlog_resolved = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `ready_for_344e = true`
+- `recommended_344e_scope = expanded_trusted_demo_audit_snapshot_and_final_handoff_summary`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 344C input exists and is ready
+- expanded trusted candidates file has 29 rows
+- no dedup conflicts exist
+- expanded export rows count is 29
+- audit labels count is 29
+- every export row carries explicit review/demo-only and not-formal-export labels
+- lineage summary matches 10 prior demo rows + 19 source-check resolved rows
+- corrected row semantics are preserved as `YOY / %` for 9 corrected rows
+- export gate is generated
+- no production write-back occurred
+- no formal client export occurred
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `EXPANDED_TRUSTED_DEMO_EXPORT_PACKAGE_344D_READY`
+
+Expanded export package summary:
+
+- 344D packages the prior 10-row demo trusted arc together with 19 source-check resolved rows from 344B.
+- The resulting 29-row package is explicitly labeled for review/demo-only handoff.
+
+Lineage summary:
+
+- `343N_DEMO` rows = `10`
+- `344B_SOURCE_CHECK` rows = `19`
+- source-check confirmed rows = `10`
+- source-check corrected rows = `9`
+- corrected rows keep `YOY` and `%` semantics
+- dedup conflict count = `0`
+
+Export gate summary:
+
+- `expanded_review_demo_package_generated = true`
+- `expanded_demo_handoff_ready = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+Audit label summary:
+
+- every row carries:
+  `EXPANDED_TRUSTED_CANDIDATE`,
+  `REVIEW_DEMO_ONLY`,
+  `NOT_FORMAL_CLIENT_EXPORT`,
+  `NOT_PRODUCTION_READY`,
+  `NO_PRODUCTION_WRITE_BACK`
+- prior demo rows additionally carry `PACKAGE_SCOPE_HUMAN_CONFIRMED`
+- source-check resolved rows additionally carry `SOURCE_CHECK_RESOLVED`
+- corrected source-check rows additionally carry `SOURCE_CHECK_CORRECTED`
+- confirmed source-check rows additionally carry `SOURCE_CHECK_CONFIRMED`
+
+Export/global boundary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+Next recommended task:
+
+- `344E Expanded Trusted Demo Audit Snapshot And Final Handoff Summary`
