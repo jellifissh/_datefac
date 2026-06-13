@@ -1,31 +1,27 @@
 # 345A Full Structured Data Inventory
 
-## 1. Purpose
+## Goal
 
-Implement `345A Full Structured Data Inventory` for DateFac.
+Implement `345A Full Structured Data Inventory`.
 
-344F is the current trusted-review boundary:
+Current boundary:
 
-- 344E produced a 29-row expanded demo audit snapshot.
-- 344F produced a 29-row strict human review package.
+- 344E generated 29-row expanded demo audit snapshot.
+- 344F generated 29-row strict human review package.
+- 344F is a pause point for trusted-review demo work.
+- 344G should wait until the 344F workbook is genuinely human-filled.
 - `formal_client_export_allowed = false`.
 - `client_ready = false`.
 - `production_ready = false`.
 - `global_strict_human_review_completed = false`.
 
-345A starts the post-344F full structured-data branch. It does **not** continue 344G. 344G should wait until a real human-filled 344F workbook exists.
+345A starts the full structured-data branch. It inventories existing MinerU-first / table-first artifacts and reports coverage, stage/status distribution, missing fields, and downstream-readiness candidates.
 
-345A answers:
+345A is not extraction, not LLM/VLM work, not formal export, and not production hardening.
 
-> Across existing MinerU-first / table-first structured-data artifacts, how much structured data do we have, and how is it distributed by source, stage, status, missing fields, and downstream-readiness candidate status?
+## Preflight
 
-345A is inventory only. Do not rerun extraction. Do not call LLM/VLM. Do not create client export.
-
----
-
-## 2. Preflight
-
-Before coding, read if present:
+Read if present:
 
 - `AGENTS.md`
 - `.skills/README.md`
@@ -34,13 +30,11 @@ Before coding, read if present:
 - `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
 - `docs/codex_tasks/345A_full_structured_data_inventory.md`
 
-Inspect only input dirs passed to the runner. Do not scan the whole repo.
+Inspect only runner input dirs. Do not scan the whole repo.
 
----
+## Runner inputs
 
-## 3. Runner Inputs
-
-Runner must support:
+Support:
 
 ```powershell
 --table-first-core-financial-extraction-342f-dir D:\_datefac\output\table_first_core_financial_extraction_342f
@@ -50,11 +44,9 @@ Runner must support:
 --output-dir D:\_datefac\output\full_structured_data_inventory_345a
 ```
 
-Prefer CSV/JSON inputs. If XLSX is needed, use already available project dependencies only. Missing optional input dirs should be recorded as warnings. If both 342F and 342G sources are missing, fail clearly.
+Prefer CSV/JSON. Read XLSX only using already available project dependencies. Missing optional input dirs become warnings. If both 342F and 342G are missing, fail clearly.
 
----
-
-## 4. Outputs
+## Outputs
 
 Write only under:
 
@@ -77,13 +69,11 @@ Generate:
 - `full_structured_data_inventory_345a_artifact_index.md`
 - `full_structured_data_inventory_345a_next_plan.md`
 
-Do not write back into 342F, 342G, 342H, or 344F outputs.
+Do not write back into any input dir.
 
----
+## Classification
 
-## 5. Inventory Classification
-
-Classify rows into these conceptual stages when possible:
+Classify rows when possible as:
 
 - `RAW_TABLE_CELL`
 - `LONG_FORM_CELL`
@@ -94,9 +84,9 @@ Classify rows into these conceptual stages when possible:
 - `STRICT_HUMAN_REVIEW_PENDING_ROW`
 - `UNKNOWN_STAGE`
 
-Do not invent unavailable values. Missing fields must stay blank/null and be counted.
+Do not invent unavailable values. Keep unavailable fields blank/null and count them.
 
-Each normalized inventory row should include where possible:
+Normalized row fields should include where possible:
 
 - `inventory_row_id`, `source_artifact`, `source_stage`, `source_row_id`
 - `pdf_id`, `pdf_name`, `table_id`, `row_index`, `column_name`
@@ -106,9 +96,7 @@ Each normalized inventory row should include where possible:
 - `is_metric_candidate`, `is_normalized_metric`, `is_downstream_ready_candidate`
 - `missing_required_field_count`, `missing_required_fields`
 
----
-
-## 6. Manifest Metrics
+## Manifest metrics
 
 Manifest must include:
 
@@ -139,21 +127,17 @@ Manifest must include:
 - `missing_metric_name_count`
 - `unknown_stage_count`
 
-If a metric cannot be computed, use `null` and explain it in `metric_limitations`. Do not fake zeros.
+Use `null` plus `metric_limitations` when a metric cannot be computed. Do not fake zeros.
 
----
+## Downstream readiness
 
-## 7. Downstream Readiness
+For inventory only, `is_downstream_ready_candidate = true` means the row has metric name, value, non-rejected status, and at least one source trace field such as page/evidence.
 
-For inventory only, set `is_downstream_ready_candidate = true` when a row has enough data for later review/export-candidate processing: metric name, value, non-rejected status, and at least one source trace field such as source page or evidence reference.
+This never means client-ready.
 
-This flag must not set any client/export/production gate to true.
+## Reports
 
----
-
-## 8. Reports
-
-Executive summary must explain inputs read, total rows inventoried, stage/status distribution, missing-field hotspots, why formal export remains false, and what 345B should do next.
+Executive summary must explain inputs, total rows, stage/status distribution, missing-field hotspots, why export remains false, and what 345B should do next.
 
 Next plan must recommend:
 
@@ -162,13 +146,11 @@ Next plan must recommend:
 - `345D Full Structured Demo Export Package`
 - `345E Full Structured QA Gate`
 
-Also state that `344G` should only happen after the 344F workbook is truly human-filled.
+Also state that 344G waits for a truly filled 344F workbook.
 
----
+## Allowed files
 
-## 9. Allowed Files
-
-Only add or modify:
+Only add/modify:
 
 - `docs/codex_tasks/345A_full_structured_data_inventory.md`
 - `datefac/benchmark/full_structured_data_inventory_345a.py`
@@ -177,15 +159,13 @@ Only add or modify:
 - `tests/benchmark/test_full_structured_data_inventory_345a.py`
 - `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md` only if clean or explicitly requested as ledger-only
 
-If the ledger is dirty, do not modify it during 345A. Report that it needs a separate ledger-only append.
+If the ledger is dirty, do not modify it during 345A.
 
----
+## Forbidden
 
-## 10. Forbidden Changes
+Do not rerun MinerU, call LLM/VLM, scan the repo, add dependencies, modify production pipeline/parser/extraction/delivery/formal export logic, modify reviewed workbooks, LLM response dirs, `input/`, `temp/`, or existing `output/` content.
 
-Do not rerun MinerU, call LLM/VLM, scan the whole repo, add dependencies, modify production pipeline, parser, extraction, delivery, formal export logic, reviewed workbooks, LLM response dirs, `input/`, `temp/`, or existing `output/` content.
-
-Do not auto commit, auto push, auto merge, use `git add -A`, `git add .`, `git reset --hard`, or `git checkout --`.
+Do not auto commit/push/merge. Do not use `git add -A`, `git add .`, `git reset --hard`, or `git checkout --`.
 
 Do not touch protected dirty files:
 
@@ -197,9 +177,7 @@ Do not touch protected dirty files:
 - `input/semantic_adjudicator_responses_322f/`
 - `temp/`
 
----
-
-## 11. Validation
+## Validation
 
 Run:
 
@@ -209,25 +187,8 @@ python -m pytest tests\benchmark\test_full_structured_data_inventory_345a.py -q
 python tools\run_full_structured_data_inventory_345a.py --table-first-core-financial-extraction-342f-dir D:\_datefac\output\table_first_core_financial_extraction_342f --table-first-extraction-review-package-342g-dir D:\_datefac\output\table_first_extraction_review_package_342g --table-first-human-review-apply-simulation-342h-dir D:\_datefac\output\table_first_human_review_apply_simulation_342h --review-queue-strict-human-review-package-344f-dir D:\_datefac\output\review_queue_strict_human_review_package_344f --output-dir D:\_datefac\output\full_structured_data_inventory_345a
 ```
 
-Tests must verify outputs exist, decision is ready, QA is zero, all client/export/production gates remain false, input dirs are not written back, and missing optional inputs become warnings.
+Tests must verify outputs exist, decision ready, QA zero, all client/export/production gates false, no input write-back, and optional missing inputs become warnings.
 
----
+## Completion report
 
-## 12. Completion Report
-
-Report:
-
-1. Files changed.
-2. py_compile result.
-3. pytest result.
-4. real runner result.
-5. output dir.
-6. decision and QA metrics.
-7. total inventory row count.
-8. stage/status distribution.
-9. missing-field summary.
-10. downstream-ready candidate count.
-11. final gate status.
-12. first file to open.
-13. `git status -sb`.
-14. confirmation that existing output/temp/input/reviewed workbook/LLM response/protected dirty files were not modified.
+Report files changed, py_compile, pytest, real runner, output dir, decision/QA, total inventory rows, stage/status distribution, missing-field summary, downstream-ready candidate count, final gate status, first file to open, `git status -sb`, and no-touch confirmation for existing output/temp/input/reviewed workbook/LLM response/protected dirty files.
