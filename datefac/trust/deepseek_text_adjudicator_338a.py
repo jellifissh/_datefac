@@ -11,7 +11,10 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 
 import pandas as pd
-import requests
+
+from datefac.llm.client import ChatCompletionsClient
+from datefac.llm.config import resolve_deepseek_runtime_config
+from datefac.llm.json_utils import parse_model_json as shared_parse_model_json
 
 from datefac.trust.no_apply_proof import (
     FORMAL_SCOPE_RULES_PATH,
@@ -165,8 +168,18 @@ class DeepSeekRuntimeConfig:
 class DeepSeekTextClient:
     def __init__(self, config: DeepSeekRuntimeConfig) -> None:
         self.config = config
+        self._client = ChatCompletionsClient(
+            config=config,
+            system_prompt=(
+                "浣犳槸涓€涓弗鏍肩殑涓枃璐㈠姟鏂囨湰璇佹嵁瑁佸喅鍣ㄣ€?"
+                "鍙兘鍩轰簬鎻愪緵鐨勬枃鏈瘉鎹垽鏂紝涓嶈兘浣跨敤澶栭儴鐭ヨ瘑锛屼笉鑳借緭鍑?markdown锛屽繀椤诲彧杩斿洖 JSON 瀵硅薄銆?"
+            ),
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
 
     def adjudicate(self, prompt: str) -> Dict[str, Any]:
+        return self._client.adjudicate(prompt)
         endpoint = self.config.base_url.rstrip("/") + "/chat/completions"
         payload = {
             "model": self.config.model,
@@ -203,6 +216,7 @@ class DeepSeekTextClient:
 
 
 def parse_model_json(text: str) -> Tuple[Dict[str, Any] | None, str]:
+    return shared_parse_model_json(_norm_text(text))
     cleaned = _norm_text(text)
     if not cleaned:
         return None, "empty_response"
@@ -576,10 +590,8 @@ def build_deepseek_text_adjudicator_338a(
         }
 
     summary_337d = json.loads(summary_337d_path.read_text(encoding="utf-8"))
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    base_url = os.environ.get("DEEPSEEK_BASE_URL", "")
-    model_name = os.environ.get("DEEPSEEK_MODEL", "")
-    api_env_ready = bool(_norm_text(api_key) and _norm_text(base_url) and _norm_text(model_name))
+    runtime_config, _ = resolve_deepseek_runtime_config(env=os.environ, timeout_seconds=timeout_seconds)
+    api_env_ready = runtime_config is not None
 
     source_rows = _load_source_rows(workbook_path, limit=max(1, int(limit)))
     cache_path = output_dir / "deepseek_text_adjudication_cache_338a.jsonl"
@@ -594,10 +606,10 @@ def build_deepseek_text_adjudicator_338a(
     if client is None and api_env_ready and not dry_run_prompts_only:
         client = DeepSeekTextClient(
             DeepSeekRuntimeConfig(
-                api_key=api_key,
-                base_url=base_url,
-                model=model_name,
-                timeout_seconds=timeout_seconds,
+                api_key=runtime_config.api_key,
+                base_url=runtime_config.base_url,
+                model=runtime_config.model,
+                timeout_seconds=runtime_config.timeout_seconds,
             )
         )
 

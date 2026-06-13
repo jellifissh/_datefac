@@ -13,6 +13,10 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 import pandas as pd
 import requests
 
+from datefac.llm.client import ChatCompletionsClient
+from datefac.llm.config import resolve_ai_review_runtime_config
+from datefac.llm.json_utils import parse_model_json as shared_parse_model_json
+
 from datefac.trust.no_apply_proof import (
     FORMAL_SCOPE_RULES_PATH,
     SEMANTIC_ALIAS_ASSET_PATH,
@@ -194,8 +198,21 @@ class AIReviewRuntimeConfig:
 class AIReviewTextClient:
     def __init__(self, config: AIReviewRuntimeConfig) -> None:
         self.config = config
+        self._client = ChatCompletionsClient(
+            config=config,
+            system_prompt=(
+                "You are a strict Chinese financial-text adjudicator. "
+                "You may use supporting context, but you must separate raw evidence quotes from supporting context quotes. "
+                "Do not invent any quote. "
+                "If raw evidence and context conflict, choose NEEDS_MORE_CONTEXT. "
+                "Return JSON only."
+            ),
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
 
     def adjudicate(self, prompt: str) -> Dict[str, Any]:
+        return self._client.adjudicate(prompt)
         endpoint = self.config.base_url.rstrip("/") + "/chat/completions"
         payload = {
             "model": self.config.model,
@@ -235,6 +252,18 @@ class AIReviewTextClient:
 
 
 def resolve_runtime_config(env: Mapping[str, str] | None = None, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS) -> Tuple[AIReviewRuntimeConfig | None, Dict[str, str]]:
+    runtime_config, statuses = resolve_ai_review_runtime_config(env=env or os.environ, timeout_seconds=timeout_seconds)
+    if runtime_config is not None:
+        return (
+            AIReviewRuntimeConfig(
+                api_key=runtime_config.api_key,
+                base_url=runtime_config.base_url,
+                model=runtime_config.model,
+                env_source=runtime_config.env_source,
+                timeout_seconds=runtime_config.timeout_seconds,
+            ),
+            statuses,
+        )
     source_env = dict(env or os.environ)
     statuses = {
         "AI_REVIEW_API_KEY": "SET" if _norm_text(source_env.get("AI_REVIEW_API_KEY")) else "MISSING",
@@ -281,6 +310,7 @@ def resolve_runtime_config(env: Mapping[str, str] | None = None, timeout_seconds
 
 
 def parse_model_json(text: str) -> Tuple[Dict[str, Any] | None, str]:
+    return shared_parse_model_json(_norm_text(text))
     cleaned = _norm_text(text)
     if not cleaned:
         return None, "empty_response"
