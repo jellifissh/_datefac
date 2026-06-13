@@ -4535,3 +4535,137 @@ Next required user action:
 Next recommended task after user fills workbook:
 
 - `344B Source-check Backlog Result Ingestion After User Fills Workbook`
+
+---
+
+Task ID:
+
+- `344A2 Source Evidence Enrichment For Source-check Backlog`
+
+Status:
+
+- `completed`
+- Current output is intentionally waiting for reviewer source-check input and does not ingest results yet.
+
+Input dirs/files:
+
+- `D:/_datefac/output/review_queue_source_check_backlog_package_344a`
+- `D:/_datefac/output/review_queue_demo_audit_snapshot_343o`
+- `D:/_datefac/output/review_queue_audit_summary_343h`
+- `D:/_datefac/output/review_queue_spot_check_ingestion_343g`
+- `D:/_datefac/output/review_queue_spot_check_package_343f`
+- `D:/_datefac/output/review_queue_source_evidence_enrichment_343i2`
+- `D:/_datefac/output/review_queue_schema_343a`
+- scanned read-only `D:/_datefac/output/*342*` and `D:/_datefac/output/*343*` artifact candidates, with exact evidence hits coming primarily from `342R` and `343D`
+
+Output dir:
+
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2`
+
+Output workbook/package artifacts:
+
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2.xlsx`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_enriched_review_template.xlsx`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_enriched_backlog_items.jsonl`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_evidence_match_candidates.jsonl`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_match_confidence_audit.jsonl`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_evidence_map.json`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_reviewer_instructions.md`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_fill_guide.md`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_expected_import_contract.json`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_unresolved_evidence_report.md`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_artifact_search_report.md`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_scope_boundary.md`
+- `D:/_datefac/output/review_queue_source_check_evidence_enrichment_344a2/review_queue_source_check_evidence_enrichment_344a2_report.md`
+
+Scanned artifact categories:
+
+- `342R audit-labeled export candidates`
+- `343D reviewed result ingestion`
+- `343B excel round-trip reviewed result`
+- `343E apply simulation`
+- `343G spot-check ingestion`
+- `343H audit summary backlog`
+- `343I2 prior source-evidence enrichment package`
+
+Key metrics:
+
+- `review_queue_schema_version = 343A.review_queue.v1`
+- `input_source_check_backlog_item_count = 19`
+- `deduplicated_backlog_item_count = 19`
+- `evidence_resolved_count = 19`
+- `evidence_partial_count = 0`
+- `evidence_unresolved_count = 0`
+- `source_pdf_name_available_count = 19`
+- `page_number_available_count = 19`
+- `image_path_available_count = 19`
+- `source_text_snippet_available_count = 19`
+- `match_candidate_count = 209`
+- `high_confidence_match_count = 57`
+- `medium_confidence_match_count = 0`
+- `low_confidence_match_count = 152`
+- `auto_enriched_item_count = 19`
+- `unresolved_item_count = 0`
+- `source_check_evidence_enrichment_completed = true`
+- `enriched_review_template_generated = true`
+- `evidence_map_generated = true`
+- `reviewer_instructions_generated = true`
+- `fill_guide_generated = true`
+- `expected_import_contract_generated = true`
+- `waiting_for_source_check_review = true`
+- `source_check_result_ingested = false`
+- `source_check_backlog_resolved = false`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `ready_for_344b = false`
+- `recommended_344b_scope = source_check_evidence_review_result_ingestion_after_user_fills_workbook`
+- `qa_fail_count = 0`
+- `no-write-back proof passed`
+
+Validation result:
+
+- 344A input exists and is ready
+- all 19 backlog rows are preserved
+- no source-check decision is prefilled
+- every backlog item has an evidence resolution status
+- exact `review_item_id` / `343D source_row_id -> 342R export_candidate_row_id` trace is sufficient to auto-enrich all 19 rows
+- low-confidence matches are logged but not required for the applied enrichment
+- enriched review template, reviewer instructions, fill guide, expected import contract, unresolved report, and artifact search report are generated
+- waiting-for-source-check-review state is preserved
+- source-check results are not ingested
+- formal/client/production readiness flags remain false
+- no Argilla call made
+- no real production apply performed
+- no upstream workbook modified
+- no protected dirty files staged
+- no output / temp / forbidden input paths staged
+- no sheet name exceeds 31 chars
+- no-write-back proof passed
+
+Decision:
+
+- `SOURCE_CHECK_EVIDENCE_ENRICHMENT_344A2_WAITING_FOR_SOURCE_CHECK_REVIEW`
+
+Evidence enrichment summary:
+
+- 344A2 closes the evidence-locator gap left by 344A for the 19 remaining source-check backlog rows.
+- The enrichment is still conservative: it fills source PDF / page / table / image / snippet locators, but does not confirm, correct, reject, or defer any row automatically.
+
+Export/global boundary:
+
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `source_check_result_ingested = false`
+- `source_check_backlog_resolved = false`
+
+Next required user action:
+
+- Open the 344A2 enriched review template workbook
+- Review each row using the enriched PDF/page/table/image/snippet evidence fields
+- Save the filled workbook under `D:/_datefac/input/review_queue_source_check_evidence_344a2_filled/`
+
+Next recommended task after user fills workbook:
+
+- `344B Source-check Evidence Review Result Ingestion After User Fills Workbook`
