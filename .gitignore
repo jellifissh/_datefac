@@ -8,6 +8,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage*
+*.pyc
 
 # ---- Virtual environments ----
 .venv/
@@ -19,6 +20,10 @@ ENV/
 output/
 .temp_cache/
 logs/
+temp/
+debug_reports/
+_codex_test_tmp_*/
+_codex_debug_*/
 
 # ---- Model/cache directories ----
 ai_models/

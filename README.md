@@ -249,3 +249,12 @@ These stages do not prove production adoption. They prove that:
 6. `docs/demo/datefac_demo_release_checklist_332a.md`
 7. `docs/demo/（英文项目总览）datefac_project_overview_333a_en.md`
 8. `docs/demo/（英文运行手册）datefac_current_runbook_333a_en.md`
+
+### Repository Navigation
+
+- `docs/architecture/project_directory_governance.md`: lightweight directory responsibility guide
+- `docs/demo/mineru_runbook.md`: current MinerU runbook and benchmark entry references
+- `docs/codex_tasks/`: numbered task specs and boundaries
+- `tools/`: runnable entry points and local environment helpers
+- `datefac/`: importable source package
+- `tests/`: focused automated checks
