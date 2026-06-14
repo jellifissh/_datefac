@@ -5525,3 +5525,49 @@ Validation commands and results:
 
 Next recommended step:
 - human fills workbook, then `345C10 Second Batch Reviewed Alias Decision Ingestion`
+
+## 345C10 Second Batch Reviewed Alias Decision Ingestion
+
+Status: completed
+
+Decision:
+- `SECOND_BATCH_REVIEWED_ALIAS_DECISION_INGESTION_345C10_READY`
+
+Input package:
+- `D:\_datefac\output\remaining_blind_spot_human_review_package_345c9`
+
+Reviewed workbook path:
+- `D:\_datefac\output\remaining_blind_spot_human_review_package_345c9\remaining_blind_spot_human_review_package_345c9_reviewed.xlsx`
+
+Output package:
+- `D:\_datefac\output\second_batch_reviewed_alias_decision_ingestion_345c10`
+
+Key metrics:
+- `reviewed_row_count = 16`
+- `approved_existing_mapping_count = 0`
+- `approved_new_standard_count = 15`
+- `rejected_too_generic_count = 0`
+- `needs_source_context_count = 1`
+- `deferred_count = 0`
+- `validation_issue_count = 0`
+- `apply_simulation_eligible_count = 15`
+- `qa_fail_count = 0`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_second_batch_reviewed_alias_decision_ingestion_345c10.py -q` passed
+- real runner passed
+
+Next recommended step:
+- `345C11 Second Batch Alias Apply Simulation`
