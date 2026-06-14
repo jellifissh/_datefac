@@ -5718,6 +5718,59 @@ Next recommended step:
 - `345F Demo Narrative Report Package`
 - `344G` still waits for a genuinely human-filled `344F` workbook
 
+## 345F Demo Narrative Report Package
+
+Status: completed
+
+Decision:
+- `DEMO_NARRATIVE_REPORT_PACKAGE_345F_READY`
+
+Input packages:
+- `345D = D:\_datefac\output\full_structured_demo_export_package_345d`
+- `345E = D:\_datefac\output\demo_export_review_qa_checklist_345e`
+
+Output package:
+- `D:\_datefac\output\demo_narrative_report_package_345f`
+
+Key metrics:
+- `generated_report_count = 10`
+- `demo_export_row_count = 109`
+- `quality_limited_row_count = 5558`
+- `excluded_row_count = 9121`
+- `inventory_row_count = 14788`
+- `coverage_ratio_before_alias_simulation = 0.452461`
+- `coverage_ratio_after_alias_simulation = 0.684136`
+- `sample_rows_for_story_count = 10`
+- `qa_fail_count = 0`
+
+QA readiness summary:
+- `row_count_closure_passed = true`
+- `gate_safety_check_passed = true`
+- `caveat_completeness_passed = true`
+- `presentation_ready_for_demo_only = true`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `formal_export_generated = false`
+- `demo_export_only = true`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_demo_narrative_report_package_345f.py -q` passed
+- real runner passed
+
+Next recommended step:
+- `345G Demo Presentation Slide Outline`
+- `344G` still waits for a genuinely human-filled `344F` workbook
+
 ## 345E Demo Export Review / QA Checklist
 
 Status: completed
@@ -5753,3 +5806,47 @@ Validation commands and results:
 
 No-write-back confirmation:
 - upstream inputs unchanged; official assets unchanged; protected dirty status preserved; no protected paths staged
+
+## 345F Demo Narrative Report Package
+
+Status: completed
+
+Decision:
+- `DEMO_NARRATIVE_REPORT_PACKAGE_345F_READY`
+
+Input packages:
+- `345D = D:\_datefac\output\full_structured_demo_export_package_345d`
+- `345E = D:\_datefac\output\demo_export_review_qa_checklist_345e`
+
+Output package:
+- `D:\_datefac\output\demo_narrative_report_package_345f`
+
+Key metrics:
+- `generated_report_count = 10`
+- `demo_export_row_count = 109`
+- `quality_limited_row_count = 5558`
+- `excluded_row_count = 9121`
+- `coverage_ratio_before_alias_simulation = 0.452461`
+- `coverage_ratio_after_alias_simulation = 0.684136`
+- `sample_rows_for_story_count = 10`
+- `qa_fail_count = 0`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_demo_narrative_report_package_345f.py -q` passed
+- real runner passed
+
+Next recommended step:
+- `345G Demo Presentation Slide Outline`
+- `344G` still waits for a genuinely human-filled `344F` workbook
