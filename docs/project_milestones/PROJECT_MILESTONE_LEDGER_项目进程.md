@@ -5622,3 +5622,49 @@ Validation commands and results:
 
 Next recommended step:
 - `345D Full Structured Demo Export Package`
+
+## 345D Full Structured Demo Export Package
+
+Status: completed
+
+Decision:
+- `FULL_STRUCTURED_DEMO_EXPORT_PACKAGE_345D_READY`
+
+Input packages:
+- `345A = D:\_datefac\output\full_structured_data_inventory_345a`
+- `345B = D:\_datefac\output\full_extraction_quality_audit_345b`
+- `345C = D:\_datefac\output\metric_candidate_normalization_coverage_345c`
+- `345C11 = D:\_datefac\output\second_batch_alias_apply_simulation_345c11`
+
+Output package:
+- `D:\_datefac\output\full_structured_demo_export_package_345d`
+
+Key metrics:
+- `demo_export_row_count = 109`
+- `quality_limited_row_count = 5558`
+- `excluded_row_count = 9121`
+- `coverage_ratio_after_alias_simulation = 0.684136`
+- `remaining_unnormalized_raw_metric_name_count = 96`
+- `remaining_unnormalized_metric_row_count = 4671`
+- `high_severity_issue_count = 7595`
+- `medium_severity_issue_count = 7084`
+- `qa_fail_count = 0`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_full_structured_demo_export_package_345d.py -q` passed
+- real runner passed
+
+Next recommended step:
+- `345E Demo Export Review / QA Checklist`
