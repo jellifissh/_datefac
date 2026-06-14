@@ -5341,3 +5341,73 @@ Next recommended tasks:
 
 - `345D Full Structured Demo Export Package`
 - `345E Full Structured QA Gate`
+
+## 345C7 Official Alias Rule Update Candidate Package
+
+Status: completed
+
+Decision:
+
+- `OFFICIAL_ALIAS_RULE_UPDATE_CANDIDATE_PACKAGE_345C7_READY`
+
+Output:
+
+- `D:\_datefac\output\official_alias_rule_update_candidate_package_345c7`
+
+Input stage:
+
+- `POST_345C6_OFFICIAL_ALIAS_RULE_UPDATE_CANDIDATE_PACKAGE`
+
+Key metrics:
+
+- `qa_fail_count = 0`
+- `no_write_back_proof_passed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `validated_approved_alias_count = 22`
+- `candidate_row_count = 22`
+- `controlled_rule_update_candidate_count = 0`
+- `demo_only_sidecar_candidate_count = 3`
+- `needs_additional_review_candidate_count = 19`
+- `do_not_update_rule_candidate_count = 0`
+- `low_risk_candidate_count = 0`
+- `medium_risk_candidate_count = 3`
+- `high_risk_candidate_count = 19`
+- `simulated_alias_applied_row_count = 1813`
+- `simulated_newly_normalized_row_count = 1813`
+- `normalization_coverage_ratio_before = 0.452461`
+- `normalization_coverage_ratio_after_simulation = 0.575061`
+- `normalization_coverage_ratio_delta = 0.1226`
+- `ready_candidate_count_before_simulation = 6676`
+- `ready_candidate_count_after_alias_simulation = 8146`
+- `ready_candidate_count_delta = 1470`
+- `remaining_unnormalized_raw_metric_name_count = 112`
+- `remaining_unnormalized_metric_row_count = 6284`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+- `candidate_package_only = true`
+- `controlled_rule_update_ready = false`
+- `full_structured_demo_export_reasonable = false`
+
+Validation result:
+
+- `py_compile` passed
+- `pytest` passed: `2 passed`
+- real runner passed
+
+Boundary reminder:
+
+- 345C7 only packages reviewed approved aliases into a candidate package for later explicit review
+- it does not modify normalization rules
+- it does not modify official alias assets
+- it does not write back into 345C5 / 345C6 or upstream data
+- it does not enable formal client export
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+Next recommended task:
+
+- `345C4/345C5 additional review batch`
