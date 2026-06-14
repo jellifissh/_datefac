@@ -47,7 +47,7 @@ def resolve_ai_review_runtime_config(
     *,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
 ) -> Tuple[ChatModelRuntimeConfig | None, Dict[str, str]]:
-    source_env = dict(env or os.environ)
+    source_env = dict(os.environ if env is None else env)
     keys = (
         "AI_REVIEW_API_KEY",
         "AI_REVIEW_BASE_URL",
@@ -100,7 +100,7 @@ def resolve_deepseek_runtime_config(
     *,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
 ) -> Tuple[ChatModelRuntimeConfig | None, Dict[str, str]]:
-    source_env = dict(env or os.environ)
+    source_env = dict(os.environ if env is None else env)
     keys = ("DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL", "DEEPSEEK_MODEL")
     statuses = _status_map(source_env, keys)
     values = _resolve_triplet(
