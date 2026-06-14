@@ -5668,3 +5668,88 @@ Validation commands and results:
 
 Next recommended step:
 - `345E Demo Export Review / QA Checklist`
+
+## 345E Demo Export Review / QA Checklist
+
+Status: completed
+
+Decision:
+- `DEMO_EXPORT_REVIEW_QA_CHECKLIST_345E_READY`
+
+Input package:
+- `345D = D:\_datefac\output\full_structured_demo_export_package_345d`
+
+Output package:
+- `D:\_datefac\output\demo_export_review_qa_checklist_345e`
+
+QA checklist summary:
+- `checked_artifact_count = 18`
+- `missing_required_artifact_count = 0`
+- `optional_missing_artifact_count = 0`
+- `artifact_read_error_count = 0`
+- `row_count_closure_passed = true`
+- `demo_export_row_count = 109`
+- `quality_limited_row_count = 5558`
+- `excluded_row_count = 9121`
+- `caveat_completeness_passed = true`
+- `gate_safety_check_passed = true`
+- `presentation_ready_for_demo_only = true`
+- `qa_fail_count = 0`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `formal_export_generated = false`
+- `demo_export_only = true`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_demo_export_review_qa_checklist_345e.py -q` passed
+- real runner passed
+
+Next recommended step:
+- `345F Demo Narrative Report Package`
+- `344G` still waits for a genuinely human-filled `344F` workbook
+
+## 345E Demo Export Review / QA Checklist
+
+Status: completed
+
+- decision: DEMO_EXPORT_REVIEW_QA_CHECKLIST_345E_READY
+- input package: D:\_datefac\output\full_structured_demo_export_package_345d
+- output package: D:\_datefac\output\demo_export_review_qa_checklist_345e
+- checked_artifact_count: 18
+- missing_required_artifact_count: 0
+- optional_missing_artifact_count: 0
+- artifact_read_error_count: 0
+- row_count_closure_passed: True
+- demo_export_row_count: 109
+- quality_limited_row_count: 5558
+- excluded_row_count: 9121
+- caveat_completeness_passed: False
+- gate_safety_check_passed: True
+- presentation_ready_for_demo_only: False
+- no_write_back_proof_passed: True
+- formal_client_export_allowed: False
+- client_ready: False
+- production_ready: False
+- global_strict_human_review_completed: False
+- sample_demo_row_count: 30
+- sample_quality_limited_row_count: 30
+- sample_excluded_row_count: 30
+- next recommended step: 345F Demo Narrative Report Package
+
+Validation commands and results:
+- py_compile: 
+- pytest: 
+- real runner: 
+
+No-write-back confirmation:
+- upstream inputs unchanged; official assets unchanged; protected dirty status preserved; no protected paths staged
