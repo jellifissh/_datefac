@@ -5571,3 +5571,54 @@ Validation commands and results:
 
 Next recommended step:
 - `345C11 Second Batch Alias Apply Simulation`
+
+## 345C11 Second Batch Alias Apply Simulation
+
+Status: completed
+
+Decision:
+- `SECOND_BATCH_ALIAS_APPLY_SIMULATION_345C11_READY`
+
+Input packages:
+- `345C = D:\_datefac\output\metric_candidate_normalization_coverage_345c`
+- `345C6 = D:\_datefac\output\reviewed_alias_apply_simulation_345c6`
+- `345C10 = D:\_datefac\output\second_batch_reviewed_alias_decision_ingestion_345c10`
+
+Output package:
+- `D:\_datefac\output\second_batch_alias_apply_simulation_345c11`
+
+Key metrics:
+- `first_batch_alias_count = 22`
+- `second_batch_eligible_alias_count = 15`
+- `second_batch_simulated_newly_normalized_row_count = 1613`
+- `cumulative_simulated_newly_normalized_row_count = 3426`
+- `coverage_ratio_before = 0.452461`
+- `coverage_ratio_after_first_batch = 0.575061`
+- `coverage_ratio_after_second_batch = 0.684136`
+- `remaining_unnormalized_metric_row_count = 4671`
+- `remaining_unnormalized_raw_metric_name_count = 96`
+- `ready_candidate_count_after_first_batch = 8146`
+- `ready_candidate_count_after_second_batch = 8974`
+- `qa_fail_count = 0`
+
+Alias branch final recommendation:
+- `STOP_ALIAS_BRANCH_AND_RETURN_TO_345D`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_second_batch_alias_apply_simulation_345c11.py -q` passed
+- real runner passed
+
+Next recommended step:
+- `345D Full Structured Demo Export Package`
