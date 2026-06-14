@@ -5411,3 +5411,117 @@ Boundary reminder:
 Next recommended task:
 
 - `345C4/345C5 additional review batch`
+
+## 345C8 Remaining Blind Spot Alias Candidate Package
+
+Status: completed
+
+Decision:
+
+- `REMAINING_BLIND_SPOT_ALIAS_CANDIDATE_PACKAGE_345C8_READY`
+
+Output:
+
+- `D:\_datefac\output\remaining_blind_spot_alias_candidate_package_345c8`
+
+Input stage:
+
+- `POST_345C7_REMAINING_BLIND_SPOT_CANDIDATE_SELECTION`
+
+Key metrics:
+
+- `qa_fail_count = 0`
+- `no_write_back_proof_passed = true`
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+- `remaining_unnormalized_raw_metric_name_count = 112`
+- `remaining_unnormalized_metric_row_count = 6284`
+- `max_blind_spot_candidates = 30`
+- `min_row_impact = 10`
+- `selected_candidate_count = 30`
+- `unselected_blind_spot_count = 82`
+- `selected_estimated_row_impact_total = 3071`
+- `selected_estimated_coverage_delta_total = 0.207667`
+- `selected_estimated_ready_candidate_delta_total = 0`
+- `high_priority_candidate_count = 25`
+- `medium_priority_candidate_count = 5`
+- `low_priority_candidate_count = 0`
+- `include_in_second_review_batch_count = 16`
+- `include_as_context_only_count = 3`
+- `defer_low_impact_count = 0`
+- `exclude_too_generic_count = 6`
+- `needs_source_context_before_review_count = 11`
+- `low_risk_candidate_count = 0`
+- `medium_risk_candidate_count = 16`
+- `high_risk_candidate_count = 14`
+- `alias_branch_stop_or_continue_decision = CONTINUE_WITH_SECOND_REVIEW_BATCH`
+- `full_structured_demo_export_reasonable_after_345c8 = false`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+- `candidate_package_only = true`
+
+Validation result:
+
+- `py_compile` passed
+- `pytest` passed: `2 passed`
+- real runner passed
+
+Boundary reminder:
+
+- 345C8 only selects Top N remaining blind-spot alias candidates and emits a stop-or-continue decision
+- it does not perform human review
+- it does not call LLM / VLM
+- it does not modify normalization rules or official alias assets
+- it does not write back into 345C6 / 345C7 or upstream data
+- it does not enable formal client export
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+
+Next recommended task:
+
+- `345C9 Remaining Blind Spot Human Review Package`
+
+## 345C9 Remaining Blind Spot Human Review Package
+
+Status: completed
+
+Decision:
+- `REMAINING_BLIND_SPOT_HUMAN_REVIEW_PACKAGE_345C9_READY`
+
+Input package:
+- `D:\_datefac\output\remaining_blind_spot_alias_candidate_package_345c8`
+
+Output package:
+- `D:\_datefac\output\remaining_blind_spot_human_review_package_345c9`
+
+Key metrics:
+- `selected_candidate_count = 30`
+- `review_required_row_count = 16`
+- `context_only_row_count = 3`
+- `blocked_or_too_generic_row_count = 11`
+- `generated_review_pending_count = 16`
+- `generated_approved_count = 0`
+- `alias_rule_update_allowed_count = 0`
+- `qa_fail_count = 0`
+
+Gate status:
+- `formal_client_export_allowed = false`
+- `client_ready = false`
+- `production_ready = false`
+- `global_strict_human_review_completed = false`
+
+No-write-back confirmation:
+- `no_write_back_proof_passed = true`
+- `official_rules_modified = false`
+- `official_alias_assets_modified = false`
+
+Validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_remaining_blind_spot_human_review_package_345c9.py -q` passed
+- real runner passed
+
+Next recommended step:
+- human fills workbook, then `345C10 Second Batch Reviewed Alias Decision Ingestion`
