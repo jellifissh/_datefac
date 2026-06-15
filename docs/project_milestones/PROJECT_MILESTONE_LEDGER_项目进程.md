@@ -5922,3 +5922,35 @@ Status: completed
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
 - next_recommended_step: 345G Demo Presentation Slide Outline
+
+## 346B2 Recovery Candidate QA Audit
+
+Status: completed
+
+- decision: RECOVERY_CANDIDATE_QA_AUDIT_346B2_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346a_dir: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- input_346a2_dir: D:\_datefac\output\mineru_image_path_binding_fix_346a2
+- input_346b_dir: D:\_datefac\output\quality_limited_row_recovery_pilot_346b
+- output_dir: D:\_datefac\output\recovery_candidate_qa_audit_346b2
+- audited_recovered_candidate_count: 70
+- safe_recovered_candidate_count: 32
+- risky_recovered_candidate_count: 0
+- false_positive_suspect_count: 38
+- unit_repair_risk_count: 38
+- ratio_multiple_unit_mismatch_count: 24
+- percentage_unit_mismatch_count: 0
+- per_share_unit_mismatch_count: 14
+- monetary_unit_mismatch_count: 0
+- unit_not_applicable_verified_count: 0
+- unit_not_applicable_risk_count: 0
+- image_bound_recovered_count: 38
+- text_context_only_recovered_count: 32
+- needs_rule_refinement_count: 0
+- human_review_triage_count: 26
+- still_limited_triage_count: 4
+- safe_to_expand_recovery: False
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B3 Recovery Rule Refinement
