@@ -6092,3 +6092,60 @@ Status: completed
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
 - next_recommended_step: 346B4R Controlled Expansion Replay With Patched Rules
+
+## 346B4R Controlled Expansion Replay With Patched Rules
+
+Status: completed
+
+- decision: CONTROLLED_EXPANSION_REPLAY_WITH_PATCHED_RULES_346B4R_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346b4_dir: D:\_datefac\output\controlled_quality_limited_recovery_expansion_346b4
+- input_346b3r_dir: D:\_datefac\output\recovery_rule_refinement_patch_346b3r
+- output_dir: D:\_datefac\output\controlled_expansion_replay_with_patched_rules_346b4r
+- replay_input_row_count: 500
+- previous_safe_recovered_candidate_count: 212
+- replay_safe_recovered_candidate_count: 234
+- previous_semantic_class_unknown_count: 22
+- replay_semantic_class_unknown_count: 0
+- unknown_resolved_count: 22
+- patch_applied_row_count: 22
+- patch_regression_count: 0
+- false_positive_guardrail_hit_count: 0
+- unit_semantic_mismatch_count: 0
+- lineage_audit_passed: True
+- evidence_weakness_count: 0
+- safe_to_continue_expansion: True
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B4Q Controlled Expansion QA Audit
+
+## 346B4Q Controlled Expansion QA Audit
+
+Status: completed
+
+- decision: CONTROLLED_EXPANSION_QA_AUDIT_346B4Q_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346b4_dir: D:\_datefac\output\controlled_quality_limited_recovery_expansion_346b4
+- input_346b3r_dir: D:\_datefac\output\recovery_rule_refinement_patch_346b3r
+- input_346b4r_dir: D:\_datefac\output\controlled_expansion_replay_with_patched_rules_346b4r
+- output_dir: D:\_datefac\output\controlled_expansion_qa_audit_346b4q
+- replay_input_row_count: 500
+- replay_safe_recovered_candidate_count: 234
+- qa_audited_candidate_count: 234
+- qa_safe_candidate_count: 234
+- qa_risky_candidate_count: 0
+- qa_false_positive_suspect_count: 0
+- patch_applied_audited_row_count: 22
+- patch_applied_qa_pass_count: 22
+- patch_applied_qa_risk_count: 0
+- semantic_class_disagreement_count: 0
+- unit_semantic_mismatch_count: 0
+- false_positive_guardrail_hit_count: 0
+- evidence_weakness_count: 0
+- lineage_audit_passed: True
+- qa_safe_to_larger_expansion: True
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B5 Larger Quality-Limited Recovery Expansion
