@@ -6149,3 +6149,34 @@ Status: completed
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
 - next_recommended_step: 346B5 Larger Quality-Limited Recovery Expansion
+
+## 346B5 Larger Quality-Limited Recovery Expansion
+
+Status: completed
+
+- decision: LARGER_QUALITY_LIMITED_RECOVERY_EXPANSION_346B5_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346b4_dir: D:\_datefac\output\controlled_quality_limited_recovery_expansion_346b4
+- input_346b3r_dir: D:\_datefac\output\recovery_rule_refinement_patch_346b3r
+- input_346b4r_dir: D:\_datefac\output\controlled_expansion_replay_with_patched_rules_346b4r
+- input_346b4q_dir: D:\_datefac\output\controlled_expansion_qa_audit_346b4q
+- output_dir: D:\_datefac\output\larger_quality_limited_recovery_expansion_346b5
+- full_quality_limited_row_count: 5558
+- larger_expansion_input_limit: 1500
+- larger_expansion_input_row_count: 1500
+- excluded_row_touched_count: 0
+- already_demo_ready_row_touched_count: 0
+- already_346b_pilot_row_count: 0
+- already_346b4_controlled_batch_row_count: 984
+- new_quality_limited_row_count: 1500
+- value_sanitizer_success_count: 1500
+- semantic_class_unknown_count: 0
+- safe_recovered_candidate_count: 1500
+- false_positive_guardrail_hit_count: 0
+- needs_rule_refinement_count: 0
+- lineage_audit_passed: True
+- safe_to_qa_larger_expansion: True
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B5Q Larger Expansion QA Audit
