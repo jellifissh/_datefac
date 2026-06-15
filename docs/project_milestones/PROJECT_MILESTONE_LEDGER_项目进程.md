@@ -6058,3 +6058,37 @@ Status: completed
 - live_vlm_call_count: 0
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+
+## 346B3R Recovery Rule Refinement Patch
+
+Status: completed
+
+- decision: RECOVERY_RULE_REFINEMENT_PATCH_346B3R_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346a_dir: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- input_346a2_dir: D:\_datefac\output\mineru_image_path_binding_fix_346a2
+- input_346b_dir: D:\_datefac\output\quality_limited_row_recovery_pilot_346b
+- input_346b2_dir: D:\_datefac\output\recovery_candidate_qa_audit_346b2
+- input_346b3_dir: D:\_datefac\output\recovery_rule_refinement_346b3
+- input_346b2r_dir: D:\_datefac\output\refined_recovery_candidate_qa_reaudit_346b2r
+- input_346b4_dir: D:\_datefac\output\controlled_quality_limited_recovery_expansion_346b4
+- output_dir: D:\_datefac\output\recovery_rule_refinement_patch_346b3r
+- input_346b4_controlled_expansion_input_row_count: 500
+- input_346b4_safe_recovered_candidate_count: 212
+- input_346b4_semantic_class_unknown_count: 22
+- input_346b4_needs_rule_refinement_count: 22
+- audited_unknown_row_count: 22
+- patchable_rule_gap_count: 22
+- non_patchable_row_count: 0
+- proposed_semantic_classifier_patch_count: 2
+- proposed_unit_policy_patch_count: 2
+- rows_converted_from_unknown_to_known_semantic_class_count: 22
+- rows_kept_human_review_count: 0
+- rows_kept_quality_limited_count: 22
+- rows_requiring_future_vlm_count: 0
+- safe_to_replay_346b4: True
+- safe_to_continue_expansion: False
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B4R Controlled Expansion Replay With Patched Rules
