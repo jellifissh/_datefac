@@ -5873,3 +5873,25 @@ Status: completed
 - `python -m pytest tests\benchmark\test_vision_assisted_table_evidence_pilot_346a.py -q` passed
 - real runner passed
 - next recommended step: 346A2 MinerU Image Path Binding Fix
+
+## 346A2 MinerU Image Path Binding Fix
+
+Status: completed
+
+- decision: MINERU_IMAGE_PATH_BINDING_FIX_346A2_READY
+- input_346a_dir: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- supplied_mineru_evidence_dirs: D:\_datefac\output\mineru_pilot_network_recovery_342c6\mineru_outputs
+- output_dir: D:\_datefac\output\mineru_image_path_binding_fix_346a2
+- selected_pilot_row_count: 100
+- binding_candidate_count: 178
+- image_bound_count: 38
+- table_crop_bound_count: 38
+- page_image_bound_count: 0
+- json_md_context_bound_count: 70
+- image_missing_count: 62
+- ambiguous_image_candidate_count: 0
+- vlm_request_count: 38
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B Quality-Limited Row Recovery Pilot
