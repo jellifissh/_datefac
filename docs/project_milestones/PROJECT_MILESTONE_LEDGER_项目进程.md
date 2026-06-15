@@ -5985,3 +5985,34 @@ Status: completed
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
 - next_recommended_step: 346B2R Refined Recovery Candidate QA Reaudit
+
+## 346B2R Refined Recovery Candidate QA Reaudit
+
+Status: completed
+
+- decision: REFINED_RECOVERY_CANDIDATE_QA_REAUDIT_346B2R_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346a_dir: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- input_346a2_dir: D:\_datefac\output\mineru_image_path_binding_fix_346a2
+- input_346b_dir: D:\_datefac\output\quality_limited_row_recovery_pilot_346b
+- input_346b2_dir: D:\_datefac\output\recovery_candidate_qa_audit_346b2
+- input_346b3_dir: D:\_datefac\output\recovery_rule_refinement_346b3
+- output_dir: D:\_datefac\output\refined_recovery_candidate_qa_reaudit_346b2r
+- input_refined_candidate_count: 70
+- reaudit_candidate_count: 70
+- reaudit_safe_candidate_count: 70
+- reaudit_risky_candidate_count: 0
+- reaudit_false_positive_suspect_count: 0
+- ratio_multiple_unit_mismatch_count: 0
+- per_share_unit_mismatch_count: 0
+- percentage_margin_unit_mismatch_count: 0
+- monetary_unit_mismatch_count: 0
+- semantic_class_unknown_count: 0
+- evidence_weakness_count: 0
+- lineage_audit_passed: True
+- safe_to_expand_recovery: True
+- recommended_expansion_scope: 346B4 Controlled Quality-Limited Recovery Expansion
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B4 Controlled Quality-Limited Recovery Expansion
