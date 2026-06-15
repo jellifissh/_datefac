@@ -5954,3 +5954,34 @@ Status: completed
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
 - next_recommended_step: 346B3 Recovery Rule Refinement
+
+## 346B3 Recovery Rule Refinement
+
+Status: completed
+
+- decision: RECOVERY_RULE_REFINEMENT_346B3_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346a_dir: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- input_346a2_dir: D:\_datefac\output\mineru_image_path_binding_fix_346a2
+- input_346b_dir: D:\_datefac\output\quality_limited_row_recovery_pilot_346b
+- input_346b2_dir: D:\_datefac\output\recovery_candidate_qa_audit_346b2
+- output_dir: D:\_datefac\output\recovery_rule_refinement_346b3
+- input_recovered_candidate_count: 70
+- input_safe_recovered_candidate_count: 32
+- input_false_positive_suspect_count: 38
+- refined_candidate_count: 70
+- refined_safe_candidate_count: 70
+- remaining_false_positive_suspect_count: 0
+- corrected_ratio_multiple_unit_count: 24
+- corrected_per_share_unit_count: 14
+- preserved_percentage_margin_unit_count: 30
+- demoted_candidate_count: 0
+- needs_human_review_count: 0
+- needs_vlm_count: 0
+- safe_to_reaudit: True
+- safe_to_expand_recovery: False
+- safe_to_expand_recovery_reason: 346B3 only refines rules and sidecar decisions; a follow-up 346B2R re-audit must confirm safety before expansion.
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 346B2R Refined Recovery Candidate QA Reaudit
