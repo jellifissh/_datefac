@@ -5895,3 +5895,30 @@ Status: completed
 - no_write_back_proof_passed: True
 - gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
 - next_recommended_step: 346B Quality-Limited Row Recovery Pilot
+
+## 346B Quality-Limited Row Recovery Pilot
+
+Status: completed
+
+- decision: QUALITY_LIMITED_ROW_RECOVERY_PILOT_346B_READY
+- input_345d_dir: D:\_datefac\output\full_structured_demo_export_package_345d
+- input_346a_dir: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- input_346a2_dir: D:\_datefac\output\mineru_image_path_binding_fix_346a2
+- output_dir: D:\_datefac\output\quality_limited_row_recovery_pilot_346b
+- full_quality_limited_row_count: 5558
+- pilot_input_row_count: 100
+- image_bound_input_count: 38
+- json_md_context_bound_input_count: 70
+- sanitized_value_success_count: 100
+- unit_injection_success_count: 78
+- period_injection_success_count: 0
+- evidence_assisted_recovery_success_count: 70
+- recovered_demo_candidate_count: 70
+- still_quality_limited_count: 4
+- needs_vlm_count: 0
+- needs_human_review_count: 26
+- downgraded_excluded_count: 0
+- live_vlm_call_count: 0
+- no_write_back_proof_passed: True
+- gate_status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- next_recommended_step: 345G Demo Presentation Slide Outline
