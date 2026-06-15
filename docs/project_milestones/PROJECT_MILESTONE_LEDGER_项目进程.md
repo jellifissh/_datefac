@@ -5850,3 +5850,26 @@ Validation commands and results:
 Next recommended step:
 - `345G Demo Presentation Slide Outline`
 - `344G` still waits for a genuinely human-filled `344F` workbook
+
+## 346A Vision-Assisted Table Evidence Pilot
+
+Status: completed
+
+- decision: VISION_ASSISTED_TABLE_EVIDENCE_PILOT_346A_READY
+- input packages: 345D=D:\_datefac\output\full_structured_demo_export_package_345d; 345E=D:\_datefac\output\demo_export_review_qa_checklist_345e; optional MinerU evidence dirs were suggestion-only
+- output package: D:\_datefac\output\vision_assisted_table_evidence_pilot_346a
+- selected_pilot_row_count: 100
+- evidence_bundle_count: 100
+- image_bound_count: 0
+- image_missing_count: 100
+- ambiguous_image_candidate_count: 0
+- vlm_request_count: 0
+- live_vlm_call_count: 0
+- target_field_distribution: {"raw_metric_name": 94, "unit": 92, "value": 100}
+- no_write_back_proof_passed: True
+- gate status: formal_client_export_allowed=False, client_ready=False, production_ready=False
+- validation commands and results:
+- `python -m py_compile ...` passed
+- `python -m pytest tests\benchmark\test_vision_assisted_table_evidence_pilot_346a.py -q` passed
+- real runner passed
+- next recommended step: 346A2 MinerU Image Path Binding Fix
