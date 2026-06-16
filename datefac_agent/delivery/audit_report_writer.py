@@ -12,7 +12,7 @@ def _top_issue_lines(row_results: list[AuditRowResult], limit: int = 10) -> list
     for result in row_results:
         for issue in result.issues:
             lines.append(
-                f"- `{result.row.sheet_name}:{result.row.row_index}` `{result.row.metric_name}` `{issue.code}`: {issue.message}"
+                f"- `{result.row.sheet_name}:{result.row.row_index}` `{result.row.metric_name}` `{result.row_type}` `{issue.code}`: {issue.message}"
             )
             if len(lines) >= limit:
                 return lines
@@ -60,13 +60,18 @@ def write_audit_report(
         f"- not_applicable_evidence_count: `{summary.not_applicable_evidence_count}`",
         f"- weak_evidence_issue_count: `{summary.weak_evidence_issue_count}`",
         f"- missing_evidence_issue_count: `{summary.missing_evidence_issue_count}`",
+        f"- strict_financial_table_row_count: `{summary.strict_financial_table_row_count}`",
+        f"- market_reference_row_count: `{summary.market_reference_row_count}`",
+        f"- narrative_assertion_count: `{summary.narrative_assertion_count}`",
+        f"- unknown_row_count: `{summary.unknown_row_count}`",
         "",
         "## Boundary",
         "",
         "- This pilot audited an already extracted Excel workbook.",
         "- No PDF re-extraction, MinerU, OCR, or LLM/VLM API call was used.",
         "- This output is review-oriented evidence, not client or production delivery.",
-        "- Weak workbook lineage is separated from true missing evidence in this R1 run.",
+        "- Weak workbook lineage is separated from true missing evidence.",
+        "- Narrative, market-reference, and strict financial rows are now visible as separate row types.",
         "",
         "## Sample Issues",
         "",

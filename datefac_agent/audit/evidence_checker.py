@@ -76,7 +76,7 @@ def audit_evidence_presence(
                 message=(
                     f"Row '{row.metric_name}' has workbook lineage and source PDF identity but no explicit page or evidence reference."
                 ),
-                metadata={"evidence_level": evidence_level},
+                metadata={"evidence_level": evidence_level, "row_type": row.row_type},
                 evidence=evidence_refs,
             )
         )
@@ -88,7 +88,7 @@ def audit_evidence_presence(
                 category="evidence",
                 checker="evidence_checker",
                 message=f"Row '{row.metric_name}' lacks usable evidence lineage beyond raw value presence.",
-                metadata={"evidence_level": evidence_level},
+                metadata={"evidence_level": evidence_level, "row_type": row.row_type},
                 evidence=evidence_refs,
             )
         )

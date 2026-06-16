@@ -27,13 +27,14 @@ def build_row_audit_result(
     evidence_refs: list,
     evidence_level: EvidenceLevel,
 ) -> AuditRowResult:
-    """Bundle a row, issues, evidence, and decision."""
+    """Bundle a row, issues, evidence, row type, and decision."""
 
     return AuditRowResult(
         row=row,
         issues=issues,
         evidence_refs=list(evidence_refs),
         evidence_level=evidence_level,
+        row_type=row.row_type,
         decision=build_audit_decision(issues),
     )
 
@@ -54,6 +55,7 @@ def build_review_queue_rows(row_results: list[AuditRowResult]) -> list[dict[str,
                 "issue_count": str(result.decision.issue_count),
                 "issue_codes": ";".join(result.decision.reason_codes),
                 "evidence_level": result.evidence_level,
+                "row_type": result.row_type,
                 "unit_hint": result.row.unit_hint or "",
                 "period_labels": ";".join(result.row.period_values.keys()),
                 "explicit_evidence_ref": result.row.explicit_evidence_ref or "",

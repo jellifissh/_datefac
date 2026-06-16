@@ -108,6 +108,10 @@ def test_weak_evidence_is_counted_separately_in_manifest() -> None:
                 "not_applicable_evidence_count": 0,
                 "weak_evidence_issue_count": 1,
                 "missing_evidence_issue_count": 0,
+                "strict_financial_table_row_count": 1,
+                "market_reference_row_count": 0,
+                "narrative_assertion_count": 0,
+                "unknown_row_count": 0,
                 "clean_data_row_count": 0,
                 "review_queue_row_count": 1,
             },
@@ -130,6 +134,7 @@ def test_period_checker_flags_missing_periods_on_financial_sheet() -> None:
         raw_values={"指标": "营业收入", "值1": 1, "值2": 2},
         metric_name="营业收入",
         period_values={},
+        row_type="STRICT_FINANCIAL_TABLE_ROW",
     )
     issues = audit_period_alignment(row)
     assert any(issue.code == "period_context_missing" for issue in issues)
@@ -168,6 +173,10 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
                 "not_applicable_evidence_count": 0,
                 "weak_evidence_issue_count": 0,
                 "missing_evidence_issue_count": 0,
+                "strict_financial_table_row_count": 1,
+                "market_reference_row_count": 0,
+                "narrative_assertion_count": 0,
+                "unknown_row_count": 0,
                 "clean_data_row_count": 1,
                 "review_queue_row_count": 0,
             },

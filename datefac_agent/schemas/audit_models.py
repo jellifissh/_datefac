@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 EvidenceLevel = Literal["STRONG_EVIDENCE", "WEAK_EVIDENCE", "MISSING_EVIDENCE", "NOT_APPLICABLE"]
+RowType = Literal["STRICT_FINANCIAL_TABLE_ROW", "MARKET_REFERENCE_ROW", "NARRATIVE_ASSERTION", "UNKNOWN_ROW"]
 
 
 @dataclass(slots=True)
@@ -43,6 +44,7 @@ class SpreadsheetRow:
     unit_hint: str | None = None
     period_values: dict[str, Any] = field(default_factory=dict)
     explicit_evidence_ref: str | None = None
+    row_type: RowType = "UNKNOWN_ROW"
 
 
 @dataclass(slots=True)
@@ -86,6 +88,7 @@ class AuditRowResult:
     issues: list[AuditIssue] = field(default_factory=list)
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
     evidence_level: EvidenceLevel = "MISSING_EVIDENCE"
+    row_type: RowType = "UNKNOWN_ROW"
     decision: AuditDecision | None = None
 
 
@@ -108,6 +111,10 @@ class AuditSummary:
     not_applicable_evidence_count: int = 0
     weak_evidence_issue_count: int = 0
     missing_evidence_issue_count: int = 0
+    strict_financial_table_row_count: int = 0
+    market_reference_row_count: int = 0
+    narrative_assertion_count: int = 0
+    unknown_row_count: int = 0
     clean_data_row_count: int = 0
     review_queue_row_count: int = 0
 

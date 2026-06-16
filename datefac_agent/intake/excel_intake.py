@@ -8,6 +8,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.schemas.audit_models import SpreadsheetRow, WorkbookIntakeResult
 
 PERIOD_LABEL_RE = re.compile(r"^(?:19|20)\d{2}(?:A|E|Q[1-4])?$", re.IGNORECASE)
@@ -101,19 +102,20 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
                 for header in detect_period_labels(header_names)
                 if raw_values.get(header) is not None and str(raw_values.get(header)).strip() != ""
             }
-            rows.append(
-                SpreadsheetRow(
-                    source_excel_path=str(path),
-                    sheet_name=sheet_name,
-                    row_index=row_index,
-                    column_names=header_names,
-                    raw_values=raw_values,
-                    metric_name=metric_name,
-                    unit_hint=_extract_unit_hint(metric_name),
-                    period_values=period_values,
-                    explicit_evidence_ref=_extract_explicit_evidence_ref(header_names, padded_values),
-                )
+
+            row = SpreadsheetRow(
+                source_excel_path=str(path),
+                sheet_name=sheet_name,
+                row_index=row_index,
+                column_names=header_names,
+                raw_values=raw_values,
+                metric_name=metric_name,
+                unit_hint=_extract_unit_hint(metric_name),
+                period_values=period_values,
+                explicit_evidence_ref=_extract_explicit_evidence_ref(header_names, padded_values),
             )
+            row.row_type = classify_row_type(row)
+            rows.append(row)
 
     return WorkbookIntakeResult(
         source_excel_path=str(path),

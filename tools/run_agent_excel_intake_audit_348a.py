@@ -58,6 +58,15 @@ def _summarize_issues(row_results: list[AuditRowResult]) -> AuditSummary:
         elif result.evidence_level == "NOT_APPLICABLE":
             summary.not_applicable_evidence_count += 1
 
+        if result.row_type == "STRICT_FINANCIAL_TABLE_ROW":
+            summary.strict_financial_table_row_count += 1
+        elif result.row_type == "MARKET_REFERENCE_ROW":
+            summary.market_reference_row_count += 1
+        elif result.row_type == "NARRATIVE_ASSERTION":
+            summary.narrative_assertion_count += 1
+        elif result.row_type == "UNKNOWN_ROW":
+            summary.unknown_row_count += 1
+
         summary.issue_count_total += len(result.issues)
         for issue in result.issues:
             if issue.category == "unit":
@@ -83,6 +92,7 @@ def _row_to_clean_csv(row: SpreadsheetRow) -> dict[str, str]:
         "sheet_name": row.sheet_name,
         "row_index": str(row.row_index),
         "metric_name": row.metric_name,
+        "row_type": row.row_type,
         "unit_hint": row.unit_hint or "",
         "period_labels": ";".join(row.period_values.keys()),
         "period_values_json": json.dumps(row.period_values, ensure_ascii=False),
@@ -142,6 +152,10 @@ def build_manifest(
         "not_applicable_evidence_count": summary.not_applicable_evidence_count,
         "weak_evidence_issue_count": summary.weak_evidence_issue_count,
         "missing_evidence_issue_count": summary.missing_evidence_issue_count,
+        "strict_financial_table_row_count": summary.strict_financial_table_row_count,
+        "market_reference_row_count": summary.market_reference_row_count,
+        "narrative_assertion_count": summary.narrative_assertion_count,
+        "unknown_row_count": summary.unknown_row_count,
         "clean_data_row_count": summary.clean_data_row_count,
         "review_queue_row_count": summary.review_queue_row_count,
         "llm_api_call_count": 0,
@@ -156,7 +170,7 @@ def build_manifest(
         "formal_client_export_allowed": False,
         "client_ready": False,
         "production_ready": False,
-        "recommended_next_step": "348A-QA Excel Intake Audit Result Review",
+        "recommended_next_step": "348A-R2-QA Row Type Classification Result Review",
     }
 
 
@@ -213,6 +227,10 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         "weak_evidence_count": summary.weak_evidence_count,
         "missing_evidence_count": summary.missing_evidence_count,
         "not_applicable_evidence_count": summary.not_applicable_evidence_count,
+        "strict_financial_table_row_count": summary.strict_financial_table_row_count,
+        "market_reference_row_count": summary.market_reference_row_count,
+        "narrative_assertion_count": summary.narrative_assertion_count,
+        "unknown_row_count": summary.unknown_row_count,
     }
     _write_json(output_dir / "agent_excel_intake_audit_348a_manifest.json", manifest)
     _write_json(output_dir / "agent_excel_intake_audit_348a_run_summary.json", run_summary)

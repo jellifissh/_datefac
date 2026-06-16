@@ -7,7 +7,6 @@ import re
 from datefac_agent.schemas.audit_models import AuditIssue, SpreadsheetRow
 
 PERIOD_LABEL_RE = re.compile(r"^(?P<year>(?:19|20)\d{2})(?P<suffix>A|E|Q[1-4])?$", re.IGNORECASE)
-FINANCIAL_SHEET_HINTS = ("财务", "利润", "资产负债", "现金流")
 
 
 def detect_period_labels(column_names: list[str]) -> list[str]:
@@ -23,17 +22,16 @@ def detect_period_labels(column_names: list[str]) -> list[str]:
     return labels
 
 
-def _is_financial_sheet(sheet_name: str) -> bool:
-    return any(hint in sheet_name for hint in FINANCIAL_SHEET_HINTS)
-
-
 def audit_period_alignment(row: SpreadsheetRow) -> list[AuditIssue]:
-    """Flag missing or suspicious period structure."""
+    """Flag missing or suspicious period structure for strict financial rows only."""
 
     issues: list[AuditIssue] = []
+    if row.row_type != "STRICT_FINANCIAL_TABLE_ROW":
+        return issues
+
     labels = detect_period_labels(list(row.period_values.keys()) or row.column_names)
 
-    if _is_financial_sheet(row.sheet_name) and not labels:
+    if not labels:
         issues.append(
             AuditIssue(
                 code="period_context_missing",
@@ -62,7 +60,7 @@ def audit_period_alignment(row: SpreadsheetRow) -> list[AuditIssue]:
             )
         )
 
-    if _is_financial_sheet(row.sheet_name) and len(labels) >= 2 and not row.period_values:
+    if len(labels) >= 2 and not row.period_values:
         issues.append(
             AuditIssue(
                 code="period_values_missing",

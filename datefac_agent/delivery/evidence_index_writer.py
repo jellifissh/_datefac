@@ -30,6 +30,7 @@ def write_evidence_index(output_path: str | Path, row_results: list[AuditRowResu
                 "metric_name": result.row.metric_name,
                 "decision": result.decision.decision if result.decision else "",
                 "evidence_level": result.evidence_level,
+                "row_type": result.row_type,
                 "explicit_evidence_ref": result.row.explicit_evidence_ref,
                 "evidence_refs": [
                     {
