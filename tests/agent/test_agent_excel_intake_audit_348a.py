@@ -34,6 +34,22 @@ def test_unit_checker_flags_obvious_mismatch() -> None:
     assert any(issue.code == "per_share_unit_mismatch" for issue in issues)
 
 
+def test_unit_checker_does_not_flag_roe_style_percentage_metrics() -> None:
+    issues = audit_unit_semantics(_make_row("净资产收益率(%)", unit_hint="%"))
+    assert not any(issue.code == "monetary_unit_mismatch" for issue in issues)
+
+    roe_issues = audit_unit_semantics(_make_row("ROE(%)", unit_hint="%"))
+    assert not any(issue.code == "monetary_unit_mismatch" for issue in roe_issues)
+
+
+def test_unit_checker_still_flags_monetary_metrics_with_percent_units() -> None:
+    revenue_issues = audit_unit_semantics(_make_row("营业收入(%)", unit_hint="%"))
+    assert any(issue.code == "monetary_unit_mismatch" for issue in revenue_issues)
+
+    asset_issues = audit_unit_semantics(_make_row("资产总计(%)", unit_hint="%"))
+    assert any(issue.code == "monetary_unit_mismatch" for issue in asset_issues)
+
+
 def test_period_checker_detects_expected_labels() -> None:
     labels = detect_period_labels(["会计年度", "2024A", "2025E", "2026Q1"])
     assert labels == ["2024A", "2025E", "2026Q1"]

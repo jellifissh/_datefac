@@ -4,7 +4,20 @@ from __future__ import annotations
 
 from datefac_agent.schemas.audit_models import AuditIssue, SpreadsheetRow
 
-PERCENT_TERMS = ("%", "yoy", "同比", "毛利率", "净利率", "roe", "roa", "利润率")
+PERCENT_TERMS = (
+    "%",
+    "yoy",
+    "同比",
+    "增长率",
+    "增速",
+    "收益率",
+    "回报率",
+    "毛利率",
+    "净利率",
+    "利润率",
+    "roe",
+    "roa",
+)
 VALUATION_TERMS = ("p/e", "pe", "市盈率", "p/b", "pb", "市净率", "ev/ebitda", "ev ebitda")
 PER_SHARE_TERMS = ("eps", "每股", "元/股")
 MONEY_TERMS = (
@@ -32,6 +45,27 @@ def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
     return any(term in text for term in terms)
 
 
+def _is_clear_rate_metric(text: str) -> bool:
+    """Return True when the metric is semantically a rate/percentage concept."""
+
+    rate_terms = (
+        "yoy",
+        "同比",
+        "增长率",
+        "增速",
+        "收益率",
+        "净资产收益率",
+        "资产收益率",
+        "回报率",
+        "毛利率",
+        "净利率",
+        "利润率",
+        "roe",
+        "roa",
+    )
+    return _contains_any(text, rate_terms)
+
+
 def audit_unit_semantics(row: SpreadsheetRow) -> list[AuditIssue]:
     """Flag obvious unit mismatches with conservative heuristics."""
 
@@ -42,6 +76,7 @@ def audit_unit_semantics(row: SpreadsheetRow) -> list[AuditIssue]:
     is_per_share = _contains_any(normalized, PER_SHARE_TERMS)
     is_percent = _contains_any(normalized, PERCENT_TERMS)
     is_monetary = _contains_any(normalized, MONEY_TERMS)
+    is_clear_rate_metric = _is_clear_rate_metric(normalized)
 
     if is_valuation and (_contains_any(normalized, PERCENT_TERMS) or _contains_any(normalized, PER_SHARE_TERMS)):
         issues.append(
@@ -76,7 +111,7 @@ def audit_unit_semantics(row: SpreadsheetRow) -> list[AuditIssue]:
             )
         )
 
-    if is_monetary and ("%" in normalized or _contains_any(normalized, MULTIPLE_TERMS)):
+    if is_monetary and ("%" in normalized or _contains_any(normalized, MULTIPLE_TERMS)) and not is_clear_rate_metric:
         issues.append(
             AuditIssue(
                 code="monetary_unit_mismatch",
