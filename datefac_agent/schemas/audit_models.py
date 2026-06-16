@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+EvidenceLevel = Literal["STRONG_EVIDENCE", "WEAK_EVIDENCE", "MISSING_EVIDENCE", "NOT_APPLICABLE"]
+
 
 @dataclass(slots=True)
 class EvidenceRef:
@@ -83,6 +85,7 @@ class AuditRowResult:
     row: SpreadsheetRow
     issues: list[AuditIssue] = field(default_factory=list)
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
+    evidence_level: EvidenceLevel = "MISSING_EVIDENCE"
     decision: AuditDecision | None = None
 
 
@@ -99,6 +102,12 @@ class AuditSummary:
     period_issue_count: int = 0
     valuation_issue_count: int = 0
     evidence_issue_count: int = 0
+    strong_evidence_count: int = 0
+    weak_evidence_count: int = 0
+    missing_evidence_count: int = 0
+    not_applicable_evidence_count: int = 0
+    weak_evidence_issue_count: int = 0
+    missing_evidence_issue_count: int = 0
     clean_data_row_count: int = 0
     review_queue_row_count: int = 0
 

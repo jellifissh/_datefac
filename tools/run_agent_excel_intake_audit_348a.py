@@ -49,6 +49,15 @@ def _summarize_issues(row_results: list[AuditRowResult]) -> AuditSummary:
         elif result.decision.decision == "FAIL":
             summary.fail_count += 1
 
+        if result.evidence_level == "STRONG_EVIDENCE":
+            summary.strong_evidence_count += 1
+        elif result.evidence_level == "WEAK_EVIDENCE":
+            summary.weak_evidence_count += 1
+        elif result.evidence_level == "MISSING_EVIDENCE":
+            summary.missing_evidence_count += 1
+        elif result.evidence_level == "NOT_APPLICABLE":
+            summary.not_applicable_evidence_count += 1
+
         summary.issue_count_total += len(result.issues)
         for issue in result.issues:
             if issue.category == "unit":
@@ -59,6 +68,10 @@ def _summarize_issues(row_results: list[AuditRowResult]) -> AuditSummary:
                 summary.valuation_issue_count += 1
             elif issue.category == "evidence":
                 summary.evidence_issue_count += 1
+                if issue.code == "weak_evidence":
+                    summary.weak_evidence_issue_count += 1
+                elif issue.code == "missing_evidence":
+                    summary.missing_evidence_issue_count += 1
 
     summary.clean_data_row_count = summary.pass_count
     summary.review_queue_row_count = summary.review_count + summary.fail_count
@@ -87,9 +100,9 @@ def audit_workbook(pdf_path: str | Path, excel_path: str | Path) -> tuple[Workbo
         issues.extend(audit_unit_semantics(row))
         issues.extend(audit_period_alignment(row))
         issues.extend(audit_valuation_metrics(row))
-        evidence_issues, evidence_refs = audit_evidence_presence(row, pdf_path)
+        evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, pdf_path)
         issues.extend(evidence_issues)
-        row_results.append(build_row_audit_result(row, issues, evidence_refs))
+        row_results.append(build_row_audit_result(row, issues, evidence_refs, evidence_level))
 
     summary = _summarize_issues(row_results)
     return intake_result, row_results, summary
@@ -123,6 +136,12 @@ def build_manifest(
         "period_issue_count": summary.period_issue_count,
         "valuation_issue_count": summary.valuation_issue_count,
         "evidence_issue_count": summary.evidence_issue_count,
+        "strong_evidence_count": summary.strong_evidence_count,
+        "weak_evidence_count": summary.weak_evidence_count,
+        "missing_evidence_count": summary.missing_evidence_count,
+        "not_applicable_evidence_count": summary.not_applicable_evidence_count,
+        "weak_evidence_issue_count": summary.weak_evidence_issue_count,
+        "missing_evidence_issue_count": summary.missing_evidence_issue_count,
         "clean_data_row_count": summary.clean_data_row_count,
         "review_queue_row_count": summary.review_queue_row_count,
         "llm_api_call_count": 0,
@@ -190,6 +209,10 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         "review_queue_row_count": summary.review_queue_row_count,
         "clean_data_row_count": summary.clean_data_row_count,
         "issue_count_total": summary.issue_count_total,
+        "strong_evidence_count": summary.strong_evidence_count,
+        "weak_evidence_count": summary.weak_evidence_count,
+        "missing_evidence_count": summary.missing_evidence_count,
+        "not_applicable_evidence_count": summary.not_applicable_evidence_count,
     }
     _write_json(output_dir / "agent_excel_intake_audit_348a_manifest.json", manifest)
     _write_json(output_dir / "agent_excel_intake_audit_348a_run_summary.json", run_summary)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datefac_agent.schemas.audit_models import AuditDecision, AuditIssue, AuditRowResult, SpreadsheetRow
+from datefac_agent.schemas.audit_models import AuditDecision, AuditIssue, AuditRowResult, EvidenceLevel, SpreadsheetRow
 
 
 def build_audit_decision(issues: list[AuditIssue]) -> AuditDecision:
@@ -25,6 +25,7 @@ def build_row_audit_result(
     row: SpreadsheetRow,
     issues: list[AuditIssue],
     evidence_refs: list,
+    evidence_level: EvidenceLevel,
 ) -> AuditRowResult:
     """Bundle a row, issues, evidence, and decision."""
 
@@ -32,6 +33,7 @@ def build_row_audit_result(
         row=row,
         issues=issues,
         evidence_refs=list(evidence_refs),
+        evidence_level=evidence_level,
         decision=build_audit_decision(issues),
     )
 
@@ -51,6 +53,7 @@ def build_review_queue_rows(row_results: list[AuditRowResult]) -> list[dict[str,
                 "decision": result.decision.decision,
                 "issue_count": str(result.decision.issue_count),
                 "issue_codes": ";".join(result.decision.reason_codes),
+                "evidence_level": result.evidence_level,
                 "unit_hint": result.row.unit_hint or "",
                 "period_labels": ";".join(result.row.period_values.keys()),
                 "explicit_evidence_ref": result.row.explicit_evidence_ref or "",
