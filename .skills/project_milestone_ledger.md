@@ -20,6 +20,41 @@ Compatibility pointer / 兼容指针路径:
 docs/PROJECT_MILESTONE_LEDGER.md
 ```
 
+## Current Effective Mainline / 当前有效主线
+
+The current effective mainline is no longer the old `342G` table-first route.
+
+Current effective mainline:
+
+```text
+348 Agent Pivot / DateFac Agent foundation / extraction audit workflow
+```
+
+Current active branch/worktree:
+
+```text
+branch: pivot/348-agent-foundation
+worktree: D:\_datefac_agent
+```
+
+Current active chain:
+
+```text
+348 Agent Pivot
+348P2 Agent Foundation Cleanup
+348P3 Agent Root README and Fixture Foundation
+348A AI-Extracted Excel Intake Audit Pilot
+```
+
+Paused as immediate mainline:
+
+```text
+346B6 full quality-limited recovery expansion
+old raw PDF extraction as the primary moat
+old MinerU recovery as the default mainline
+342G table-first extraction continuation
+```
+
 ## Required Preflight For Every Numbered Task / 每个编号任务的前置读取
 
 Before starting any numbered DateFac task, read:
@@ -27,10 +62,19 @@ Before starting any numbered DateFac task, read:
 1. `AGENTS.md`
 2. `.skills/README.md`
 3. `.skills/git_workflow.md`
-4. `.skills/project_milestone_ledger.md`
-5. `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
-6. the latest relevant task doc under `docs/codex_tasks/`
-7. previous-stage summary / QA JSON / report files when available
+4. `.skills/datefac_agent_foundation.md`
+5. `.skills/agent_excel_intake_audit_workflow.md`
+6. `.skills/project_milestone_ledger.md`
+7. `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+8. the latest relevant task doc under `docs/codex_tasks/`
+9. previous-stage manifest / QA JSON / report files when available
+
+If the task touches MinerU, additionally read:
+
+```text
+mineru_3.3.1.md
+.skills/mineru_local_benchmark_workflow.md
+```
 
 If the task is already completed with `qa_fail_count = 0`, do not repeat it unless the user explicitly requested a revision or rerun.
 
@@ -50,6 +94,7 @@ Example:
 ```text
 342E old text-candidate route = superseded
 342E table-first route = completed / effective_current_342E
+348A first pilot = completed / effective_current_348A unless superseded by a later QA/refinement task
 ```
 
 ## Required Ledger Update After Completion / 完成后必须更新账本
@@ -106,6 +151,8 @@ That refresh must:
 - `docs/project_timelines/`: chronological project history
 - `docs/demo/`: external demo material and runbooks
 - `docs/architecture/`: architecture boundaries and module responsibilities
+- `docs/agent/`: DateFac Agent architecture, contracts, fixtures, and audit workflow docs
+- `docs/legacy/`: legacy asset maps and freeze boundaries
 
 ## No-Repeat Rules / 防重复规则
 
@@ -116,28 +163,27 @@ Do not repeat these completed chains unless explicitly requested:
 - `324 / 325` official rule governance cycles
 - `330A-330L` Trust Engine and client-style preview chain
 - `340B-341A` human-reviewed client preview milestone chain
-- `342A-342F` current MinerU real-PDF benchmark chain
+- `342A-342F` MinerU real-PDF benchmark chain
+- `345D` full structured demo export package
+- `346B-346B5Q` quality-limited recovery / expansion / QA chain
+- `348P2` foundation skeleton once committed and pushed
+- `348P3` README / fixture foundation once committed and pushed
+- `348A` Excel intake audit pilot once committed and pushed, unless running explicit QA/refinement
 
-Current effective next task after 342F:
+## Current Forced Boundary / 当前强制边界
 
-```text
-342G Table-First Extraction Review Package
-```
+Current forced state after Agent pivot:
 
-## Special Current Boundary / 当前强制边界
-
-Current forced state after 342F:
-
-- `342E` old text-candidate route = superseded
-- `342E` table-first route = effective
-- `342F` = completed
-- do not rerun MinerU
-- do not call VLM/LLM
-- do not redo `342D`
-- do not use the old 435 text-candidate route as the primary input
-- do not rerun `342F` unless revising extraction policy
-- do not mix `BASIC_DATA` into core financial extraction
-- current next task = `342G Table-First Extraction Review Package`
+- `datefac_agent/` = active new mainline
+- legacy `datefac/` = reference / capability harvest source, not default edit target
+- `346B6` = paused, do not continue as immediate mainline
+- old `342G` table-first continuation = superseded by 348 Agent pivot as current mainline
+- MinerU = sidecar extractor candidate, not 348A mainline
+- 348A must not run MinerU
+- 348A must not call LLM/VLM/OCR
+- do not promote pilot output to `client_ready`
+- do not promote pilot output to `production_ready`
+- current likely next task after 348A = `348A-QA Excel Intake Audit Result Review` or `348P4 Agent Skill and AGENTS Sync`, depending on branch state
 
 ## Git Discipline / Git 纪律
 
@@ -148,6 +194,8 @@ Never use:
 ```text
 git add -A
 git add .
+git reset --hard
+git checkout --
 ```
 
 Never stage:
