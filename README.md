@@ -1,5 +1,12 @@
 # DateFac
 
+> Pivot notice: the current foundation mainline is moving toward DateFac Agent, a financial document extraction audit workflow rather than a new raw PDF extraction push.
+>
+> Start here:
+> - [datefac_agent/README.md](datefac_agent/README.md)
+> - [docs/agent/AGENT_ARCHITECTURE.md](docs/agent/AGENT_ARCHITECTURE.md)
+> - [docs/legacy/LEGACY_ASSET_MAP.md](docs/legacy/LEGACY_ASSET_MAP.md)
+
 ## 中文
 
 ### 一句话定位
