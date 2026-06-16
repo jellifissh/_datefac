@@ -7,6 +7,13 @@ from typing import Any, Literal
 
 EvidenceLevel = Literal["STRONG_EVIDENCE", "WEAK_EVIDENCE", "MISSING_EVIDENCE", "NOT_APPLICABLE"]
 RowType = Literal["STRICT_FINANCIAL_TABLE_ROW", "MARKET_REFERENCE_ROW", "NARRATIVE_ASSERTION", "UNKNOWN_ROW"]
+CleanCandidateType = Literal[
+    "INTERNAL_CLEAN_CANDIDATE",
+    "INTERNAL_REFERENCE_CANDIDATE",
+    "NARRATIVE_REVIEW",
+    "REVIEW_REQUIRED",
+    "EXCLUDED_FROM_CLEAN_DATA",
+]
 
 
 @dataclass(slots=True)
@@ -89,6 +96,7 @@ class AuditRowResult:
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
     evidence_level: EvidenceLevel = "MISSING_EVIDENCE"
     row_type: RowType = "UNKNOWN_ROW"
+    clean_candidate_type: CleanCandidateType = "REVIEW_REQUIRED"
     decision: AuditDecision | None = None
 
 
@@ -117,6 +125,11 @@ class AuditSummary:
     unknown_row_count: int = 0
     clean_data_row_count: int = 0
     review_queue_row_count: int = 0
+    internal_clean_candidate_count: int = 0
+    internal_reference_candidate_count: int = 0
+    narrative_review_count: int = 0
+    review_required_count: int = 0
+    excluded_from_clean_data_count: int = 0
 
 
 @dataclass(slots=True)

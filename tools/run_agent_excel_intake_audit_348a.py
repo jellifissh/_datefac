@@ -67,6 +67,17 @@ def _summarize_issues(row_results: list[AuditRowResult]) -> AuditSummary:
         elif result.row_type == "UNKNOWN_ROW":
             summary.unknown_row_count += 1
 
+        if result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE":
+            summary.internal_clean_candidate_count += 1
+        elif result.clean_candidate_type == "INTERNAL_REFERENCE_CANDIDATE":
+            summary.internal_reference_candidate_count += 1
+        elif result.clean_candidate_type == "NARRATIVE_REVIEW":
+            summary.narrative_review_count += 1
+        elif result.clean_candidate_type == "REVIEW_REQUIRED":
+            summary.review_required_count += 1
+        elif result.clean_candidate_type == "EXCLUDED_FROM_CLEAN_DATA":
+            summary.excluded_from_clean_data_count += 1
+
         summary.issue_count_total += len(result.issues)
         for issue in result.issues:
             if issue.category == "unit":
@@ -82,17 +93,23 @@ def _summarize_issues(row_results: list[AuditRowResult]) -> AuditSummary:
                 elif issue.code == "missing_evidence":
                     summary.missing_evidence_issue_count += 1
 
-    summary.clean_data_row_count = summary.pass_count
-    summary.review_queue_row_count = summary.review_count + summary.fail_count
+    summary.clean_data_row_count = summary.internal_clean_candidate_count + summary.internal_reference_candidate_count
+    summary.review_queue_row_count = (
+        summary.narrative_review_count + summary.review_required_count + summary.excluded_from_clean_data_count
+    )
     return summary
 
 
-def _row_to_clean_csv(row: SpreadsheetRow) -> dict[str, str]:
+def _row_to_clean_csv(result: AuditRowResult) -> dict[str, str]:
+    row = result.row
     return {
         "sheet_name": row.sheet_name,
         "row_index": str(row.row_index),
         "metric_name": row.metric_name,
+        "clean_candidate_type": result.clean_candidate_type,
         "row_type": row.row_type,
+        "evidence_level": result.evidence_level,
+        "issue_codes": ";".join(issue.code for issue in result.issues),
         "unit_hint": row.unit_hint or "",
         "period_labels": ";".join(row.period_values.keys()),
         "period_values_json": json.dumps(row.period_values, ensure_ascii=False),
@@ -158,6 +175,11 @@ def build_manifest(
         "unknown_row_count": summary.unknown_row_count,
         "clean_data_row_count": summary.clean_data_row_count,
         "review_queue_row_count": summary.review_queue_row_count,
+        "internal_clean_candidate_count": summary.internal_clean_candidate_count,
+        "internal_reference_candidate_count": summary.internal_reference_candidate_count,
+        "narrative_review_count": summary.narrative_review_count,
+        "review_required_count": summary.review_required_count,
+        "excluded_from_clean_data_count": summary.excluded_from_clean_data_count,
         "llm_api_call_count": 0,
         "mineru_run_count": 0,
         "ocr_run_count": 0,
@@ -170,7 +192,7 @@ def build_manifest(
         "formal_client_export_allowed": False,
         "client_ready": False,
         "production_ready": False,
-        "recommended_next_step": "348A-R2-QA Row Type Classification Result Review",
+        "recommended_next_step": "348A-R4-QA Clean Data Candidate Policy Review",
     }
 
 
@@ -192,7 +214,11 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         decision = "AI_EXCEL_INTAKE_AUDIT_348A_NEEDS_FIX"
 
     review_rows = build_review_queue_rows(row_results)
-    clean_rows = [_row_to_clean_csv(result.row) for result in row_results if result.decision and result.decision.decision == "PASS"]
+    clean_rows = [
+        _row_to_clean_csv(result)
+        for result in row_results
+        if result.clean_candidate_type in {"INTERNAL_CLEAN_CANDIDATE", "INTERNAL_REFERENCE_CANDIDATE"}
+    ]
 
     write_audit_report(
         output_path=output_dir / "audit_report.md",
@@ -231,6 +257,11 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         "market_reference_row_count": summary.market_reference_row_count,
         "narrative_assertion_count": summary.narrative_assertion_count,
         "unknown_row_count": summary.unknown_row_count,
+        "internal_clean_candidate_count": summary.internal_clean_candidate_count,
+        "internal_reference_candidate_count": summary.internal_reference_candidate_count,
+        "narrative_review_count": summary.narrative_review_count,
+        "review_required_count": summary.review_required_count,
+        "excluded_from_clean_data_count": summary.excluded_from_clean_data_count,
     }
     _write_json(output_dir / "agent_excel_intake_audit_348a_manifest.json", manifest)
     _write_json(output_dir / "agent_excel_intake_audit_348a_run_summary.json", run_summary)

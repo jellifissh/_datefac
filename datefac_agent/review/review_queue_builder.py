@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.schemas.audit_models import AuditDecision, AuditIssue, AuditRowResult, EvidenceLevel, SpreadsheetRow
 
 
@@ -29,7 +30,7 @@ def build_row_audit_result(
 ) -> AuditRowResult:
     """Bundle a row, issues, evidence, row type, and decision."""
 
-    return AuditRowResult(
+    result = AuditRowResult(
         row=row,
         issues=issues,
         evidence_refs=list(evidence_refs),
@@ -37,6 +38,8 @@ def build_row_audit_result(
         row_type=row.row_type,
         decision=build_audit_decision(issues),
     )
+    result.clean_candidate_type = classify_clean_candidate(result)
+    return result
 
 
 def build_review_queue_rows(row_results: list[AuditRowResult]) -> list[dict[str, str]]:
@@ -44,6 +47,8 @@ def build_review_queue_rows(row_results: list[AuditRowResult]) -> list[dict[str,
 
     rows: list[dict[str, str]] = []
     for result in row_results:
+        if result.clean_candidate_type in {"INTERNAL_CLEAN_CANDIDATE", "INTERNAL_REFERENCE_CANDIDATE"}:
+            continue
         if result.decision is None or result.decision.decision == "PASS":
             continue
         rows.append(
@@ -52,6 +57,7 @@ def build_review_queue_rows(row_results: list[AuditRowResult]) -> list[dict[str,
                 "row_index": str(result.row.row_index),
                 "metric_name": result.row.metric_name,
                 "decision": result.decision.decision,
+                "clean_candidate_type": result.clean_candidate_type,
                 "issue_count": str(result.decision.issue_count),
                 "issue_codes": ";".join(result.decision.reason_codes),
                 "evidence_level": result.evidence_level,

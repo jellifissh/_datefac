@@ -6,8 +6,9 @@ from datefac_agent.audit.evidence_checker import audit_evidence_presence
 from datefac_agent.audit.period_alignment_checker import audit_period_alignment, detect_period_labels
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import classify_valuation_metric
+from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.review.review_queue_builder import build_audit_decision, build_row_audit_result, build_review_queue_rows
-from datefac_agent.schemas.audit_models import SpreadsheetRow
+from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SpreadsheetRow
 from tools.run_agent_excel_intake_audit_348a import build_manifest
 
 
@@ -74,6 +75,88 @@ def test_review_queue_returns_review_when_weak_evidence_exists() -> None:
     assert "weak_evidence" in queue_rows[0]["issue_codes"]
 
 
+def test_internal_candidates_are_removed_from_review_queue() -> None:
+    row = _make_row("营业收入(百万元)")
+    row.row_type = "STRICT_FINANCIAL_TABLE_ROW"
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    queue_rows = build_review_queue_rows([result])
+    assert queue_rows == []
+
+
+def test_strict_financial_weak_evidence_row_becomes_internal_clean_candidate() -> None:
+    row = _make_row("营业收入(百万元)")
+    row.row_type = "STRICT_FINANCIAL_TABLE_ROW"
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
+
+
+def test_market_reference_weak_evidence_row_becomes_internal_reference_candidate() -> None:
+    row = _make_row("总市值（亿元）", unit_hint="亿元")
+    row.sheet_name = "市场与基础数据"
+    row.row_type = "MARKET_REFERENCE_ROW"
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "INTERNAL_REFERENCE_CANDIDATE"
+
+
+def test_narrative_assertion_stays_out_of_clean_data() -> None:
+    row = _make_row("核心逻辑")
+    row.sheet_name = "核心观点"
+    row.row_type = "NARRATIVE_ASSERTION"
+    row.period_values = {}
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "NARRATIVE_REVIEW"
+
+
+def test_missing_evidence_row_does_not_enter_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="",
+        sheet_name="财务估值",
+        row_index=2,
+        column_names=[],
+        raw_values={},
+        metric_name="营业收入",
+        period_values={"2024A": 1},
+        row_type="STRICT_FINANCIAL_TABLE_ROW",
+    )
+    result = AuditRowResult(
+        row=row,
+        issues=[AuditIssue(code="missing_evidence", severity="warning", category="evidence", message="missing")],
+        evidence_level="MISSING_EVIDENCE",
+        row_type=row.row_type,
+    )
+    assert classify_clean_candidate(result) == "EXCLUDED_FROM_CLEAN_DATA"
+
+
+def test_error_issue_row_does_not_enter_clean_data() -> None:
+    row = _make_row("营业收入(%)", unit_hint="%")
+    row.row_type = "STRICT_FINANCIAL_TABLE_ROW"
+    issues = audit_unit_semantics(row)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, issues + evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "EXCLUDED_FROM_CLEAN_DATA"
+
+
+def test_period_issue_strict_row_does_not_enter_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="现金流量表",
+        row_index=2,
+        column_names=["会计年度", "2024A", "2025A"],
+        raw_values={"会计年度": "经营活动现金流", "2024A": "", "2025A": ""},
+        metric_name="经营活动现金流",
+        period_values={},
+        row_type="STRICT_FINANCIAL_TABLE_ROW",
+    )
+    period_issues = audit_period_alignment(row)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, period_issues + evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
 def test_explicit_evidence_ref_is_strong_evidence() -> None:
     row = _make_row("营业收入(百万元)")
     row.explicit_evidence_ref = "page=12"
@@ -130,6 +213,11 @@ def test_weak_evidence_is_counted_separately_in_manifest() -> None:
                 "unknown_row_count": 0,
                 "clean_data_row_count": 0,
                 "review_queue_row_count": 1,
+                "internal_clean_candidate_count": 0,
+                "internal_reference_candidate_count": 0,
+                "narrative_review_count": 0,
+                "review_required_count": 1,
+                "excluded_from_clean_data_count": 0,
             },
         )(),
         pdf_path="demo.pdf",
@@ -195,6 +283,11 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
                 "unknown_row_count": 0,
                 "clean_data_row_count": 1,
                 "review_queue_row_count": 0,
+                "internal_clean_candidate_count": 1,
+                "internal_reference_candidate_count": 0,
+                "narrative_review_count": 0,
+                "review_required_count": 0,
+                "excluded_from_clean_data_count": 0,
             },
         )(),
         pdf_path="demo.pdf",
@@ -204,3 +297,6 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
     assert manifest["llm_api_call_count"] == 0
     assert manifest["mineru_run_count"] == 0
     assert manifest["ocr_run_count"] == 0
+    assert manifest["client_ready"] is False
+    assert manifest["production_ready"] is False
+    assert manifest["formal_client_export_allowed"] is False
