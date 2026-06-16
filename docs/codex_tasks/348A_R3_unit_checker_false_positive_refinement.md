@@ -1,5 +1,69 @@
 # 348A-R3 Unit Checker False Positive Refinement
 
+## 中文说明 / Chinese Summary
+
+### 任务目标
+
+本任务只修一个明确问题：
+
+```text
+市场与基础数据:11
+净资产收益率(%)
+```
+
+当前 `unit_semantic_checker` 会因为指标名里包含 `资产`，把 `净资产收益率(%)` 误判成货币类指标，并触发：
+
+```text
+monetary_unit_mismatch
+```
+
+但 `净资产收益率(%)` 本质是收益率 / 百分比指标，不是货币金额。
+
+本轮目标是：
+
+```text
+让 ROE / 净资产收益率 / 收益率 / 毛利率 / 净利率 等百分比或比率指标，优先按 percentage/rate 处理，不要被宽泛的“资产/利润/收入”等货币词误伤。
+```
+
+### 不做什么
+
+本轮不做：
+
+```text
+不改 row_type 分类
+不改 R1 evidence policy
+不定义 clean_data candidate policy
+不跑 MinerU
+不调用 LLM/VLM
+不 OCR
+不重新抽 PDF
+不碰 legacy datefac/
+不打开 client_ready / production_ready
+```
+
+### 最小验收标准
+
+```text
+unit_issue_count: 1 -> 0
+fail_count: 1 -> 0
+净资产收益率(%) 不再触发 monetary_unit_mismatch
+营业收入(%) / 资产总计(%) 这类明显错误仍然要触发 mismatch
+pytest 通过
+real runner 输出到 agent_excel_intake_audit_348a_r3
+```
+
+### 推荐下一步
+
+如果 R3 成功，下一步进入：
+
+```text
+348A-R4 Clean Data Candidate Policy
+```
+
+R4 再决定哪些 `WEAK_EVIDENCE + 无语义问题` 的行可以进入内部 clean-data 候选，但仍然不能正式交付客户。
+
+---
+
 ## 1. Goal
 
 Refine the 348A unit semantic checker to remove the current false-positive-style `FAIL` on:
