@@ -10,7 +10,11 @@ from datefac_agent.audit.period_alignment_checker import audit_period_alignment,
 from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import classify_valuation_metric
-from datefac_agent.intake.excel_intake import _find_key_value_start, _should_reset_read_only_dimensions
+from datefac_agent.intake.excel_intake import (
+    _find_key_value_start,
+    _refine_third_workbook_row_type,
+    _should_reset_read_only_dimensions,
+)
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.review.review_queue_builder import build_audit_decision, build_row_audit_result, build_review_queue_rows
 from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SpreadsheetRow
@@ -198,6 +202,72 @@ def test_second_workbook_financial_sheet_becomes_strict_financial_row() -> None:
         period_values={"2024A": "4356", "2025A": "4521", "2026E": "6317", "2027E": "7535"},
     )
     assert classify_row_type(row) == "STRICT_FINANCIAL_TABLE_ROW"
+
+
+def test_third_workbook_report_metadata_row_becomes_narrative_assertion() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="报告核心信息与投资要点",
+        row_index=2,
+        column_names=["field_name", "field_value"],
+        raw_values={"field_name": "报告类型", "field_value": "公司深度研究"},
+        metric_name="报告类型",
+    )
+    assert _refine_third_workbook_row_type(row, classify_row_type(row)) == "NARRATIVE_ASSERTION"
+
+
+def test_third_workbook_business_matrix_row_becomes_narrative_assertion() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="公司业务与产品矩阵",
+        row_index=3,
+        column_names=["产品类别", "核心产品", "2025年营收占比", "主要应用领域", "核心特点"],
+        raw_values={
+            "产品类别": "军工装备",
+            "核心产品": "车载通信指挥系统",
+            "2025年营收占比": "约33%",
+            "主要应用领域": "各军兵种实战演训与重大保障任务",
+            "核心特点": "方舱轻量化技术",
+        },
+        metric_name="军工装备",
+        period_values={"2025年营收占比": "约33%"},
+    )
+    assert _refine_third_workbook_row_type(row, classify_row_type(row)) == "NARRATIVE_ASSERTION"
+
+
+def test_third_workbook_na_aidc_reference_row_becomes_narrative_assertion() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="北美AIDC电力供需与技术路径",
+        row_index=4,
+        column_names=["电厂名称", "所在州", "装机容量", "退役时间", "核心驱动因素", "转型计划", "备注"],
+        raw_values={
+            "电厂名称": "因特山电力项目(IPP)",
+            "所在州": "犹他州",
+            "装机容量": "1,640MW(2台机组)",
+            "退役时间": "2026年12月",
+        },
+        metric_name="因特山电力项目(IPP)",
+        period_values={"2026年2月": "2026年12月"},
+    )
+    assert _refine_third_workbook_row_type(row, classify_row_type(row)) == "NARRATIVE_ASSERTION"
+
+
+def test_third_workbook_mixed_valuation_narrative_stays_review_only() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="报告核心信息与投资要点",
+        row_index=14,
+        column_names=["field_name", "field_value"],
+        raw_values={"field_name": "3. 业绩弹性：2026-2028年归母净利润预计3.6/5.3/6.1亿元，对应PE 34/23/20倍，成长空间持续打开。"},
+        metric_name="3. 业绩弹性：2026-2028年归母净利润预计3.6/5.3/6.1亿元，对应PE 34/23/20倍，成长空间持续打开。",
+    )
+    row.row_type = _refine_third_workbook_row_type(row, classify_row_type(row))
+    issues = audit_unit_semantics(row)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, issues + evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "NARRATIVE_ASSERTION"
+    assert result.clean_candidate_type == "EXCLUDED_FROM_CLEAN_DATA"
 
 
 def test_narrative_assertion_stays_out_of_clean_data() -> None:

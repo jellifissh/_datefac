@@ -15,6 +15,26 @@ PERIOD_LABEL_RE = re.compile(r"(?:19|20)\d{2}(?:\s*(?:A|E|Q[1-4]|FY))?", re.IGNO
 EVIDENCE_HEADER_HINTS = ("页", "page", "evidence", "source", "出处", "来源")
 HEADER_LABEL_HINTS = {"项目", "指标", "会计年度", "公司", "业务板块", "类别", "内容详情", "数据类别", "备注"}
 SYNTHETIC_KEY_VALUE_HEADERS = ["field_name", "field_value"]
+THIRD_WORKBOOK_REPORT_INFO_SHEET = "\u62a5\u544a\u6838\u5fc3\u4fe1\u606f\u4e0e\u6295\u8d44\u8981\u70b9"
+THIRD_WORKBOOK_BUSINESS_MATRIX_SHEET = "\u516c\u53f8\u4e1a\u52a1\u4e0e\u4ea7\u54c1\u77e9\u9635"
+THIRD_WORKBOOK_NA_AIDC_SHEET = "\u5317\u7f8eAIDC\u7535\u529b\u4f9b\u9700\u4e0e\u6280\u672f\u8def\u5f84"
+
+THIRD_WORKBOOK_REPORT_METADATA_HINTS = {
+    "\u62a5\u544a\u7c7b\u578b",
+    "\u6807\u7684\u516c\u53f8",
+    "\u6240\u5c5e\u884c\u4e1a",
+    "\u53d1\u5e03\u673a\u6784",
+    "\u53d1\u5e03\u65e5\u671f",
+    "\u6295\u8d44\u8bc4\u7ea7",
+}
+THIRD_WORKBOOK_REPORT_NARRATIVE_PREFIXES = ("1.", "2.", "3.", "4.", "\u4e8c\u3001", "\u4e09\u3001")
+THIRD_WORKBOOK_NA_SECTION_HINTS = {
+    "\u88681\uff1a2026\u5e74\u7f8e\u56fd\u7164\u7535\u91cd\u70b9\u9000\u5f79\u8ba1\u5212",
+    "\u88682\uff1a2025-2030\u5e74\u7f8e\u56fd\u5206\u7535\u6e90\u7c7b\u578b\u589e\u51cf\uff08\u5355\u4f4d\uff1aGW\uff09",
+    "\u88683\uff1aAIDC\u53d1\u7535\u6280\u672f\u8def\u5f84\u5bf9\u6bd4",
+    "\u7535\u6e90\u7c7b\u578b",
+    "\u6280\u672f\u8def\u7ebf",
+}
 
 
 def _stringify_cell(value: Any) -> str:
@@ -123,6 +143,32 @@ def _should_reset_read_only_dimensions(worksheet: Any) -> bool:
     return dimension == "A1:A1"
 
 
+def _refine_third_workbook_row_type(row: SpreadsheetRow, inferred_row_type: str) -> str:
+    """Apply workbook-specific row typing only when the generic classifier is unknown."""
+
+    if inferred_row_type != "UNKNOWN_ROW":
+        return inferred_row_type
+
+    metric_name = _stringify_cell(row.metric_name)
+
+    if row.sheet_name == THIRD_WORKBOOK_REPORT_INFO_SHEET:
+        if metric_name in THIRD_WORKBOOK_REPORT_METADATA_HINTS:
+            return "NARRATIVE_ASSERTION"
+        if metric_name.startswith(THIRD_WORKBOOK_REPORT_NARRATIVE_PREFIXES):
+            return "NARRATIVE_ASSERTION"
+        return "NARRATIVE_ASSERTION"
+
+    if row.sheet_name == THIRD_WORKBOOK_BUSINESS_MATRIX_SHEET:
+        return "NARRATIVE_ASSERTION"
+
+    if row.sheet_name == THIRD_WORKBOOK_NA_AIDC_SHEET:
+        if metric_name in THIRD_WORKBOOK_NA_SECTION_HINTS or metric_name.startswith("\u8868"):
+            return "NARRATIVE_ASSERTION"
+        return "NARRATIVE_ASSERTION"
+
+    return inferred_row_type
+
+
 def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
     """Read an extracted workbook into lightweight structured rows."""
 
@@ -184,7 +230,7 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
                 period_values=period_values,
                 explicit_evidence_ref=_extract_explicit_evidence_ref(header_names, padded_values),
             )
-            row.row_type = classify_row_type(row)
+            row.row_type = _refine_third_workbook_row_type(row, classify_row_type(row))
             rows.append(row)
 
     return WorkbookIntakeResult(
