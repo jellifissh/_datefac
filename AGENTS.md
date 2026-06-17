@@ -10,24 +10,24 @@
 - 当前 active package：`datefac_agent/`
 - 当前流程：`intake -> audit -> review -> delivery`
 
-旧 `datefac/` 包是 legacy extraction / benchmark / recovery / audit reference，不是当前新增功能的默认修改对象。
+旧 `datefac/` 包是 legacy reference，不是当前新增功能的默认修改对象。
 
 ## 2. 当前状态
 
 当前已经进入：
 
 ```text
-348N-R2-QA Normalized Testset Schema Support Review
+348N-R3 Remaining Non-Normalized Unknown-Family Refinement
 ```
 
 最近关键结果：
 
 ```text
-348N-R2 implemented normalized_testset schema support
+348N-R2-QA confirmed normalized_testset schema support valid
 unknown_row_count dropped from 367 to 48
-normalized_testset_record_row_count increased from 0 to 320
+normalized_testset_record_row_count is 320
 clean_data_row_count stayed 37
-current task is QA/review, not code fix
+current task targets remaining non-normalized unknown families only
 ```
 
 当前事实源：
@@ -40,12 +40,10 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348N_R2_QA_normalized_testset_schema_support_review.md
+docs/codex_tasks/348N_R3_remaining_non_normalized_unknown_family_refinement.md
 ```
 
 ## 3. 默认必读清单
-
-新任务默认读取：
 
 ```text
 AGENTS.md
@@ -54,14 +52,9 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 current task under docs/codex_tasks/
 directly related result or QA report under docs/agent/
-```
-
-新模型、新聊天、新 Codex 线程还必须读取：
-
-```text
-docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 ```
 
 ## 4. 当前修改边界
@@ -74,7 +67,6 @@ tests/agent/
 docs/agent/
 docs/codex_tasks/
 docs/project_handoffs/
-relevant .skills/ workflow docs when workflow rules change
 ```
 
 默认禁止，除非任务明确点名：
@@ -89,7 +81,7 @@ client_ready / production_ready / formal_client_export_allowed gates
 
 ## 5. 当前 gate
 
-除非任务文档明确改变，否则这些 gate 必须保持关闭：
+这些 gate 默认保持关闭：
 
 ```text
 client_ready = false
