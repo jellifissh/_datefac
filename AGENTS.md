@@ -17,16 +17,16 @@
 当前已经进入：
 
 ```text
-348S-R3C Unknown Row Refinement
+348S-R3C-QA Third Workbook Unknown-Row Refinement Review
 ```
 
 最近关键结果：
 
 ```text
-348S-R3B fixed third workbook zero-row intake
-348S-QA confirmed clean_data is clean and review_queue is explainable
-remaining strongest signal is unknown_row_count = 44
-current task is narrow row-type / routing refinement
+348S-R3C reduced third workbook unknown_row_count from 44 to 0
+clean_data_row_count stayed 94
+review_queue_row_count stayed 64
+current task is QA/review, not code fix
 ```
 
 当前事实源：
@@ -39,7 +39,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348S_R3C_unknown_row_refinement.md
+docs/codex_tasks/348S_R3C_QA_unknown_row_refinement_review.md
 ```
 
 ## 3. 默认必读清单
