@@ -17,17 +17,16 @@
 当前已经进入：
 
 ```text
-348N-R1 Linyang Unknown Row Shape Diagnosis
+348N-R2 Normalized Testset Intake Schema Support
 ```
 
 最近关键结果：
 
 ```text
-348A-R4-QA confirmed clean-data candidate policy valid
-348N found new Linyang Energy pair
-348N runner completed without code changes
-linyang unknown_row_count = 367 out of row_count_total = 483
-current task is diagnosis only, not code fix
+348N-R1 diagnosed Linyang unknown-row families
+normalized_testset contributes 319 unknown rows
+normalized_testset is long-record testset schema, not normal wide workbook schema
+current task is narrow implementation support for normalized_testset schema
 ```
 
 当前事实源：
@@ -40,7 +39,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348N_R1_linyang_unknown_row_shape_diagnosis.md
+docs/codex_tasks/348N_R2_normalized_testset_intake_schema_support.md
 ```
 
 ## 3. 默认必读清单
