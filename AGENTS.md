@@ -17,7 +17,7 @@
 当前已经进入：
 
 ```text
-348A-R4-QA Clean Data Candidate Policy Review
+348N New Real Workbook Generalization Pilot
 ```
 
 最近关键结果：
@@ -25,9 +25,8 @@
 ```text
 348S-R3C-QA confirmed unknown-row refinement valid
 348S-R4-QA confirmed strict-row unit/period review signal refinement valid
-latest third workbook clean_data_row_count = 94
-latest third workbook review_queue_row_count = 64
-current task is QA/review, not code fix
+348A-R4-QA confirmed clean-data candidate policy valid
+current task is new real workbook generalization pilot
 ```
 
 当前事实源：
@@ -40,7 +39,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348A_R4_QA_clean_data_candidate_policy_review.md
+docs/codex_tasks/348N_new_real_workbook_generalization_pilot.md
 ```
 
 ## 3. 默认必读清单
