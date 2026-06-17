@@ -76,10 +76,12 @@ Read:
 
 ```text
 AGENTS.md
+.skills/README.md
 .skills/git_workflow.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 docs/agent/348S_R3B_THIRD_WORKBOOK_ZERO_ROW_INTAKE_FOLLOWUP_RESULT.md
 docs/agent/348S_THIRD_REAL_WORKBOOK_PILOT_RESULT.md
 ```
