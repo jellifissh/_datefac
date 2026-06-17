@@ -1,0 +1,75 @@
+{
+  "source_task": [
+    "348S-R1-QA",
+    "348S-R2"
+  ],
+  "issue_type": "period_detection",
+  "why_it_matters": "Protect embedded-header period extraction without weakening the checker for truly periodless strict financial rows.",
+  "cases": [
+    {
+      "case_id": "embedded_header__forecast_business_sheet",
+      "input_shape": "header_only",
+      "column_names": [
+        "项目",
+        "2025A收入(亿元)",
+        "2026E收入(亿元)",
+        "2027E收入(亿元)",
+        "2028E收入(亿元)",
+        "2026E毛利率(%)"
+      ],
+      "expected_detected_periods": [
+        "2025A",
+        "2026E",
+        "2027E",
+        "2028E"
+      ]
+    },
+    {
+      "case_id": "generalized_label__fy_and_quarter_mix",
+      "input_shape": "header_only",
+      "column_names": [
+        "项目",
+        "2025A",
+        "FY2026",
+        "2027FY",
+        "2028 Q1"
+      ],
+      "expected_detected_periods": [
+        "2025A",
+        "2026",
+        "2027",
+        "2028Q1"
+      ]
+    },
+    {
+      "case_id": "strict_row__periodless_should_still_warn",
+      "input_shape": "strict_financial_row",
+      "column_names": [
+        "指标",
+        "值1",
+        "值2"
+      ],
+      "expected_detected_periods": [],
+      "row": {
+        "sheet_name": "利润表",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "row_index": 3,
+        "column_names": [
+          "指标",
+          "值1",
+          "值2"
+        ],
+        "raw_values": {
+          "指标": "营业收入",
+          "值1": 1,
+          "值2": 2
+        },
+        "metric_name": "营业收入",
+        "period_values": {}
+      },
+      "expected_issue_codes": [
+        "period_context_missing"
+      ]
+    }
+  ]
+}

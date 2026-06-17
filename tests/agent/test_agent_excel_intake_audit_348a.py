@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from datefac_agent.audit.evidence_checker import audit_evidence_presence
 from datefac_agent.audit.period_alignment_checker import audit_period_alignment, detect_period_labels
 from datefac_agent.audit.row_type_classifier import classify_row_type
@@ -11,6 +14,8 @@ from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.review.review_queue_builder import build_audit_decision, build_row_audit_result, build_review_queue_rows
 from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SpreadsheetRow
 from tools.run_agent_excel_intake_audit_348a import build_manifest
+
+FIXTURE_DIR = Path(__file__).with_name("fixtures")
 
 
 def _make_row(metric_name: str, *, unit_hint: str | None = None, period_values: dict | None = None) -> SpreadsheetRow:
@@ -24,6 +29,43 @@ def _make_row(metric_name: str, *, unit_hint: str | None = None, period_values: 
         unit_hint=unit_hint,
         period_values=period_values or {"2024A": 1, "2025A": 2},
     )
+
+
+def _load_fixture(name: str) -> dict:
+    return json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+
+
+def _row_from_fixture(row_data: dict) -> SpreadsheetRow:
+    return SpreadsheetRow(
+        source_excel_path=row_data.get("source_excel_path", "demo.xlsx"),
+        sheet_name=row_data.get("sheet_name", "财务估值"),
+        row_index=row_data.get("row_index", 2),
+        column_names=row_data.get("column_names", ["会计年度", "2024A", "2025A"]),
+        raw_values=row_data.get("raw_values", {}),
+        metric_name=row_data.get("metric_name", ""),
+        unit_hint=row_data.get("unit_hint"),
+        period_values=row_data.get("period_values", {}),
+        explicit_evidence_ref=row_data.get("explicit_evidence_ref"),
+        row_type=row_data.get("row_type", "UNKNOWN_ROW"),
+    )
+
+
+def _run_routing_fixture_case(case: dict) -> AuditRowResult:
+    row = _row_from_fixture(case["row"])
+    issues: list[AuditIssue] = []
+    evidence_refs = []
+    evidence_level = case.get("evidence_level", "MISSING_EVIDENCE")
+    checks = set(case.get("checks", []))
+
+    if "unit" in checks:
+        issues.extend(audit_unit_semantics(row))
+    if "period" in checks:
+        issues.extend(audit_period_alignment(row))
+    if "evidence" in checks:
+        evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, case.get("pdf_path", "demo.pdf"))
+        issues.extend(evidence_issues)
+
+    return build_row_audit_result(row, issues, evidence_refs, evidence_level)
 
 
 def test_schema_models_construct_for_348a() -> None:
@@ -356,3 +398,43 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
     assert manifest["client_ready"] is False
     assert manifest["production_ready"] is False
     assert manifest["formal_client_export_allowed"] is False
+
+
+def test_unit_semantic_fixture_cases() -> None:
+    fixture = _load_fixture("unit_semantics__346b_lessons_and_348s_r2__v1.json")
+
+    for case in fixture["cases"]:
+        row = _row_from_fixture(case["row"])
+        issues = audit_unit_semantics(row)
+        issue_codes = {issue.code for issue in issues}
+        expected = set(case["expected_issue_codes"])
+        assert issue_codes == expected, case["case_id"]
+
+
+def test_period_detection_fixture_cases() -> None:
+    fixture = _load_fixture("period_detection__embedded_headers_and_missing_period__v1.json")
+
+    for case in fixture["cases"]:
+        detected = detect_period_labels(case["column_names"])
+        assert detected == case["expected_detected_periods"], case["case_id"]
+
+        if case.get("row"):
+            row = _row_from_fixture(case["row"])
+            issues = audit_period_alignment(row)
+            issue_codes = {issue.code for issue in issues}
+            expected = set(case["expected_issue_codes"])
+            assert issue_codes == expected, case["case_id"]
+
+
+def test_clean_candidate_routing_fixture_cases() -> None:
+    fixture = _load_fixture("routing_policy__narrative_market_strict_and_missing_evidence__v1.json")
+
+    for case in fixture["cases"]:
+        result = _run_routing_fixture_case(case)
+        queue_rows = build_review_queue_rows([result])
+
+        assert result.clean_candidate_type == case["expected_clean_candidate_type"], case["case_id"]
+        assert result.evidence_level == case["expected_evidence_level"], case["case_id"]
+        assert result.decision is not None
+        assert result.decision.decision == case["expected_decision"], case["case_id"]
+        assert [row["clean_candidate_type"] for row in queue_rows] == case["expected_review_queue_candidate_types"], case["case_id"]

@@ -1,0 +1,150 @@
+{
+  "source_task": [
+    "346B2_recovery_candidate_qa_audit",
+    "348A-R4",
+    "348S-R2-QA"
+  ],
+  "issue_type": "clean_review_routing",
+  "why_it_matters": "Protect conservative candidate routing so clean_data remains internal-only, narrative stays in review, and missing evidence or period issues never slip into clean output.",
+  "cases": [
+    {
+      "case_id": "narrative_row__stays_review_only",
+      "checks": [
+        "evidence"
+      ],
+      "pdf_path": "demo.pdf",
+      "row": {
+        "sheet_name": "核心观点",
+        "row_type": "NARRATIVE_ASSERTION",
+        "row_index": 3,
+        "column_names": [
+          "field_name",
+          "field_value"
+        ],
+        "raw_values": {
+          "field_name": "核心逻辑",
+          "field_value": "需求改善带动利润修复"
+        },
+        "metric_name": "核心逻辑",
+        "period_values": {}
+      },
+      "expected_clean_candidate_type": "NARRATIVE_REVIEW",
+      "expected_evidence_level": "WEAK_EVIDENCE",
+      "expected_decision": "REVIEW",
+      "expected_review_queue_candidate_types": [
+        "NARRATIVE_REVIEW"
+      ]
+    },
+    {
+      "case_id": "market_reference_row__becomes_internal_reference_candidate",
+      "checks": [
+        "evidence"
+      ],
+      "pdf_path": "demo.pdf",
+      "row": {
+        "sheet_name": "市场与基础数据",
+        "row_type": "MARKET_REFERENCE_ROW",
+        "row_index": 2,
+        "column_names": [
+          "字段",
+          "值"
+        ],
+        "raw_values": {
+          "字段": "总市值(亿元)",
+          "值": "120"
+        },
+        "metric_name": "总市值(亿元)",
+        "unit_hint": "亿元",
+        "period_values": {}
+      },
+      "expected_clean_candidate_type": "INTERNAL_REFERENCE_CANDIDATE",
+      "expected_evidence_level": "WEAK_EVIDENCE",
+      "expected_decision": "REVIEW",
+      "expected_review_queue_candidate_types": []
+    },
+    {
+      "case_id": "strict_financial_row__becomes_internal_clean_candidate",
+      "checks": [
+        "evidence"
+      ],
+      "pdf_path": "demo.pdf",
+      "row": {
+        "sheet_name": "利润表",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "row_index": 4,
+        "column_names": [
+          "指标",
+          "2024A",
+          "2025A"
+        ],
+        "raw_values": {
+          "指标": "营业收入(百万元)",
+          "2024A": 100,
+          "2025A": 120
+        },
+        "metric_name": "营业收入(百万元)",
+        "unit_hint": "百万元",
+        "period_values": {
+          "2024A": 100,
+          "2025A": 120
+        }
+      },
+      "expected_clean_candidate_type": "INTERNAL_CLEAN_CANDIDATE",
+      "expected_evidence_level": "WEAK_EVIDENCE",
+      "expected_decision": "REVIEW",
+      "expected_review_queue_candidate_types": []
+    },
+    {
+      "case_id": "strict_financial_row__period_issue_stays_review_required",
+      "checks": [
+        "period",
+        "evidence"
+      ],
+      "pdf_path": "demo.pdf",
+      "row": {
+        "sheet_name": "现金流量表",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "row_index": 2,
+        "column_names": [
+          "指标",
+          "值1",
+          "值2"
+        ],
+        "raw_values": {
+          "指标": "经营活动现金流",
+          "值1": "",
+          "值2": ""
+        },
+        "metric_name": "经营活动现金流",
+        "period_values": {}
+      },
+      "expected_clean_candidate_type": "REVIEW_REQUIRED",
+      "expected_evidence_level": "WEAK_EVIDENCE",
+      "expected_decision": "REVIEW",
+      "expected_review_queue_candidate_types": [
+        "REVIEW_REQUIRED"
+      ]
+    },
+    {
+      "case_id": "missing_evidence_row__excluded_from_clean_data",
+      "checks": [],
+      "evidence_level": "MISSING_EVIDENCE",
+      "row": {
+        "source_excel_path": "",
+        "sheet_name": "",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "row_index": 0,
+        "column_names": [],
+        "raw_values": {},
+        "metric_name": "",
+        "period_values": {
+          "2024A": 1
+        }
+      },
+      "expected_clean_candidate_type": "EXCLUDED_FROM_CLEAN_DATA",
+      "expected_evidence_level": "MISSING_EVIDENCE",
+      "expected_decision": "PASS",
+      "expected_review_queue_candidate_types": []
+    }
+  ]
+}

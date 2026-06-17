@@ -1,0 +1,101 @@
+{
+  "source_task": [
+    "346B2_recovery_candidate_qa_audit",
+    "348A-R3",
+    "348S-R2"
+  ],
+  "issue_type": "unit_semantics",
+  "why_it_matters": "Protect rate-vs-monetary and per-share-vs-total-amount boundaries that historically produced false positives or risky unit repairs.",
+  "cases": [
+    {
+      "case_id": "rate_metric__asset_liability_ratio_percent",
+      "input_shape": "strict_financial_rate_metric",
+      "row": {
+        "sheet_name": "重要财务与估值指标",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "metric_name": "资产负债率(%)",
+        "unit_hint": "%",
+        "period_values": {
+          "2025A": 41.2,
+          "2026E": 39.8
+        }
+      },
+      "expected_issue_codes": []
+    },
+    {
+      "case_id": "rate_metric__asset_liability_ratio_percent_lf",
+      "input_shape": "market_reference_rate_metric",
+      "row": {
+        "sheet_name": "报告概要",
+        "row_type": "MARKET_REFERENCE_ROW",
+        "metric_name": "资产负债率(%,LF)",
+        "unit_hint": "%,LF",
+        "period_values": {}
+      },
+      "expected_issue_codes": []
+    },
+    {
+      "case_id": "monetary_metric__asset_total_percent_should_fail",
+      "input_shape": "strict_financial_amount_metric",
+      "row": {
+        "sheet_name": "资产负债表",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "metric_name": "资产总计(%)",
+        "unit_hint": "%",
+        "period_values": {
+          "2025A": 100.0
+        }
+      },
+      "expected_issue_codes": [
+        "monetary_unit_mismatch"
+      ]
+    },
+    {
+      "case_id": "monetary_metric__liability_total_percent_should_fail",
+      "input_shape": "strict_financial_amount_metric",
+      "row": {
+        "sheet_name": "资产负债表",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "metric_name": "负债合计(%)",
+        "unit_hint": "%",
+        "period_values": {
+          "2025A": 100.0
+        }
+      },
+      "expected_issue_codes": [
+        "monetary_unit_mismatch"
+      ]
+    },
+    {
+      "case_id": "rate_metric__roe_should_stay_clean",
+      "input_shape": "strict_financial_rate_metric",
+      "row": {
+        "sheet_name": "财务估值",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "metric_name": "净资产收益率(%)",
+        "unit_hint": "%",
+        "period_values": {
+          "2024A": 11.3,
+          "2025A": 12.1
+        }
+      },
+      "expected_issue_codes": []
+    },
+    {
+      "case_id": "per_share_metric__eps_with_total_amount_should_fail",
+      "input_shape": "per_share_metric",
+      "row": {
+        "sheet_name": "财务估值",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "metric_name": "EPS(百万元)",
+        "unit_hint": "百万元",
+        "period_values": {
+          "2024A": 1.2
+        }
+      },
+      "expected_issue_codes": [
+        "per_share_unit_mismatch"
+      ]
+    }
+  ]
+}
