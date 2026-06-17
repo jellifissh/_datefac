@@ -10,7 +10,7 @@ from datefac_agent.audit.period_alignment_checker import audit_period_alignment,
 from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import classify_valuation_metric
-from datefac_agent.intake.excel_intake import _find_key_value_start
+from datefac_agent.intake.excel_intake import _find_key_value_start, _should_reset_read_only_dimensions
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.review.review_queue_builder import build_audit_decision, build_row_audit_result, build_review_queue_rows
 from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SpreadsheetRow
@@ -354,6 +354,28 @@ def test_find_key_value_start_ignores_short_summary_rows_without_crashing() -> N
     ]
 
     assert _find_key_value_start(sheet_rows) == 4
+
+
+def test_should_reset_read_only_dimensions_flags_a1_only_dimension() -> None:
+    class DummySheet:
+        def calculate_dimension(self) -> str:
+            return "A1:A1"
+
+        def reset_dimensions(self) -> None:
+            return None
+
+    assert _should_reset_read_only_dimensions(DummySheet()) is True
+
+
+def test_should_reset_read_only_dimensions_ignores_normal_dimension() -> None:
+    class DummySheet:
+        def calculate_dimension(self) -> str:
+            return "A1:F15"
+
+        def reset_dimensions(self) -> None:
+            return None
+
+    assert _should_reset_read_only_dimensions(DummySheet()) is False
 
 
 def test_build_audit_decision_fail_on_error() -> None:

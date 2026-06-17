@@ -111,6 +111,18 @@ def _find_key_value_start(sheet_rows: list[tuple[int, list[Any]]]) -> int | None
     return None
 
 
+def _should_reset_read_only_dimensions(worksheet: Any) -> bool:
+    """Detect read-only worksheets whose cached dimension is obviously undersized."""
+
+    if not hasattr(worksheet, "reset_dimensions") or not hasattr(worksheet, "calculate_dimension"):
+        return False
+    try:
+        dimension = worksheet.calculate_dimension()
+    except Exception:
+        return False
+    return dimension == "A1:A1"
+
+
 def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
     """Read an extracted workbook into lightweight structured rows."""
 
@@ -120,6 +132,8 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
 
     for sheet_name in workbook.sheetnames:
         worksheet = workbook[sheet_name]
+        if _should_reset_read_only_dimensions(worksheet):
+            worksheet.reset_dimensions()
         sheet_rows = [
             (row_index, list(raw_row))
             for row_index, raw_row in enumerate(worksheet.iter_rows(values_only=True), start=1)
