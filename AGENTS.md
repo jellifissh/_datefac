@@ -17,16 +17,17 @@
 当前已经进入：
 
 ```text
-348N-R2 Normalized Testset Intake Schema Support
+348N-R2-QA Normalized Testset Schema Support Review
 ```
 
 最近关键结果：
 
 ```text
-348N-R1 diagnosed Linyang unknown-row families
-normalized_testset contributes 319 unknown rows
-normalized_testset is long-record testset schema, not normal wide workbook schema
-current task is narrow implementation support for normalized_testset schema
+348N-R2 implemented normalized_testset schema support
+unknown_row_count dropped from 367 to 48
+normalized_testset_record_row_count increased from 0 to 320
+clean_data_row_count stayed 37
+current task is QA/review, not code fix
 ```
 
 当前事实源：
@@ -39,7 +40,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348N_R2_normalized_testset_intake_schema_support.md
+docs/codex_tasks/348N_R2_QA_normalized_testset_schema_support_review.md
 ```
 
 ## 3. 默认必读清单
