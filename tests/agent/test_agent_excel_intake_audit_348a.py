@@ -43,6 +43,12 @@ def test_unit_checker_does_not_flag_roe_style_percentage_metrics() -> None:
     roe_issues = audit_unit_semantics(_make_row("ROE(%)", unit_hint="%"))
     assert not any(issue.code == "monetary_unit_mismatch" for issue in roe_issues)
 
+    debt_ratio_issues = audit_unit_semantics(_make_row("资产负债率(%)", unit_hint="%"))
+    assert not any(issue.code == "monetary_unit_mismatch" for issue in debt_ratio_issues)
+
+    debt_ratio_lf_issues = audit_unit_semantics(_make_row("资产负债率(%,LF)", unit_hint="%,LF"))
+    assert not any(issue.code == "monetary_unit_mismatch" for issue in debt_ratio_lf_issues)
+
 
 def test_unit_checker_still_flags_monetary_metrics_with_percent_units() -> None:
     revenue_issues = audit_unit_semantics(_make_row("营业收入(%)", unit_hint="%"))
@@ -50,6 +56,9 @@ def test_unit_checker_still_flags_monetary_metrics_with_percent_units() -> None:
 
     asset_issues = audit_unit_semantics(_make_row("资产总计(%)", unit_hint="%"))
     assert any(issue.code == "monetary_unit_mismatch" for issue in asset_issues)
+
+    liability_issues = audit_unit_semantics(_make_row("负债合计(%)", unit_hint="%"))
+    assert any(issue.code == "monetary_unit_mismatch" for issue in liability_issues)
 
 
 def test_period_checker_detects_expected_labels() -> None:
@@ -60,6 +69,13 @@ def test_period_checker_detects_expected_labels() -> None:
 def test_period_checker_detects_generalized_labels() -> None:
     labels = detect_period_labels(["项目", "2025A", "FY2026", "2027FY", "2028 Q1"])
     assert labels == ["2025A", "2026", "2027", "2028Q1"]
+
+
+def test_period_checker_detects_embedded_period_labels() -> None:
+    labels = detect_period_labels(
+        ["项目", "2025A收入(亿元)", "2026E收入(亿元)", "2027E收入(亿元)", "2028E收入(亿元)", "2026E毛利率(%)"]
+    )
+    assert labels == ["2025A", "2026E", "2027E", "2028E"]
 
 
 def test_valuation_checker_classifies_multiple_like_metrics() -> None:

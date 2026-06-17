@@ -18,6 +18,10 @@ PERCENT_TERMS = (
     "roe",
     "roa",
 )
+RATE_OVERRIDE_TERMS = (
+    "资产负债率",
+    "负债率",
+)
 VALUATION_TERMS = ("p/e", "pe", "市盈率", "p/b", "pb", "市净率", "ev/ebitda", "ev ebitda")
 PER_SHARE_TERMS = ("eps", "每股", "元/股")
 MONEY_TERMS = (
@@ -63,7 +67,7 @@ def _is_clear_rate_metric(text: str) -> bool:
         "roe",
         "roa",
     )
-    return _contains_any(text, rate_terms)
+    return _contains_any(text, RATE_OVERRIDE_TERMS + rate_terms)
 
 
 def audit_unit_semantics(row: SpreadsheetRow) -> list[AuditIssue]:
