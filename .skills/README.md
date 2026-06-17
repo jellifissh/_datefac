@@ -33,6 +33,16 @@ Read only:
 
 This replaces the old long preflight list.
 
+## Extra Read Order For Model Switches
+
+When switching models, starting a new chat, or starting a new Codex thread, read this before the task doc:
+
+```text
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+```
+
+This file is the current short handoff pointer.
+
 ## Optional Context, Read Only When The Task Requires It
 
 Project background / architecture / migration:
@@ -70,12 +80,19 @@ datefac_agent/
 tests/agent/
 docs/agent/
 docs/codex_tasks/
+docs/project_handoffs/
 ```
 
 Default current progress source:
 
 ```text
 docs/agent/项目进程.md
+```
+
+Default current handoff source:
+
+```text
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 ```
 
 Legacy extraction, MinerU benchmark, old milestone ledgers, and 346B recovery chains are reference material unless a task explicitly asks for them.
