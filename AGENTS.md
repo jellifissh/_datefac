@@ -17,17 +17,18 @@
 当前已经进入：
 
 ```text
-348S-R4 Strict Row Unit/Period Review Signal Refinement
+348S-R4-QA Strict Row Unit/Period Review Signal Refinement Review
 ```
 
 最近关键结果：
 
 ```text
-348S-R3C-QA confirmed unknown-row refinement valid
-unknown_row_count is now 0
+348S-R4 refined strict-row unit/period review signals
 clean_data_row_count stayed 94
 review_queue_row_count stayed 64
-remaining strict-row signals: percentage_unit_missing = 10, period_values_missing = 8
+period_issue_count changed from 8 to 2
+unit issue labeling became more specific without widening clean-data acceptance
+current task is QA/review, not code fix
 ```
 
 当前事实源：
@@ -40,7 +41,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348S_R4_strict_row_unit_period_review_signal_refinement.md
+docs/codex_tasks/348S_R4_QA_strict_row_unit_period_review_signal_refinement.md
 ```
 
 ## 3. 默认必读清单
