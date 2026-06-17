@@ -25,6 +25,9 @@ def classify_clean_candidate(result: AuditRowResult) -> CleanCandidateType:
     if result.row_type == "NARRATIVE_ASSERTION":
         return "NARRATIVE_REVIEW"
 
+    if result.row_type == "NORMALIZED_TESTSET_RECORD_ROW":
+        return "REVIEW_REQUIRED"
+
     if result.evidence_level != "WEAK_EVIDENCE":
         return "REVIEW_REQUIRED"
 
@@ -43,4 +46,3 @@ def classify_clean_candidate(result: AuditRowResult) -> CleanCandidateType:
         return "INTERNAL_REFERENCE_CANDIDATE"
 
     return "REVIEW_REQUIRED"
-

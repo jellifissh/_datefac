@@ -13,6 +13,8 @@ from datefac_agent.audit.valuation_metric_checker import classify_valuation_metr
 from datefac_agent.intake.excel_intake import (
     _find_key_value_start,
     _refine_third_workbook_row_type,
+    _refine_special_schema_row_type,
+    _find_normalized_testset_header,
     _should_reset_read_only_dimensions,
 )
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
@@ -302,6 +304,74 @@ def test_third_workbook_anchor_row_routes_out_of_strict_period_review() -> None:
     assert audit_period_alignment(row) == []
 
 
+def test_normalized_testset_header_detection_is_explicit() -> None:
+    sheet_rows = [
+        (1, ["record_id", "source_pdf", "source_page", "table_name", "statement", "line_item", "period", "value", "unit", "value_text_original", "confidence", "note"]),
+        (2, ["R0001", "demo.pdf", 1, "table", "statement", "metric", "2024A", 1, "百万元", "1", "高", "note"]),
+    ]
+
+    header = _find_normalized_testset_header(sheet_rows)
+    assert header is not None
+    assert header[0] == 1
+
+
+def test_normalized_testset_rows_receive_explicit_schema_row_type() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="normalized_testset",
+        row_index=2,
+        column_names=["record_id", "source_pdf", "source_page", "table_name", "statement", "line_item", "period", "value", "unit", "value_text_original", "confidence", "note"],
+        raw_values={
+            "record_id": "R0001",
+            "source_pdf": "demo.pdf",
+            "source_page": 1,
+            "table_name": "盈利预测与估值",
+            "statement": "statement",
+            "line_item": "营业总收入",
+            "period": "2024A",
+            "value": 1,
+            "unit": "百万元",
+            "value_text_original": "1",
+            "confidence": "高",
+            "note": "从PDF表格抽取",
+        },
+        metric_name="R0001",
+        row_type="UNKNOWN_ROW",
+    )
+
+    refined = _refine_special_schema_row_type(row, "UNKNOWN_ROW", normalized_testset_detected=True)
+    assert refined == "NORMALIZED_TESTSET_RECORD_ROW"
+
+
+def test_normalized_testset_rows_stay_out_of_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="normalized_testset",
+        row_index=2,
+        column_names=["record_id", "source_pdf", "source_page", "table_name", "statement", "line_item", "period", "value", "unit", "value_text_original", "confidence", "note"],
+        raw_values={"record_id": "R0001", "source_pdf": "demo.pdf", "source_page": 1, "table_name": "盈利预测与估值", "statement": "statement", "line_item": "营业总收入", "period": "2024A", "value": 1, "unit": "百万元", "value_text_original": "1", "confidence": "高", "note": "从PDF表格抽取"},
+        metric_name="R0001",
+        period_values={"2024A": 1},
+        row_type="NORMALIZED_TESTSET_RECORD_ROW",
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_normalized_testset_support_does_not_change_wide_workbook_classification() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="璐㈠姟浼板€?",
+        row_index=4,
+        column_names=["浼氳骞村害", "2024A", "2025A"],
+        raw_values={"浼氳骞村害": "钀ヤ笟鏀跺叆", "2024A": 1, "2025A": 2},
+        metric_name="钀ヤ笟鏀跺叆",
+        period_values={"2024A": 1, "2025A": 2},
+    )
+    assert classify_row_type(row) == "STRICT_FINANCIAL_TABLE_ROW"
+
+
 def test_narrative_assertion_stays_out_of_clean_data() -> None:
     row = _make_row("核心逻辑")
     row.sheet_name = "核心观点"
@@ -411,6 +481,7 @@ def test_weak_evidence_is_counted_separately_in_manifest() -> None:
                 "strict_financial_table_row_count": 1,
                 "market_reference_row_count": 0,
                 "narrative_assertion_count": 0,
+                "normalized_testset_record_row_count": 0,
                 "unknown_row_count": 0,
                 "clean_data_row_count": 0,
                 "review_queue_row_count": 1,
@@ -516,6 +587,7 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
                 "strict_financial_table_row_count": 1,
                 "market_reference_row_count": 0,
                 "narrative_assertion_count": 0,
+                "normalized_testset_record_row_count": 0,
                 "unknown_row_count": 0,
                 "clean_data_row_count": 1,
                 "review_queue_row_count": 0,

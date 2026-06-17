@@ -15,6 +15,20 @@ PERIOD_LABEL_RE = re.compile(r"(?:19|20)\d{2}(?:\s*(?:A|E|Q[1-4]|FY))?", re.IGNO
 EVIDENCE_HEADER_HINTS = ("页", "page", "evidence", "source", "出处", "来源")
 HEADER_LABEL_HINTS = {"项目", "指标", "会计年度", "公司", "业务板块", "类别", "内容详情", "数据类别", "备注"}
 SYNTHETIC_KEY_VALUE_HEADERS = ["field_name", "field_value"]
+NORMALIZED_TESTSET_HEADERS = {
+    "record_id",
+    "source_pdf",
+    "source_page",
+    "table_name",
+    "statement",
+    "line_item",
+    "period",
+    "value",
+    "unit",
+    "value_text_original",
+    "confidence",
+    "note",
+}
 THIRD_WORKBOOK_REPORT_INFO_SHEET = "\u62a5\u544a\u6838\u5fc3\u4fe1\u606f\u4e0e\u6295\u8d44\u8981\u70b9"
 THIRD_WORKBOOK_BUSINESS_MATRIX_SHEET = "\u516c\u53f8\u4e1a\u52a1\u4e0e\u4ea7\u54c1\u77e9\u9635"
 THIRD_WORKBOOK_NA_AIDC_SHEET = "\u5317\u7f8eAIDC\u7535\u529b\u4f9b\u9700\u4e0e\u6280\u672f\u8def\u5f84"
@@ -134,6 +148,26 @@ def _find_header_row(sheet_rows: list[tuple[int, list[Any]]]) -> tuple[int, list
     return None
 
 
+def _is_normalized_testset_header(values: list[Any]) -> bool:
+    normalized_headers = {
+        _stringify_cell(value).strip().lower()
+        for value in values
+        if _stringify_cell(value).strip()
+    }
+    return len(normalized_headers & NORMALIZED_TESTSET_HEADERS) >= 8
+
+
+def _find_normalized_testset_header(sheet_rows: list[tuple[int, list[Any]]]) -> tuple[int, list[str]] | None:
+    for row_index, values in sheet_rows[:5]:
+        if _is_normalized_testset_header(values):
+            header_names = [
+                _normalize_header(value, column_index).strip().lower()
+                for column_index, value in enumerate(values, start=1)
+            ]
+            return row_index, header_names
+    return None
+
+
 def _find_key_value_start(sheet_rows: list[tuple[int, list[Any]]]) -> int | None:
     candidate_rows: list[int] = []
     for row_index, values in sheet_rows[:12]:
@@ -189,6 +223,17 @@ def _refine_third_workbook_row_type(row: SpreadsheetRow, inferred_row_type: str)
     return inferred_row_type
 
 
+def _refine_special_schema_row_type(
+    row: SpreadsheetRow,
+    inferred_row_type: str,
+    *,
+    normalized_testset_detected: bool,
+) -> str:
+    if normalized_testset_detected and row.sheet_name == "normalized_testset":
+        return "NORMALIZED_TESTSET_RECORD_ROW"
+    return _refine_third_workbook_row_type(row, inferred_row_type)
+
+
 def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
     """Read an extracted workbook into lightweight structured rows."""
 
@@ -204,7 +249,8 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
             (row_index, list(raw_row))
             for row_index, raw_row in enumerate(worksheet.iter_rows(values_only=True), start=1)
         ]
-        header_candidate = _find_header_row(sheet_rows)
+        normalized_testset_header = _find_normalized_testset_header(sheet_rows)
+        header_candidate = normalized_testset_header or _find_header_row(sheet_rows)
         key_value_start = _find_key_value_start(sheet_rows) if header_candidate is None else None
 
         if header_candidate is not None:
@@ -250,7 +296,11 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
                 period_values=period_values,
                 explicit_evidence_ref=_extract_explicit_evidence_ref(header_names, padded_values),
             )
-            row.row_type = _refine_third_workbook_row_type(row, classify_row_type(row))
+            row.row_type = _refine_special_schema_row_type(
+                row,
+                classify_row_type(row),
+                normalized_testset_detected=normalized_testset_header is not None,
+            )
             rows.append(row)
 
     return WorkbookIntakeResult(

@@ -6,7 +6,13 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 EvidenceLevel = Literal["STRONG_EVIDENCE", "WEAK_EVIDENCE", "MISSING_EVIDENCE", "NOT_APPLICABLE"]
-RowType = Literal["STRICT_FINANCIAL_TABLE_ROW", "MARKET_REFERENCE_ROW", "NARRATIVE_ASSERTION", "UNKNOWN_ROW"]
+RowType = Literal[
+    "STRICT_FINANCIAL_TABLE_ROW",
+    "MARKET_REFERENCE_ROW",
+    "NARRATIVE_ASSERTION",
+    "NORMALIZED_TESTSET_RECORD_ROW",
+    "UNKNOWN_ROW",
+]
 CleanCandidateType = Literal[
     "INTERNAL_CLEAN_CANDIDATE",
     "INTERNAL_REFERENCE_CANDIDATE",
@@ -122,6 +128,7 @@ class AuditSummary:
     strict_financial_table_row_count: int = 0
     market_reference_row_count: int = 0
     narrative_assertion_count: int = 0
+    normalized_testset_record_row_count: int = 0
     unknown_row_count: int = 0
     clean_data_row_count: int = 0
     review_queue_row_count: int = 0
