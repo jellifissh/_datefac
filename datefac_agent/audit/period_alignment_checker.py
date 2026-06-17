@@ -6,7 +6,10 @@ import re
 
 from datefac_agent.schemas.audit_models import AuditIssue, SpreadsheetRow
 
-PERIOD_LABEL_RE = re.compile(r"^(?P<year>(?:19|20)\d{2})(?P<suffix>A|E|Q[1-4])?$", re.IGNORECASE)
+PERIOD_LABEL_RE = re.compile(
+    r"^(?:FY)?(?P<year>(?:19|20)\d{2})(?P<suffix>A|E|Q[1-4]|FY)?$|^(?P<year2>(?:19|20)\d{2})\s+Q(?P<quarter>[1-4])$",
+    re.IGNORECASE,
+)
 
 
 def detect_period_labels(column_names: list[str]) -> list[str]:
@@ -17,8 +20,14 @@ def detect_period_labels(column_names: list[str]) -> list[str]:
         text = str(name).strip()
         match = PERIOD_LABEL_RE.match(text)
         if match:
+            if match.group("year2") and match.group("quarter"):
+                labels.append(f"{match.group('year2')}Q{match.group('quarter')}")
+                continue
+            year = match.group("year")
             suffix = (match.group("suffix") or "").upper()
-            labels.append(f"{match.group('year')}{suffix}")
+            if suffix == "FY":
+                suffix = ""
+            labels.append(f"{year}{suffix}")
     return labels
 
 

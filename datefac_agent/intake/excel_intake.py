@@ -11,8 +11,10 @@ from openpyxl import load_workbook
 from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.schemas.audit_models import SpreadsheetRow, WorkbookIntakeResult
 
-PERIOD_LABEL_RE = re.compile(r"^(?:19|20)\d{2}(?:A|E|Q[1-4])?$", re.IGNORECASE)
+PERIOD_LABEL_RE = re.compile(r"(?:19|20)\d{2}(?:\s*(?:A|E|Q[1-4]|FY))?", re.IGNORECASE)
 EVIDENCE_HEADER_HINTS = ("页", "page", "evidence", "source", "出处", "来源")
+HEADER_LABEL_HINTS = {"项目", "指标", "会计年度", "公司", "业务板块", "类别", "内容详情", "数据类别", "备注"}
+SYNTHETIC_KEY_VALUE_HEADERS = ["field_name", "field_value"]
 
 
 def _stringify_cell(value: Any) -> str:
@@ -61,9 +63,50 @@ def detect_period_labels(column_names: list[str]) -> list[str]:
     labels: list[str] = []
     for name in column_names:
         text = _stringify_cell(name)
-        if PERIOD_LABEL_RE.match(text):
+        if PERIOD_LABEL_RE.search(text):
             labels.append(text)
     return labels
+
+
+def _count_non_empty(values: list[Any]) -> int:
+    return sum(1 for value in values if _stringify_cell(value))
+
+
+def _is_header_candidate(values: list[Any]) -> bool:
+    texts = [_stringify_cell(value) for value in values]
+    non_empty = [text for text in texts if text]
+    if len(non_empty) < 2:
+        return False
+    period_hits = sum(1 for text in non_empty if PERIOD_LABEL_RE.search(text))
+    if non_empty[0] in HEADER_LABEL_HINTS:
+        return True
+    if period_hits >= 2:
+        return True
+    if period_hits >= 1 and len(non_empty) >= 3:
+        return True
+    return False
+
+
+def _find_header_row(sheet_rows: list[tuple[int, list[Any]]]) -> tuple[int, list[str]] | None:
+    for row_index, values in sheet_rows[:8]:
+        if _is_header_candidate(values):
+            header_names = [
+                _normalize_header(value, column_index)
+                for column_index, value in enumerate(values, start=1)
+            ]
+            return row_index, header_names
+    return None
+
+
+def _find_key_value_start(sheet_rows: list[tuple[int, list[Any]]]) -> int | None:
+    candidate_rows: list[int] = []
+    for row_index, values in sheet_rows[:12]:
+        texts = [_stringify_cell(value) for value in values[:2]]
+        if texts[0] and texts[1]:
+            candidate_rows.append(row_index)
+    if len(candidate_rows) >= 3:
+        return candidate_rows[0]
+    return None
 
 
 def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
@@ -75,19 +118,30 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
 
     for sheet_name in workbook.sheetnames:
         worksheet = workbook[sheet_name]
-        header_values: list[Any] | None = None
-        header_names: list[str] = []
+        sheet_rows = [
+            (row_index, list(raw_row))
+            for row_index, raw_row in enumerate(worksheet.iter_rows(values_only=True), start=1)
+        ]
+        header_candidate = _find_header_row(sheet_rows)
+        key_value_start = _find_key_value_start(sheet_rows) if header_candidate is None else None
 
-        for row_index, raw_row in enumerate(worksheet.iter_rows(values_only=True), start=1):
-            values = list(raw_row)
-            if header_values is None:
-                header_values = values
-                header_names = [
-                    _normalize_header(value, column_index)
-                    for column_index, value in enumerate(values, start=1)
-                ]
+        if header_candidate is not None:
+            header_row_index, header_names = header_candidate
+            data_rows = [(row_index, values) for row_index, values in sheet_rows if row_index > header_row_index]
+        elif key_value_start is not None:
+            header_names = SYNTHETIC_KEY_VALUE_HEADERS
+            data_rows = [(row_index, values[:2]) for row_index, values in sheet_rows if row_index >= key_value_start]
+        else:
+            if not sheet_rows:
                 continue
+            header_row_index, header_values = sheet_rows[0]
+            header_names = [
+                _normalize_header(value, column_index)
+                for column_index, value in enumerate(header_values, start=1)
+            ]
+            data_rows = [(row_index, values) for row_index, values in sheet_rows if row_index > header_row_index]
 
+        for row_index, values in data_rows:
             if not any(value is not None and str(value).strip() for value in values):
                 continue
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datefac_agent.audit.evidence_checker import audit_evidence_presence
 from datefac_agent.audit.period_alignment_checker import audit_period_alignment, detect_period_labels
+from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import classify_valuation_metric
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
@@ -56,6 +57,11 @@ def test_period_checker_detects_expected_labels() -> None:
     assert labels == ["2024A", "2025E", "2026Q1"]
 
 
+def test_period_checker_detects_generalized_labels() -> None:
+    labels = detect_period_labels(["项目", "2025A", "FY2026", "2027FY", "2028 Q1"])
+    assert labels == ["2025A", "2026", "2027", "2028Q1"]
+
+
 def test_valuation_checker_classifies_multiple_like_metrics() -> None:
     assert classify_valuation_metric("PE(倍)") == "PE"
     assert classify_valuation_metric("PB(倍)") == "PB"
@@ -99,6 +105,40 @@ def test_market_reference_weak_evidence_row_becomes_internal_reference_candidate
     evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
     result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
     assert result.clean_candidate_type == "INTERNAL_REFERENCE_CANDIDATE"
+
+
+def test_second_workbook_summary_sheet_can_split_narrative_and_market_rows() -> None:
+    narrative_row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="报告概要",
+        row_index=3,
+        column_names=["field_name", "field_value"],
+        raw_values={"field_name": "报告标题", "field_value": "老牌军工细分赛道企业"},
+        metric_name="报告标题",
+    )
+    market_row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="报告概要",
+        row_index=9,
+        column_names=["field_name", "field_value"],
+        raw_values={"field_name": "收盘价(元)", "field_value": "14.21"},
+        metric_name="收盘价(元)",
+    )
+    assert classify_row_type(narrative_row) == "NARRATIVE_ASSERTION"
+    assert classify_row_type(market_row) == "MARKET_REFERENCE_ROW"
+
+
+def test_second_workbook_financial_sheet_becomes_strict_financial_row() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="盈利预测与估值",
+        row_index=4,
+        column_names=["指标", "2024A", "2025A", "2026E", "2027E"],
+        raw_values={"指标": "营业总收入（百万元）", "2024A": "4356", "2025A": "4521", "2026E": "6317", "2027E": "7535"},
+        metric_name="营业总收入（百万元）",
+        period_values={"2024A": "4356", "2025A": "4521", "2026E": "6317", "2027E": "7535"},
+    )
+    assert classify_row_type(row) == "STRICT_FINANCIAL_TABLE_ROW"
 
 
 def test_narrative_assertion_stays_out_of_clean_data() -> None:
