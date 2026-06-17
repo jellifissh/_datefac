@@ -17,16 +17,17 @@
 当前已经进入：
 
 ```text
-348S-R3C-QA Third Workbook Unknown-Row Refinement Review
+348S-R4 Strict Row Unit/Period Review Signal Refinement
 ```
 
 最近关键结果：
 
 ```text
-348S-R3C reduced third workbook unknown_row_count from 44 to 0
+348S-R3C-QA confirmed unknown-row refinement valid
+unknown_row_count is now 0
 clean_data_row_count stayed 94
 review_queue_row_count stayed 64
-current task is QA/review, not code fix
+remaining strict-row signals: percentage_unit_missing = 10, period_values_missing = 8
 ```
 
 当前事实源：
@@ -39,7 +40,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348S_R3C_QA_unknown_row_refinement_review.md
+docs/codex_tasks/348S_R4_strict_row_unit_period_review_signal_refinement.md
 ```
 
 ## 3. 默认必读清单
