@@ -16,57 +16,48 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
-docs/codex_tasks/348N_R1_linyang_unknown_row_shape_diagnosis.md
+docs/codex_tasks/348N_R2_normalized_testset_intake_schema_support.md
+docs/agent/348N_R1_LINYANG_UNKNOWN_ROW_SHAPE_DIAGNOSIS.md
 docs/agent/348N_NEW_REAL_WORKBOOK_GENERALIZATION_PILOT_RESULT.md
-docs/agent/348A_R4_QA_CLEAN_DATA_CANDIDATE_POLICY_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-R1 Linyang Unknown Row Shape Diagnosis
+348N-R2 Normalized Testset Intake Schema Support
 ```
 
-This is a diagnosis task, not a code-fix task.
+This is a targeted implementation task.
 
 It should create:
 
 ```text
-docs/agent/348N_R1_LINYANG_UNKNOWN_ROW_SHAPE_DIAGNOSIS.md
+docs/agent/348N_R2_NORMALIZED_TESTSET_INTAKE_SCHEMA_SUPPORT_RESULT.md
 ```
 
 ## Current facts
 
-348N selected a new Linyang Energy PDF+Excel pair and ran the current pipeline without code changes.
-
-Result:
+R1 diagnosis:
 
 ```text
-row_count_total = 483
-clean_data_row_count = 37
-review_queue_row_count = 446
-unknown_row_count = 367
-unit_issue_count = 9
-period_issue_count = 0
-valuation_issue_count = 0
+348N_R1_CONFIRMED_LINYANG_UNKNOWN_ROW_FAMILIES_DIAGNOSED
+normalized_testset unknown rows = 319
+normalized_testset is a long-record testset schema, not a normal wide workbook table
 ```
 
 Current focus:
 
 ```text
-diagnose the 367 unknown rows by sheet and row family
-determine whether this is normal workbook schema, testset-specific shape, or out-of-scope
-do not change routing rules yet
+add narrow schema recognition for normalized_testset
+stop treating normalized_testset rows as generic UNKNOWN_ROW
+keep normalized_testset rows review-only / schema-specific
+avoid widening clean_data
 ```
 
-Do not modify source code, tests, input files, or output files.
+Do not route normalized_testset rows directly into STRICT_FINANCIAL_TABLE_ROW or MARKET_REFERENCE_ROW.
 
-Do not run MinerU, OCR, LLM, or VLM.
+Do not modify legacy datefac/.
 
 Do not commit output files.
 
-Run baseline:
-
-```text
-python -m pytest tests\agent -q
-```
+Do not run MinerU, OCR, LLM, or VLM.
