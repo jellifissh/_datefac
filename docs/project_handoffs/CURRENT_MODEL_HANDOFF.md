@@ -16,59 +16,42 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
-docs/codex_tasks/348S_R3C_unknown_row_refinement.md
+docs/codex_tasks/348S_R3C_QA_unknown_row_refinement_review.md
+docs/agent/348S_R3C_UNKNOWN_ROW_REFINEMENT_RESULT.md
 docs/agent/348S_QA_THIRD_WORKBOOK_PILOT_REVIEW.md
-docs/agent/348S_R3B_THIRD_WORKBOOK_ZERO_ROW_INTAKE_FOLLOWUP_RESULT.md
 ```
 
 ## Current task
 
 ```text
-348S-R3C Unknown Row Refinement
+348S-R3C-QA Third Workbook Unknown-Row Refinement Review
 ```
 
-This is a narrow row-type / routing refinement task.
+This is a QA/review task.
 
 It should create:
 
 ```text
-docs/agent/348S_R3C_UNKNOWN_ROW_REFINEMENT_RESULT.md
+docs/agent/348S_R3C_QA_UNKNOWN_ROW_REFINEMENT_REVIEW.md
 ```
 
 ## Current facts
 
-Third workbook QA decision:
+R3C reduced third workbook unknown rows:
 
 ```text
-348S_QA_THIRD_WORKBOOK_REVIEW_CONFIRMED_NEEDS_R3C_UNKNOWN_ROW_REFINEMENT
+unknown_row_count: 44 -> 0
+narrative_assertion_count: 2 -> 46
+clean_data_row_count: 94 -> 94
+review_queue_row_count: 64 -> 64
+pytest: 36 passed
 ```
 
-R3B / QA metrics:
+R3C did not change unit, period, valuation, evidence, or clean-candidate policy.
 
-```text
-row_count_total = 158
-clean_data_row_count = 94
-review_queue_row_count = 64
-unknown_row_count = 44
-unit_issue_count = 11
-period_issue_count = 8
-valuation_issue_count = 1
-weak_evidence_count = 158
-missing_evidence_count = 0
-```
+R3C-QA must check whether the narrative routing is acceptable and did not over-generalize.
 
-R3C focus:
-
-```text
-reduce unknown_row_count = 44
-classify metadata / narrative / business matrix / industry comparison / layout rows more explicitly
-keep clean_data clean
-keep review_queue explainable
-```
-
-Do not modify unit, period, valuation, evidence, or clean-candidate policy for this task.
-
-Do not commit output files.
+Do not modify source code, tests, input files, or output files for this review task.
 
 Run baseline:
 
