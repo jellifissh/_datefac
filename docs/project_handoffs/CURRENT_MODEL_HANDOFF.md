@@ -16,42 +16,47 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
-docs/codex_tasks/348S_R3C_QA_unknown_row_refinement_review.md
+docs/codex_tasks/348S_R4_strict_row_unit_period_review_signal_refinement.md
+docs/agent/348S_R3C_QA_UNKNOWN_ROW_REFINEMENT_REVIEW.md
 docs/agent/348S_R3C_UNKNOWN_ROW_REFINEMENT_RESULT.md
-docs/agent/348S_QA_THIRD_WORKBOOK_PILOT_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348S-R3C-QA Third Workbook Unknown-Row Refinement Review
+348S-R4 Strict Row Unit/Period Review Signal Refinement
 ```
 
-This is a QA/review task.
+This is a narrow strict-row unit/period review-signal refinement task.
 
 It should create:
 
 ```text
-docs/agent/348S_R3C_QA_UNKNOWN_ROW_REFINEMENT_REVIEW.md
+docs/agent/348S_R4_STRICT_ROW_UNIT_PERIOD_REVIEW_SIGNAL_REFINEMENT_RESULT.md
 ```
 
 ## Current facts
 
-R3C reduced third workbook unknown rows:
+R3C-QA confirmed unknown-row refinement:
 
 ```text
+348S_R3C_QA_CONFIRMED_UNKNOWN_ROW_REFINEMENT_VALID
 unknown_row_count: 44 -> 0
-narrative_assertion_count: 2 -> 46
 clean_data_row_count: 94 -> 94
 review_queue_row_count: 64 -> 64
 pytest: 36 passed
 ```
 
-R3C did not change unit, period, valuation, evidence, or clean-candidate policy.
+Remaining strict-row signals:
 
-R3C-QA must check whether the narrative routing is acceptable and did not over-generalize.
+```text
+percentage_unit_missing = 10
+period_values_missing = 8
+```
 
-Do not modify source code, tests, input files, or output files for this review task.
+R4 should inspect and refine those signals without changing evidence policy or clean-candidate policy.
+
+Do not commit output files.
 
 Run baseline:
 
