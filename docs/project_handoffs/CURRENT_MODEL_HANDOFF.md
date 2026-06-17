@@ -16,42 +16,47 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
-docs/codex_tasks/348N_new_real_workbook_generalization_pilot.md
+docs/codex_tasks/348N_R1_linyang_unknown_row_shape_diagnosis.md
+docs/agent/348N_NEW_REAL_WORKBOOK_GENERALIZATION_PILOT_RESULT.md
 docs/agent/348A_R4_QA_CLEAN_DATA_CANDIDATE_POLICY_REVIEW.md
-docs/agent/348S_R4_QA_STRICT_ROW_UNIT_PERIOD_REVIEW_SIGNAL_REFINEMENT_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N New Real Workbook Generalization Pilot
+348N-R1 Linyang Unknown Row Shape Diagnosis
 ```
 
-This is a no-code-change generalization pilot.
+This is a diagnosis task, not a code-fix task.
 
 It should create:
 
 ```text
-docs/agent/348N_NEW_REAL_WORKBOOK_GENERALIZATION_PILOT_RESULT.md
+docs/agent/348N_R1_LINYANG_UNKNOWN_ROW_SHAPE_DIAGNOSIS.md
 ```
 
 ## Current facts
 
-Recent validated chain:
+348N selected a new Linyang Energy PDF+Excel pair and ran the current pipeline without code changes.
+
+Result:
 
 ```text
-348S_R3C_QA_CONFIRMED_UNKNOWN_ROW_REFINEMENT_VALID
-348S_R4_QA_CONFIRMED_STRICT_ROW_UNIT_PERIOD_REFINEMENT_VALID
-348A_R4_QA_CONFIRMED_CLEAN_DATA_CANDIDATE_POLICY_VALID
+row_count_total = 483
+clean_data_row_count = 37
+review_queue_row_count = 446
+unknown_row_count = 367
+unit_issue_count = 9
+period_issue_count = 0
+valuation_issue_count = 0
 ```
 
 Current focus:
 
 ```text
-find a new real PDF+Excel pair
-run current pipeline without code changes
-inspect manifest / clean_data / review_queue
-report whether current policy generalizes
+diagnose the 367 unknown rows by sheet and row family
+determine whether this is normal workbook schema, testset-specific shape, or out-of-scope
+do not change routing rules yet
 ```
 
 Do not modify source code, tests, input files, or output files.
