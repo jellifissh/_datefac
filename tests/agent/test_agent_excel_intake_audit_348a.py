@@ -10,6 +10,7 @@ from datefac_agent.audit.period_alignment_checker import audit_period_alignment,
 from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import classify_valuation_metric
+from datefac_agent.intake.excel_intake import _find_key_value_start
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.review.review_queue_builder import build_audit_decision, build_row_audit_result, build_review_queue_rows
 from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SpreadsheetRow
@@ -340,6 +341,19 @@ def test_period_checker_flags_missing_periods_on_financial_sheet() -> None:
     )
     issues = audit_period_alignment(row)
     assert any(issue.code == "period_context_missing" for issue in issues)
+
+
+def test_find_key_value_start_ignores_short_summary_rows_without_crashing() -> None:
+    sheet_rows = [
+        (1, ["一、报告基本信息"]),
+        (2, ["核心盈利预测与估值（摘要版）"]),
+        (3, []),
+        (4, ["报告标题", "泰豪科技"]),
+        (5, ["报告日期", "2026年05月23日"]),
+        (6, ["投资评级", "买入"]),
+    ]
+
+    assert _find_key_value_start(sheet_rows) == 4
 
 
 def test_build_audit_decision_fail_on_error() -> None:

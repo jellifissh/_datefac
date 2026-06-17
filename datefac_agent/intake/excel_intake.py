@@ -102,6 +102,8 @@ def _find_key_value_start(sheet_rows: list[tuple[int, list[Any]]]) -> int | None
     candidate_rows: list[int] = []
     for row_index, values in sheet_rows[:12]:
         texts = [_stringify_cell(value) for value in values[:2]]
+        if len(texts) < 2:
+            continue
         if texts[0] and texts[1]:
             candidate_rows.append(row_index)
     if len(candidate_rows) >= 3:
