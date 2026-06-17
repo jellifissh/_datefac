@@ -1,52 +1,85 @@
 # DateFac 文档索引 / DateFac Docs Index
 
-中文：
-这是 DateFac 的文档入口索引。新的聊天、新模型和新的 Codex 线程，不应从零开始猜项目状态，而应先看项目账本，再看任务文档，再看对应的 demo、architecture 或 handoff。
+这是 DateFac 的文档入口索引。新的聊天、新模型、新 Codex 线程或新协作者，不应从旧里程碑或历史输出里猜当前状态。
 
-English:
-This is the high-level entry index for DateFac documentation. New chats, models, and Codex runs should not guess the project state from scratch; they should start with the project ledger, then read the task spec, then the relevant demo, architecture, or handoff docs.
+## 当前主线
 
-## 首读顺序 / Recommended Read Order
+```text
+DateFac Agent
+金融文档 AI 抽取结果审计与可信交付系统
+```
+
+当前工作区与分支：
+
+```text
+D:\_datefac_agent
+pivot/348-agent-foundation
+```
+
+当前有效流程：
+
+```text
+intake -> audit -> review -> delivery
+```
+
+## 新模型 / 新线程首读顺序
 
 1. `AGENTS.md`
 2. `.skills/README.md`
-3. `.skills/project_milestone_ledger.md`
-4. `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
-5. relevant `docs/codex_tasks/*.md`
+3. `.skills/git_workflow.md`
+4. `.skills/datefac_agent_foundation.md`
+5. `.skills/agent_excel_intake_audit_workflow.md`
+6. `docs/agent/项目进程.md`
+7. `docs/project_handoffs/CURRENT_MODEL_HANDOFF.md`
+8. relevant `docs/codex_tasks/*.md`
+9. directly related result / QA report under `docs/agent/`
 
-## 目录说明 / Folder Responsibilities
+## 当前任务入口
 
-- `docs/project_milestones/`: canonical project milestone ledger and stage truth
-- `docs/project_timelines/`: chronological rollups and historical timeline summaries
-- `docs/project_handoffs/`: handoff packets for new chats, models, or contributors
-- `docs/codex_tasks/`: numbered task specs
-- `docs/demo/`: demo runbooks, client-preview narratives, operator guides
-- `docs/architecture/`: architecture boundaries, module design, migration notes
-- `docs/assets/`: artifact-layer and evidence-layer explanations
-- `docs/ai_handoff/`: prior handoff notes retained as historical references
-- `docs/codex_worklog/`: Codex worklog-style records when present
+当前任务：
 
-## 当前正式账本 / Canonical Ledger
+```text
+348S-QA Third Workbook Pilot Review
+```
 
-- `docs/project_milestones/PROJECT_MILESTONE_LEDGER_项目进程.md`
+任务文档：
 
-Compatibility pointer / 兼容旧路径:
+```text
+docs/codex_tasks/348S_QA_third_workbook_pilot_review.md
+```
 
-- `docs/PROJECT_MILESTONE_LEDGER.md`
+交接入口：
 
-## 当前阶段提醒 / Current State Reminder
+```text
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+```
 
-- effective mainline = MinerU-first / table-first
-- `342E` old text-candidate route = superseded
-- `342E` table-first route = effective
-- `342F` = completed
-- current next task = `342G Table-First Extraction Review Package`
+## 目录说明
+
+- `docs/agent/`: 当前 DateFac Agent 主线事实、结果与 QA 报告
+- `docs/codex_tasks/`: 当前任务说明书
+- `docs/project_handoffs/`: 新模型、新聊天、新线程的交接入口
+- `.skills/`: 稳定规则、边界和工作流说明
+- `datefac_agent/`: 当前 active package
+- `tests/agent/`: 当前 agent 相关测试与 fixtures
+- `docs/project_milestones/`: 历史账本，默认不再作为当前主线事实源
+- `datefac/`: legacy reference，默认不作为当前新功能修改对象
+
+## 当前阶段提醒
+
+- R3B 已修复第三 workbook 的 zero-row intake blocker
+- 第三 workbook 当前有 `row_count_total = 158`
+- 当前要做的是 QA/review，不是继续改源码
 - `client_ready = false`
 - `production_ready = false`
+- `formal_client_export_allowed = false`
+- 默认不跑 MinerU / OCR / LLM / VLM
+- 默认不提交 output 文件
 
-## 使用原则 / Usage Rules
+## 使用原则
 
-- 新任务先看 ledger，不要从零开始重建项目脉络。
-- 任务如果已经 `completed` 且 `qa_fail_count = 0`，不要重复执行。
-- 完成编号任务后，立即更新 ledger。
-- 每 3 到 5 个编号任务，做一次 ledger rollup refresh。
+- 新任务先读当前交接入口和任务文档。
+- 不要从旧 `docs/project_milestones/` 或旧 MinerU 任务恢复当前状态。
+- 任务完成后更新 `docs/agent/项目进程.md`。
+- 输出文件是审查证据，默认不提交。
+- Git 只允许精确 add 本次任务文件。
