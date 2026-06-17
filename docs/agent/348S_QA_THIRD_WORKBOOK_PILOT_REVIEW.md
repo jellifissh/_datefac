@@ -41,13 +41,13 @@
 
 Conclusion:
 
-- `clean_data_row_count = 94` is materially credible for the current policy
-- clean data is not contaminated by blocking issues
-- all 94 clean rows carry only `weak_evidence`
-- no clean row carries `percentage_unit_missing`
-- no clean row carries `period_values_missing`
-- no clean row carries `monetary_unit_mismatch`
-- no clean row carries `valuation_metric_unit_suspicious`
+- `clean_data_row_count = 94` is clean under the current policy
+- no clean row contains blocking issues
+- all clean rows contain only `weak_evidence`
+- no clean row contains `percentage_unit_missing`
+- no clean row contains `period_values_missing`
+- no clean row contains `monetary_unit_mismatch`
+- no clean row contains `valuation_metric_unit_suspicious`
 
 Composition:
 
@@ -57,8 +57,8 @@ Composition:
 
 Interpretation:
 
-- current clean-data policy is still holding its intended boundary
-- the third workbook did not leak review-only rows into clean output
+- clean data did not absorb review-only rows
+- the current clean-candidate boundary is still working on the third workbook
 
 ## Review-Queue QA
 
@@ -66,12 +66,20 @@ Conclusion:
 
 - `review_queue_row_count = 64` is explainable
 - review queue is not polluted by clean candidates
-- `clean_candidate_type` in review queue is only:
-  - `REVIEW_REQUIRED = 61`
-  - `NARRATIVE_REVIEW = 2`
-  - `EXCLUDED_FROM_CLEAN_DATA = 1`
 - there are `0` `INTERNAL_CLEAN_CANDIDATE` rows in review queue
 - there are `0` `INTERNAL_REFERENCE_CANDIDATE` rows in review queue
+
+Candidate-type distribution:
+
+- `REVIEW_REQUIRED = 61`
+- `NARRATIVE_REVIEW = 2`
+- `EXCLUDED_FROM_CLEAN_DATA = 1`
+
+Row-type distribution:
+
+- `UNKNOWN_ROW = 44`
+- `STRICT_FINANCIAL_TABLE_ROW = 18`
+- `NARRATIVE_ASSERTION = 2`
 
 Top issue codes:
 
@@ -83,38 +91,38 @@ Top issue codes:
 
 Interpretation:
 
-- the queue is still review-heavy, but it is diagnostically meaningful rather than structurally noisy
-- most queue volume is driven by unknown-row routing plus current weak-evidence policy
+- queue volume is high but diagnostic
+- current queue is driven mainly by `UNKNOWN_ROW` routing plus a smaller set of strict-row unit/period gaps
 
 ## Unknown-Row QA
 
 Conclusion:
 
-- `unknown_row_count = 44` is only partially reasonable
-- most unknown rows are understandable as metadata, narrative bullet, industry table title, or non-standard comparative layout rows
-- but `44` is too large to call fully acceptable if the goal is stronger third-workbook generalization
+- `unknown_row_count = 44` is only partially acceptable
+- most unknown rows are understandable workbook-content rows rather than parser garbage
+- but the count is too high to treat as a fully generalized third-workbook result
 
 Observed unknown-row families:
 
 - report metadata rows such as report type, target company, institution, publication date
-- long investment thesis / risk text rows
+- long thesis or risk narrative lines
 - business matrix rows
-- North America AIDC power-supply comparative rows
-- industry table title rows and layout rows
+- North America AIDC comparative table rows
+- industry table title or layout rows
 
 Interpretation:
 
-- these are not random parsing failures
-- however, a material share of the workbook remains outside current row typing
-- this supports a targeted follow-up on unknown-row refinement rather than unit/period policy first
+- these rows are not obviously wrong to keep in review
+- however, too much of the workbook still falls outside current row typing
+- this is the strongest remaining refinement signal
 
 ## Unit Issue QA
 
 Conclusion:
 
-- `percentage_unit_missing = 10` looks mostly like true current-policy issues, not obvious false positives
-- all 10 such rows are concentrated in `分业务盈利预测明细`
-- all 10 are `STRICT_FINANCIAL_TABLE_ROW`
+- `percentage_unit_missing = 10` appears to be a real current-policy review signal, not an obvious false positive
+- all 10 rows are in `分业务盈利预测明细`
+- all 10 rows are `STRICT_FINANCIAL_TABLE_ROW`
 - affected metrics are:
   - `同比增速`
   - `毛利率`
@@ -123,28 +131,25 @@ Conclusion:
 
 Interpretation:
 
-- these are percentage/rate-style metrics without an explicit `%` unit hint
-- under current unit policy, sending them to review is conservative and reasonable
-- this does not look like the same kind of false positive as the earlier ROE / debt-ratio issues
+- these are rate/percentage-style metrics without an explicit `%` unit hint
+- under the current conservative policy, sending them to review is reasonable
 
 `monetary_unit_mismatch = 1`:
 
-- this appears on one `UNKNOWN_ROW` narrative-style sentence:
+- this falls on one `UNKNOWN_ROW` narrative-style sentence:
   - `3. 业绩弹性：2026-2028年归母净利润预计3.6/5.3/6.1亿元，对应PE 34/23/20倍，成长空间持续打开。`
-- it is bundled with `valuation_metric_unit_suspicious`
-- because the row is still `UNKNOWN_ROW` and sentence-like, this is not the strongest evidence of a pure unit-checker blocker
 
 Interpretation:
 
-- it is a real review blocker for this row
-- but it is better understood as a mixed narrative-plus-valuation sentence routing problem than a core strict-table unit defect
+- it is a real blocker for that row
+- but it looks more like a mixed narrative-plus-valuation row problem than a broad strict-table unit-checker defect
 
 ## Period Issue QA
 
 Conclusion:
 
 - `period_values_missing = 8` is fully concentrated in `STRICT_FINANCIAL_TABLE_ROW`
-- no period issue appears in clean data
+- no period-issue row leaked into clean data
 
 Affected rows:
 
@@ -154,36 +159,34 @@ Affected rows:
 
 Interpretation:
 
-- these are mostly table-title or section-anchor rows inside strict financial / industry tables
-- current behavior is conservative and explainable
-- the issue is not dispersed into narrative or market-reference rows
+- these are mostly table-title or section-anchor rows within strict table regions
+- current behavior is conservative and contained
 
 ## Valuation Issue QA
 
 Conclusion:
 
-- `valuation_metric_unit_suspicious = 1` is reasonable under current policy
-- it hits the same mixed narrative row that also triggered `monetary_unit_mismatch`
-- the sentence combines profit forecast amounts with `PE` multiples in one free-text row
+- `valuation_metric_unit_suspicious = 1` is reasonable
+- it appears on the same mixed sentence row that also triggered `monetary_unit_mismatch`
 
 Interpretation:
 
-- routing this to review is appropriate
-- this does not currently indicate a broad valuation-checker defect
+- routing this row to review is appropriate
+- this does not suggest a broad valuation-checker defect
 
 ## Evidence QA
 
 Conclusion:
 
-- all rows remaining at `WEAK_EVIDENCE` is consistent with the current stage and current policy
+- all rows remaining at `WEAK_EVIDENCE` is consistent with the current stage
 - `weak_evidence_count = 158`
 - `missing_evidence_count = 0`
 
 Interpretation:
 
-- workbook lineage plus source PDF identity exists for all rows
-- no explicit page/evidence reference exists, so strong evidence is not expected
-- current output remains review-oriented rather than delivery-ready
+- workbook lineage plus source PDF identity exists
+- explicit page-level evidence does not exist
+- current output remains review-oriented, not delivery-ready
 
 ## Gate Discipline
 
@@ -194,15 +197,13 @@ Confirmed:
 - `formal_client_export_allowed = false`
 - `demo_export_only = true`
 
-The third workbook output does not justify changing any gate.
-
 ## Baseline Validation
 
 - `python -m pytest tests\agent -q` -> passed (`32 passed`)
 
 Residual note:
 
-- pytest emitted one cache warning due to local write restriction on `.pytest_cache`
+- pytest emitted one cache warning due to `.pytest_cache` write restriction
 - test result itself still passed
 
 ## Boundary Discipline
@@ -229,4 +230,4 @@ Recommended focus:
 
 - reduce `unknown_row_count = 44`
 - split metadata / narrative / industry comparative rows more intentionally
-- keep unit / period / routing policy stable unless QA evidence later shows a true checker defect
+- keep unit / period / routing policy stable unless later QA shows a true checker defect
