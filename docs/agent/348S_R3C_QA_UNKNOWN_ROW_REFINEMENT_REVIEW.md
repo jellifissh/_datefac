@@ -100,5 +100,4 @@ Confirmed:
 
 ## Recommended Next Task
 
-`348A-R4-QA Clean Data Candidate Policy Review`
-
+`348S-R4 Strict Row Unit/Period Review Signal Refinement`
