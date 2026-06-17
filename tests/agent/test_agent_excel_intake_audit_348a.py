@@ -270,6 +270,38 @@ def test_third_workbook_mixed_valuation_narrative_stays_review_only() -> None:
     assert result.clean_candidate_type == "EXCLUDED_FROM_CLEAN_DATA"
 
 
+def test_third_workbook_implicit_percent_rows_do_not_raise_percentage_missing() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="分业务盈利预测明细",
+        row_index=4,
+        column_names=["项目", "2024A", "2025A", "2026E", "2027E", "2028E"],
+        raw_values={"项目": "同比增速", "2024A": 60, "2025A": 1.4, "2026E": 60, "2027E": 25, "2028E": 20},
+        metric_name="同比增速",
+        period_values={"2024A": 60, "2025A": 1.4, "2026E": 60, "2027E": 25, "2028E": 20},
+        row_type="STRICT_FINANCIAL_TABLE_ROW",
+    )
+    issues = audit_unit_semantics(row)
+    assert any(issue.code == "implicit_percentage_unit_confirmation_needed" for issue in issues)
+    assert not any(issue.code == "percentage_unit_missing" for issue in issues)
+
+
+def test_third_workbook_anchor_row_routes_out_of_strict_period_review() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="三大财务报表与核心指标",
+        row_index=16,
+        column_names=["项目", "2025A", "2026E", "2027E", "2028E"],
+        raw_values={"项目": "资产负债表（单位：百万元）"},
+        metric_name="资产负债表（单位：百万元）",
+        unit_hint="单位：百万元",
+        row_type="STRICT_FINANCIAL_TABLE_ROW",
+    )
+    row.row_type = _refine_third_workbook_row_type(row, row.row_type)
+    assert row.row_type == "NARRATIVE_ASSERTION"
+    assert audit_period_alignment(row) == []
+
+
 def test_narrative_assertion_stays_out_of_clean_data() -> None:
     row = _make_row("核心逻辑")
     row.sheet_name = "核心观点"

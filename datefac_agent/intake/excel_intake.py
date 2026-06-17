@@ -35,6 +35,22 @@ THIRD_WORKBOOK_NA_SECTION_HINTS = {
     "\u7535\u6e90\u7c7b\u578b",
     "\u6280\u672f\u8def\u7ebf",
 }
+THIRD_WORKBOOK_STRICT_SECTION_ANCHORS = {
+    "\u6838\u5fc3\u76c8\u5229\u9884\u6d4b\u4e0e\u4f30\u503c": {
+        "\u5e02\u573a\u4e0e\u57fa\u7840\u6570\u636e",
+    },
+    "\u884c\u4e1a\u8d5b\u9053\u6570\u636e": {
+        "\u88682\uff1a\u5916\u6d77\u67f4\u53d1\u9f99\u5934\u4ea7\u54c1\u53c2\u6570",
+        "\u88683\uff1a\u4e2d\u901f\u71c3\u6c14\u5185\u71c3\u673a vs \u71c3\u6c14\u8f6e\u673a\u6027\u80fd\u5bf9\u6bd4",
+        "\u88684\uff1a\u74e6\u9521\u5170\u2025\u5e74\u6570\u636e\u4e2d\u5fc3\u8ba2\u5355",
+        "\u88685\uff1a2030\u5e74\u5168\u7403\u71c3\u6c14\u8f6e\u673a\u4f9b\u7ed9\u9884\u8ba1\uff08\u5355\u4f4d\uff1aGW\uff09",
+    },
+    "\u4e09\u5927\u8d22\u52a1\u62a5\u8868\u4e0e\u6838\u5fc3\u6307\u6807": {
+        "\u8d44\u4ea7\u8d1f\u503a\u8868\uff08\u5355\u4f4d\uff1a\u767e\u4e07\u5143\uff09",
+        "\u73b0\u91d1\u6d41\u91cf\u8868\uff08\u5355\u4f4d\uff1a\u767e\u4e07\u5143\uff09",
+        "\u6838\u5fc3\u8d22\u52a1\u4e0e\u4f30\u503c\u6307\u6807",
+    },
+}
 
 
 def _stringify_cell(value: Any) -> str:
@@ -146,10 +162,14 @@ def _should_reset_read_only_dimensions(worksheet: Any) -> bool:
 def _refine_third_workbook_row_type(row: SpreadsheetRow, inferred_row_type: str) -> str:
     """Apply workbook-specific row typing only when the generic classifier is unknown."""
 
+    metric_name = _stringify_cell(row.metric_name)
+
+    anchor_titles = THIRD_WORKBOOK_STRICT_SECTION_ANCHORS.get(row.sheet_name)
+    if anchor_titles and metric_name in anchor_titles:
+        return "NARRATIVE_ASSERTION"
+
     if inferred_row_type != "UNKNOWN_ROW":
         return inferred_row_type
-
-    metric_name = _stringify_cell(row.metric_name)
 
     if row.sheet_name == THIRD_WORKBOOK_REPORT_INFO_SHEET:
         if metric_name in THIRD_WORKBOOK_REPORT_METADATA_HINTS:
