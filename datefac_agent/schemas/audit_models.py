@@ -11,6 +11,7 @@ RowType = Literal[
     "MARKET_REFERENCE_ROW",
     "NARRATIVE_ASSERTION",
     "NORMALIZED_TESTSET_RECORD_ROW",
+    "TESTSET_SUPPORTING_ROW",
     "UNKNOWN_ROW",
 ]
 CleanCandidateType = Literal[
@@ -129,6 +130,7 @@ class AuditSummary:
     market_reference_row_count: int = 0
     narrative_assertion_count: int = 0
     normalized_testset_record_row_count: int = 0
+    testset_supporting_row_count: int = 0
     unknown_row_count: int = 0
     clean_data_row_count: int = 0
     review_queue_row_count: int = 0

@@ -66,6 +66,8 @@ def _summarize_issues(row_results: list[AuditRowResult]) -> AuditSummary:
             summary.narrative_assertion_count += 1
         elif result.row_type == "NORMALIZED_TESTSET_RECORD_ROW":
             summary.normalized_testset_record_row_count += 1
+        elif result.row_type == "TESTSET_SUPPORTING_ROW":
+            summary.testset_supporting_row_count += 1
         elif result.row_type == "UNKNOWN_ROW":
             summary.unknown_row_count += 1
 
@@ -175,6 +177,7 @@ def build_manifest(
         "market_reference_row_count": summary.market_reference_row_count,
         "narrative_assertion_count": summary.narrative_assertion_count,
         "normalized_testset_record_row_count": summary.normalized_testset_record_row_count,
+        "testset_supporting_row_count": summary.testset_supporting_row_count,
         "unknown_row_count": summary.unknown_row_count,
         "clean_data_row_count": summary.clean_data_row_count,
         "review_queue_row_count": summary.review_queue_row_count,
@@ -260,6 +263,7 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         "market_reference_row_count": summary.market_reference_row_count,
         "narrative_assertion_count": summary.narrative_assertion_count,
         "normalized_testset_record_row_count": summary.normalized_testset_record_row_count,
+        "testset_supporting_row_count": summary.testset_supporting_row_count,
         "unknown_row_count": summary.unknown_row_count,
         "internal_clean_candidate_count": summary.internal_clean_candidate_count,
         "internal_reference_candidate_count": summary.internal_reference_candidate_count,

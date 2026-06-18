@@ -11,6 +11,7 @@ from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import classify_valuation_metric
 from datefac_agent.intake.excel_intake import (
+    _extract_special_metric_name,
     _find_key_value_start,
     _refine_third_workbook_row_type,
     _refine_special_schema_row_type,
@@ -372,6 +373,108 @@ def test_normalized_testset_support_does_not_change_wide_workbook_classification
     assert classify_row_type(row) == "STRICT_FINANCIAL_TABLE_ROW"
 
 
+def test_readme_rows_become_testset_supporting_rows_and_stay_out_of_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="README",
+        row_index=2,
+        column_names=["field_name", "field_value"],
+        raw_values={"field_name": "生成时间", "field_value": "2026-06-17 13:28:58"},
+        metric_name="生成时间",
+    )
+    row.row_type = _refine_special_schema_row_type(row, "UNKNOWN_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "TESTSET_SUPPORTING_ROW"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_data_dictionary_rows_become_testset_supporting_rows_and_stay_out_of_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="data_dictionary",
+        row_index=2,
+        column_names=["字段", "解释"],
+        raw_values={"字段": "source_pdf", "解释": "源PDF文件名"},
+        metric_name="source_pdf",
+    )
+    row.row_type = _refine_special_schema_row_type(row, "UNKNOWN_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "TESTSET_SUPPORTING_ROW"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_figure_index_rows_become_testset_supporting_rows_and_stay_out_of_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="figure_index",
+        row_index=2,
+        column_names=["图表编号", "页码", "标题", "图表类型", "可用结构化数据", "处理策略", "备注"],
+        raw_values={"图表编号": "图1", "页码": 4, "标题": "2022~2026Q1 公司营业收入", "图表类型": "柱线图", "可用结构化数据": "部分数据在正文/表格中出现", "处理策略": "未从图片精确读数；测试集优先使用正文与财务表数值", "备注": None},
+        metric_name="2022~2026Q1 公司营业收入",
+    )
+    row.row_type = _refine_special_schema_row_type(row, "UNKNOWN_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "TESTSET_SUPPORTING_ROW"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_figure_index_metric_name_prefers_chart_id_over_title() -> None:
+    raw_values = {
+        "图表编号": "图5",
+        "页码": 5,
+        "标题": "公司各类费用率（%）",
+        "图表类型": "折线图",
+        "可用结构化数据": "正文披露费用率",
+        "处理策略": "仅抽取正文明确披露的费用率",
+        "备注": None,
+    }
+    metric_name = _extract_special_metric_name(
+        "figure_index",
+        ["图表编号", "页码", "标题", "图表类型", "可用结构化数据", "处理策略", "备注"],
+        raw_values,
+        ["图5", 5, "公司各类费用率（%）"],
+    )
+    assert metric_name == "图5"
+
+
+def test_validation_checks_rows_become_testset_supporting_rows_and_do_not_enter_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="validation_checks",
+        row_index=2,
+        column_names=["校验项", "2025A", "2026E", "2027E", "2028E", "说明"],
+        raw_values={"校验项": "资产总计 - 负债和股东权益", "2025A": 0, "2026E": 0, "2027E": 0, "2028E": 0, "说明": "应为0"},
+        metric_name="资产总计 - 负债和股东权益",
+        period_values={"2025A": 0, "2026E": 0, "2027E": 0, "2028E": 0},
+    )
+    row.row_type = _refine_special_schema_row_type(row, "STRICT_FINANCIAL_TABLE_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "TESTSET_SUPPORTING_ROW"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_market_base_data_rows_become_market_reference_rows_but_do_not_expand_clean_data() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="market_base_data",
+        row_index=2,
+        column_names=["类别", "指标", "数值", "单位", "期间/口径", "来源页", "置信度", "备注"],
+        raw_values={"类别": "市场数据", "指标": "收盘价", "数值": 6.48, "单位": "元", "期间/口径": "报告日/现价", "来源页": 1, "置信度": "高", "备注": None},
+        metric_name="收盘价",
+    )
+    row.explicit_evidence_ref = "1"
+    row.row_type = _refine_special_schema_row_type(row, "UNKNOWN_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "MARKET_REFERENCE_ROW"
+    assert evidence_level == "STRONG_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
 def test_narrative_assertion_stays_out_of_clean_data() -> None:
     row = _make_row("核心逻辑")
     row.sheet_name = "核心观点"
@@ -482,6 +585,7 @@ def test_weak_evidence_is_counted_separately_in_manifest() -> None:
                 "market_reference_row_count": 0,
                 "narrative_assertion_count": 0,
                 "normalized_testset_record_row_count": 0,
+                "testset_supporting_row_count": 0,
                 "unknown_row_count": 0,
                 "clean_data_row_count": 0,
                 "review_queue_row_count": 1,
@@ -588,6 +692,7 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
                 "market_reference_row_count": 0,
                 "narrative_assertion_count": 0,
                 "normalized_testset_record_row_count": 0,
+                "testset_supporting_row_count": 0,
                 "unknown_row_count": 0,
                 "clean_data_row_count": 1,
                 "review_queue_row_count": 0,

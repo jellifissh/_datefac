@@ -28,6 +28,9 @@ def classify_clean_candidate(result: AuditRowResult) -> CleanCandidateType:
     if result.row_type == "NORMALIZED_TESTSET_RECORD_ROW":
         return "REVIEW_REQUIRED"
 
+    if result.row_type == "TESTSET_SUPPORTING_ROW":
+        return "REVIEW_REQUIRED"
+
     if result.evidence_level != "WEAK_EVIDENCE":
         return "REVIEW_REQUIRED"
 

@@ -29,6 +29,21 @@ NORMALIZED_TESTSET_HEADERS = {
     "confidence",
     "note",
 }
+DATA_DICTIONARY_HEADERS = {"字段", "解释"}
+DOC_METADATA_HEADERS = {"字段", "值", "来源页", "备注"}
+FIGURE_INDEX_HEADERS = {"图表编号", "页码", "标题", "图表类型", "可用结构化数据", "处理策略", "备注"}
+RELATED_RESEARCH_HEADERS = {"日期", "标题", "来源页", "备注"}
+MARKET_BASE_DATA_HEADERS = {"类别", "指标", "数值", "单位", "期间/口径", "来源页", "置信度", "备注"}
+VALIDATION_CHECKS_FIRST_HEADER = "校验项"
+VALIDATION_CHECKS_LAST_HEADER = "说明"
+TESTSET_SUPPORTING_SHEETS = {
+    "README",
+    "data_dictionary",
+    "doc_metadata",
+    "figure_index",
+    "related_research",
+    "validation_checks",
+}
 THIRD_WORKBOOK_REPORT_INFO_SHEET = "\u62a5\u544a\u6838\u5fc3\u4fe1\u606f\u4e0e\u6295\u8d44\u8981\u70b9"
 THIRD_WORKBOOK_BUSINESS_MATRIX_SHEET = "\u516c\u53f8\u4e1a\u52a1\u4e0e\u4ea7\u54c1\u77e9\u9635"
 THIRD_WORKBOOK_NA_AIDC_SHEET = "\u5317\u7f8eAIDC\u7535\u529b\u4f9b\u9700\u4e0e\u6280\u672f\u8def\u5f84"
@@ -148,6 +163,41 @@ def _find_header_row(sheet_rows: list[tuple[int, list[Any]]]) -> tuple[int, list
     return None
 
 
+def _matches_named_header(values: list[Any], expected_headers: set[str]) -> bool:
+    normalized_headers = {_stringify_cell(value) for value in values if _stringify_cell(value)}
+    return expected_headers.issubset(normalized_headers)
+
+
+def _is_validation_checks_header(values: list[Any]) -> bool:
+    texts = [_stringify_cell(value) for value in values if _stringify_cell(value)]
+    if len(texts) < 3:
+        return False
+    if texts[0] != VALIDATION_CHECKS_FIRST_HEADER:
+        return False
+    if texts[-1] != VALIDATION_CHECKS_LAST_HEADER:
+        return False
+    return sum(1 for text in texts if PERIOD_LABEL_RE.search(text)) >= 3
+
+
+def _find_special_header_row(sheet_name: str, sheet_rows: list[tuple[int, list[Any]]]) -> tuple[int, list[str]] | None:
+    header_lookup: dict[str, set[str]] = {
+        "data_dictionary": DATA_DICTIONARY_HEADERS,
+        "doc_metadata": DOC_METADATA_HEADERS,
+        "figure_index": FIGURE_INDEX_HEADERS,
+        "related_research": RELATED_RESEARCH_HEADERS,
+        "market_base_data": MARKET_BASE_DATA_HEADERS,
+    }
+    expected_headers = header_lookup.get(sheet_name)
+    for row_index, values in sheet_rows[:5]:
+        if expected_headers and _matches_named_header(values, expected_headers):
+            header_names = [_normalize_header(value, column_index) for column_index, value in enumerate(values, start=1)]
+            return row_index, header_names
+        if sheet_name == "validation_checks" and _is_validation_checks_header(values):
+            header_names = [_normalize_header(value, column_index) for column_index, value in enumerate(values, start=1)]
+            return row_index, header_names
+    return None
+
+
 def _is_normalized_testset_header(values: list[Any]) -> bool:
     normalized_headers = {
         _stringify_cell(value).strip().lower()
@@ -166,6 +216,29 @@ def _find_normalized_testset_header(sheet_rows: list[tuple[int, list[Any]]]) -> 
             ]
             return row_index, header_names
     return None
+
+
+def _extract_special_metric_name(
+    sheet_name: str,
+    header_names: list[str],
+    raw_values: dict[str, Any],
+    values: list[Any],
+) -> str:
+    if sheet_name == "market_base_data":
+        return _stringify_cell(raw_values.get("指标")) or _stringify_cell(raw_values.get("类别")) or _extract_metric_name(values)
+    if sheet_name == "validation_checks":
+        return _stringify_cell(raw_values.get("校验项")) or _extract_metric_name(values)
+    if sheet_name == "doc_metadata":
+        return _stringify_cell(raw_values.get("字段")) or _extract_metric_name(values)
+    if sheet_name == "data_dictionary":
+        return _stringify_cell(raw_values.get("字段")) or _extract_metric_name(values)
+    if sheet_name == "figure_index":
+        return _stringify_cell(raw_values.get("图表编号")) or _stringify_cell(raw_values.get("标题")) or _extract_metric_name(values)
+    if sheet_name == "related_research":
+        return _stringify_cell(raw_values.get("标题")) or _stringify_cell(raw_values.get("日期")) or _extract_metric_name(values)
+    if sheet_name == "README" and header_names == SYNTHETIC_KEY_VALUE_HEADERS:
+        return _stringify_cell(raw_values.get("field_name")) or _extract_metric_name(values)
+    return _extract_metric_name(values)
 
 
 def _find_key_value_start(sheet_rows: list[tuple[int, list[Any]]]) -> int | None:
@@ -231,6 +304,16 @@ def _refine_special_schema_row_type(
 ) -> str:
     if normalized_testset_detected and row.sheet_name == "normalized_testset":
         return "NORMALIZED_TESTSET_RECORD_ROW"
+    if row.sheet_name == "market_base_data":
+        has_metric = bool(_stringify_cell(row.raw_values.get("指标")))
+        has_value = row.raw_values.get("数值") is not None and _stringify_cell(row.raw_values.get("数值")) != ""
+        has_unit = bool(_stringify_cell(row.raw_values.get("单位")))
+        has_source_page = row.raw_values.get("来源页") is not None and _stringify_cell(row.raw_values.get("来源页")) != ""
+        if has_metric and has_value and has_unit and has_source_page:
+            return "MARKET_REFERENCE_ROW"
+        return "TESTSET_SUPPORTING_ROW"
+    if row.sheet_name in TESTSET_SUPPORTING_SHEETS:
+        return "TESTSET_SUPPORTING_ROW"
     return _refine_third_workbook_row_type(row, inferred_row_type)
 
 
@@ -250,7 +333,8 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
             for row_index, raw_row in enumerate(worksheet.iter_rows(values_only=True), start=1)
         ]
         normalized_testset_header = _find_normalized_testset_header(sheet_rows)
-        header_candidate = normalized_testset_header or _find_header_row(sheet_rows)
+        special_header_candidate = _find_special_header_row(sheet_name, sheet_rows)
+        header_candidate = normalized_testset_header or special_header_candidate or _find_header_row(sheet_rows)
         key_value_start = _find_key_value_start(sheet_rows) if header_candidate is None else None
 
         if header_candidate is not None:
@@ -278,7 +362,7 @@ def read_excel_workbook(excel_path: str | Path) -> WorkbookIntakeResult:
                 header_names[column_index]: padded_values[column_index]
                 for column_index in range(len(header_names))
             }
-            metric_name = _extract_metric_name(values)
+            metric_name = _extract_special_metric_name(sheet_name, header_names, raw_values, values)
             period_values = {
                 header: raw_values[header]
                 for header in detect_period_labels(header_names)
