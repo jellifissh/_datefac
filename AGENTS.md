@@ -17,17 +17,18 @@
 当前已经进入：
 
 ```text
-348N-R3 Remaining Non-Normalized Unknown-Family Refinement
+348N-R3-QA Remaining Non-Normalized Unknown-Family Refinement Review
 ```
 
 最近关键结果：
 
 ```text
-348N-R2-QA confirmed normalized_testset schema support valid
-unknown_row_count dropped from 367 to 48
-normalized_testset_record_row_count is 320
-clean_data_row_count stayed 37
-current task targets remaining non-normalized unknown families only
+348N-R3 refined remaining non-normalized unknown families
+unknown_row_count dropped from 48 to 0
+clean_data_row_count dropped from 37 to 33
+review_queue_row_count increased from 447 to 455
+TESTSET_SUPPORTING_ROW count is 49
+current task is QA/review, not code fix
 ```
 
 当前事实源：
@@ -40,7 +41,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348N_R3_remaining_non_normalized_unknown_family_refinement.md
+docs/codex_tasks/348N_R3_QA_remaining_non_normalized_unknown_family_refinement_review.md
 ```
 
 ## 3. 默认必读清单
