@@ -16,44 +16,53 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R4_clean_data_candidate_policy_review.md
-docs/agent/348N_R3_QA_REMAINING_NON_NORMALIZED_UNKNOWN_FAMILY_REFINEMENT_REVIEW.md
+docs/codex_tasks/348N_R5_qualitative_facts_header_detection_fix.md
+docs/agent/348N_R4_CLEAN_DATA_CANDIDATE_POLICY_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-R4 Clean Data Candidate Policy Review
+348N-R5 Qualitative Facts Header Detection Fix
 ```
 
-This is a diagnosis/review task, not an implementation task.
+This is an implementation task.
 
 It should create:
 
 ```text
-docs/agent/348N_R4_CLEAN_DATA_CANDIDATE_POLICY_REVIEW.md
+docs/agent/348N_R5_QUALITATIVE_FACTS_HEADER_DETECTION_FIX_RESULT.md
 ```
 
 ## Current facts
 
-R3-QA confirmed:
+R4 confirmed:
 
 ```text
-348N_R3_QA_CONFIRMED_REMAINING_UNKNOWN_FAMILY_REFINEMENT_VALID
-unknown_row_count = 0
+348N_R4_RECOMMENDS_QUALITATIVE_FACTS_REVIEW_ONLY_IMPLEMENTATION
 clean_data_row_count = 33
-review_queue_row_count = 455
-pytest = 48 passed
+qualitative_facts_explicit_ref = 0 / 33
+qualitative_facts_evidence_level = WEAK_EVIDENCE
+root cause = real 事实ID/页码 header skipped, F001 data row accepted as header
 ```
 
 Current focus:
 
 ```text
-inspect the remaining 33 qualitative_facts clean_data rows
-judge whether they should remain clean_data or move to review-only
-recommend whether an implementation task is needed
+fix qualitative_facts Chinese header detection in intake
+restore 页码 evidence extraction
+make the 33 qualitative_facts rows naturally leave clean_data through existing policy
+confirm no regression for normalized_testset, market_base_data, financial sheets, or prior workbooks
 ```
 
-Do not modify code, tests, input files, output files, or legacy datefac/.
+Allowed implementation area is narrow:
+
+```text
+datefac_agent/intake/excel_intake.py
+tests/agent/test_agent_excel_intake_audit_348a.py
+docs/agent/348N_R5_QUALITATIVE_FACTS_HEADER_DETECTION_FIX_RESULT.md
+```
 
 Do not run MinerU, OCR, LLM, or VLM.
+
+Do not commit output files.
