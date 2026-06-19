@@ -34,6 +34,7 @@ DOC_METADATA_HEADERS = {"字段", "值", "来源页", "备注"}
 FIGURE_INDEX_HEADERS = {"图表编号", "页码", "标题", "图表类型", "可用结构化数据", "处理策略", "备注"}
 RELATED_RESEARCH_HEADERS = {"日期", "标题", "来源页", "备注"}
 MARKET_BASE_DATA_HEADERS = {"类别", "指标", "数值", "单位", "期间/口径", "来源页", "置信度", "备注"}
+QUALITATIVE_FACTS_HEADERS = {"事实ID", "页码", "类别", "指标/事件", "数值", "单位", "期间", "摘录/说明", "置信度"}
 VALIDATION_CHECKS_FIRST_HEADER = "校验项"
 VALIDATION_CHECKS_LAST_HEADER = "说明"
 TESTSET_SUPPORTING_SHEETS = {
@@ -43,6 +44,7 @@ TESTSET_SUPPORTING_SHEETS = {
     "figure_index",
     "related_research",
     "validation_checks",
+    "qualitative_facts",
 }
 THIRD_WORKBOOK_REPORT_INFO_SHEET = "\u62a5\u544a\u6838\u5fc3\u4fe1\u606f\u4e0e\u6295\u8d44\u8981\u70b9"
 THIRD_WORKBOOK_BUSINESS_MATRIX_SHEET = "\u516c\u53f8\u4e1a\u52a1\u4e0e\u4ea7\u54c1\u77e9\u9635"
@@ -186,6 +188,7 @@ def _find_special_header_row(sheet_name: str, sheet_rows: list[tuple[int, list[A
         "figure_index": FIGURE_INDEX_HEADERS,
         "related_research": RELATED_RESEARCH_HEADERS,
         "market_base_data": MARKET_BASE_DATA_HEADERS,
+        "qualitative_facts": QUALITATIVE_FACTS_HEADERS,
     }
     expected_headers = header_lookup.get(sheet_name)
     for row_index, values in sheet_rows[:5]:
@@ -236,6 +239,8 @@ def _extract_special_metric_name(
         return _stringify_cell(raw_values.get("图表编号")) or _stringify_cell(raw_values.get("标题")) or _extract_metric_name(values)
     if sheet_name == "related_research":
         return _stringify_cell(raw_values.get("标题")) or _stringify_cell(raw_values.get("日期")) or _extract_metric_name(values)
+    if sheet_name == "qualitative_facts":
+        return _stringify_cell(raw_values.get("指标/事件")) or _stringify_cell(raw_values.get("事实ID")) or _extract_metric_name(values)
     if sheet_name == "README" and header_names == SYNTHETIC_KEY_VALUE_HEADERS:
         return _stringify_cell(raw_values.get("field_name")) or _extract_metric_name(values)
     return _extract_metric_name(values)

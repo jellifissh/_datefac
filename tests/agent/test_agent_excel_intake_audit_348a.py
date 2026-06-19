@@ -13,6 +13,7 @@ from datefac_agent.audit.valuation_metric_checker import classify_valuation_metr
 from datefac_agent.intake.excel_intake import (
     _extract_special_metric_name,
     _find_key_value_start,
+    _find_special_header_row,
     _refine_third_workbook_row_type,
     _refine_special_schema_row_type,
     _find_normalized_testset_header,
@@ -472,6 +473,167 @@ def test_market_base_data_rows_become_market_reference_rows_but_do_not_expand_cl
     result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
     assert row.row_type == "MARKET_REFERENCE_ROW"
     assert evidence_level == "STRONG_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+# qualitative_facts is a facts-schema sheet (事实ID/页码/指标/数值/单位/期间/摘录/置信度),
+# not a financial wide table. R5: detect its real Chinese header so 页码 evidence is
+# restored and rows route to TESTSET_SUPPORTING_ROW instead of leaking into clean_data.
+QUALITATIVE_FACTS_HEADERS_ROW = [
+    "事实ID",
+    "页码",
+    "类别",
+    "主体",
+    "指标/事件",
+    "数值",
+    "单位",
+    "期间",
+    "摘录/说明",
+    "置信度",
+]
+
+
+def _qualitative_facts_sheet_rows() -> list[tuple[int, list]]:
+    """Row 1 = real header; row 2 = F001 data (was misdetected as header pre-R5)."""
+    return [
+        (1, list(QUALITATIVE_FACTS_HEADERS_ROW)),
+        (2, ["F001", 1, "业务概况", "林洋能源", "成立时间", 1995, "年", None, "公司成立于1995年。", "高"]),
+        (3, ["F002", 1, "业务布局", "林洋能源", "三大业务", None, None, None, "智能电表、储能、光伏。", "高"]),
+        (4, ["F003", 1, "业绩", "林洋能源", "2022-2024营收", 34.0, "亿元", "2022-2024", "营收稳健增长。", "高"]),
+    ]
+
+
+def test_qualitative_facts_real_chinese_header_is_detected_as_header() -> None:
+    sheet_rows = _qualitative_facts_sheet_rows()
+    found = _find_special_header_row("qualitative_facts", sheet_rows)
+    assert found is not None
+    header_row_index, header_names = found
+    assert header_row_index == 1
+    assert header_names == QUALITATIVE_FACTS_HEADERS_ROW
+
+
+def test_qualitative_facts_f001_data_row_is_not_selected_as_header() -> None:
+    # The F001 data row contains "1995", which pre-R5 matched PERIOD_LABEL_RE and was
+    # wrongly accepted as the header by the generic _find_header_row. The special-sheet
+    # path must pick the real row-1 header before F001 can be considered.
+    sheet_rows = _qualitative_facts_sheet_rows()
+    found = _find_special_header_row("qualitative_facts", sheet_rows)
+    assert found is not None
+    assert found[0] == 1  # row 1, not row 2 (F001)
+
+
+def test_qualitative_facts_page_column_is_preserved_in_parsed_row() -> None:
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="qualitative_facts",
+        row_index=3,
+        column_names=list(QUALITATIVE_FACTS_HEADERS_ROW),
+        raw_values={
+            "事实ID": "F003",
+            "页码": 1,
+            "类别": "业绩",
+            "主体": "林洋能源",
+            "指标/事件": "2022-2024营收",
+            "数值": 34.0,
+            "单位": "亿元",
+            "期间": "2022-2024",
+            "摘录/说明": "营收稳健增长。",
+            "置信度": "高",
+        },
+        metric_name="2022-2024营收",
+    )
+    # 页码 must survive as a real column so evidence extraction can find it.
+    assert "页码" in row.column_names
+    assert row.raw_values["页码"] == 1
+
+
+def test_qualitative_facts_explicit_evidence_ref_extracted_from_page_column() -> None:
+    from datefac_agent.intake.excel_intake import _extract_explicit_evidence_ref
+
+    values = ["F003", 1, "业绩", "林洋能源", "2022-2024营收", 34.0, "亿元", "2022-2024", "营收稳健增长。", "高"]
+    ref = _extract_explicit_evidence_ref(list(QUALITATIVE_FACTS_HEADERS_ROW), values)
+    assert ref == "1"
+
+
+def test_qualitative_facts_metric_name_prefers_indicator_over_fact_id() -> None:
+    raw_values = {
+        "事实ID": "F003",
+        "页码": 1,
+        "类别": "业绩",
+        "主体": "林洋能源",
+        "指标/事件": "2022-2024营收",
+        "数值": 34.0,
+        "单位": "亿元",
+        "期间": "2022-2024",
+        "摘录/说明": "营收稳健增长。",
+        "置信度": "高",
+    }
+    metric_name = _extract_special_metric_name(
+        "qualitative_facts",
+        list(QUALITATIVE_FACTS_HEADERS_ROW),
+        raw_values,
+        list(raw_values.values()),
+    )
+    assert metric_name == "2022-2024营收"
+
+
+def test_qualitative_facts_rows_become_testset_supporting_and_stay_out_of_clean_data() -> None:
+    # A STRONG-evidenced qualitative_facts row (页码=1 restored) must route to
+    # TESTSET_SUPPORTING_ROW and resolve to REVIEW_REQUIRED, never INTERNAL_CLEAN_CANDIDATE.
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="qualitative_facts",
+        row_index=3,
+        column_names=list(QUALITATIVE_FACTS_HEADERS_ROW),
+        raw_values={
+            "事实ID": "F003",
+            "页码": 1,
+            "类别": "业绩",
+            "主体": "林洋能源",
+            "指标/事件": "2022-2024营收",
+            "数值": 34.0,
+            "单位": "亿元",
+            "期间": "2022-2024",
+            "摘录/说明": "营收稳健增长。",
+            "置信度": "高",
+        },
+        metric_name="2022-2024营收",
+    )
+    row.explicit_evidence_ref = "1"
+    row.row_type = _refine_special_schema_row_type(row, "STRICT_FINANCIAL_TABLE_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "TESTSET_SUPPORTING_ROW"
+    assert evidence_level == "STRONG_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_qualitative_facts_weak_evidence_row_still_does_not_enter_clean_data() -> None:
+    # Even if a qualitative_facts row somehow lacked 页码 (WEAK_EVIDENCE), the
+    # TESTSET_SUPPORTING_ROW routing must keep it out of clean_data.
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name="qualitative_facts",
+        row_index=3,
+        column_names=list(QUALITATIVE_FACTS_HEADERS_ROW),
+        raw_values={
+            "事实ID": "F002",
+            "页码": None,
+            "类别": "业务布局",
+            "主体": "林洋能源",
+            "指标/事件": "三大业务",
+            "数值": None,
+            "单位": None,
+            "期间": None,
+            "摘录/说明": "智能电表、储能、光伏。",
+            "置信度": "高",
+        },
+        metric_name="三大业务",
+    )
+    row.row_type = _refine_special_schema_row_type(row, "STRICT_FINANCIAL_TABLE_ROW", normalized_testset_detected=False)
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert row.row_type == "TESTSET_SUPPORTING_ROW"
     assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
