@@ -16,7 +16,8 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R6B_output_schema_guardrails_implementation.md
+docs/codex_tasks/348N_R6B_QA_output_schema_guardrails_review.md
+docs/agent/348N_R6B_OUTPUT_SCHEMA_GUARDRAILS_IMPLEMENTATION_RESULT.md
 docs/agent/348N_R6_SCHEMA_HARDENING_DESIGN.md
 docs/agent/348N_R5_QA_QUALITATIVE_FACTS_HEADER_FIX_REVIEW.md
 ```
@@ -24,60 +25,58 @@ docs/agent/348N_R5_QA_QUALITATIVE_FACTS_HEADER_FIX_REVIEW.md
 ## Current task
 
 ```text
-348N-R6B Output Schema Guardrails Implementation
+348N-R6B-QA Output Schema Guardrails Review
 ```
 
-This is an implementation task.
+This is a QA/review task.
 
 It should create:
 
 ```text
-docs/agent/348N_R6B_OUTPUT_SCHEMA_GUARDRAILS_IMPLEMENTATION_RESULT.md
+docs/agent/348N_R6B_QA_OUTPUT_SCHEMA_GUARDRAILS_REVIEW.md
 ```
 
 ## Current facts
 
-R6 confirmed:
+R6B reported:
 
 ```text
-348N_R6_RECOMMENDS_LIGHTWEIGHT_SCHEMA_GUARDRAILS_FIRST
-current_pydantic_usage = no
-current_pandera_usage = no
-recommended_first_schema_layer = lightweight internal output_schema_guardrails validator
-new_dependency_needed = no
+348N_R6B_CONFIRMED_OUTPUT_SCHEMA_GUARDRAILS_VALID
+new_dependency_added = no
+pydantic_used = no
+pandera_used = no
+guardrail_module = datefac_agent/audit/output_schema_guardrails.py
+pytest_result = 74 passed
+LLM / MinerU / OCR / VLM calls = 0
+readiness_gates = closed / unchanged
 ```
 
-R5-QA confirmed:
+R6B pilot values:
 
 ```text
-348N_R5_QA_CONFIRMED_QUALITATIVE_FACTS_HEADER_FIX_VALID
-clean_data_row_count: 33 -> 0
-qualitative_facts_explicit_ref: 0/33 -> 34/34
+clean_data_row_count = 0
+clean_data_csv_row_count = 0
+review_queue_row_count = 489
+review_queue_csv_row_count = 46
 unknown_row_count = 0
-pytest = 55 passed
-LLM / MinerU / OCR / VLM calls = 0
-readiness_gates = closed
+normalized_testset_record_row_count = 320
+market_reference_row_count = 10
+testset_supporting_row_count = 83
 ```
 
 Current focus:
 
 ```text
-implement stdlib-only output schema guardrails
-forbid invalid row_type / clean_candidate_type in clean_data
-check clean/review row counts against manifest
-check review_queue required fields
-check readiness gates closed and external-call counters zero
-add deterministic unit tests and integrate validator in runner
+independently review output_schema_guardrails.py
+confirm guardrail violations loud fail
+confirm runner validates before manifest write
+confirm review_queue_row_count historical semantics are preserved
+confirm *_csv_row_count fields are additive and safe
+confirm no dependency/input/output/legacy boundary violations
+confirm tests cover pass and violation cases
 ```
 
-Allowed implementation area is narrow:
-
-```text
-datefac_agent/audit/output_schema_guardrails.py
-tools/run_agent_excel_intake_audit_348a.py
-tests/agent/test_agent_excel_intake_audit_348a.py
-docs/agent/348N_R6B_OUTPUT_SCHEMA_GUARDRAILS_IMPLEMENTATION_RESULT.md
-```
+Do not modify source code, tests, dependency files, input files, output files, generated output directories, or legacy datefac/.
 
 Do not add dependencies.
 
