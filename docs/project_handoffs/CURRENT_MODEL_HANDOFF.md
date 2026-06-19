@@ -16,51 +16,44 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 docs/agent/项目进程.md
-docs/codex_tasks/348N_R3_QA_remaining_non_normalized_unknown_family_refinement_review.md
-docs/agent/348N_R3_REMAINING_NON_NORMALIZED_UNKNOWN_FAMILY_REFINEMENT_RESULT.md
-docs/agent/348N_R2_QA_NORMALIZED_TESTSET_SCHEMA_SUPPORT_REVIEW.md
+docs/codex_tasks/348N_DOCS_CLEANUP_ai_handoff_simplification.md
+docs/agent/348N_R3_QA_REMAINING_NON_NORMALIZED_UNKNOWN_FAMILY_REFINEMENT_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-R3-QA Remaining Non-Normalized Unknown-Family Refinement Review
+348N-DOCS-CLEANUP AI Handoff Documentation Simplification
 ```
 
-This is a QA/review task, not a code-fix task.
+This is a docs-only cleanup task.
 
 It should create:
 
 ```text
-docs/agent/348N_R3_QA_REMAINING_NON_NORMALIZED_UNKNOWN_FAMILY_REFINEMENT_REVIEW.md
+docs/agent/348N_DOCS_CLEANUP_AI_HANDOFF_SIMPLIFICATION_RESULT.md
 ```
 
 ## Current facts
 
-R3 result:
+R3-QA has been completed and confirmed:
 
 ```text
-348N_R3_CONFIRMED_REMAINING_UNKNOWN_FAMILY_REFINEMENT_VALID
-unknown_row_count: 48 -> 0
-clean_data_row_count: 37 -> 33
-review_queue_row_count: 447 -> 455
-testset_supporting_row_count: 0 -> 49
-market_reference_row_count: 2 -> 10
-normalized_testset_record_row_count: 320 -> 320
-pytest: 48 passed
+348N_R3_QA_CONFIRMED_REMAINING_UNKNOWN_FAMILY_REFINEMENT_VALID
+unknown_row_count = 0
+clean_data_row_count = 33
+review_queue_row_count = 455
+pytest = 48 passed
 ```
 
 Current focus:
 
 ```text
-review TESTSET_SUPPORTING_ROW remains review-only / not clean
-review market_base_data narrow MARKET_REFERENCE_ROW routing
-confirm clean_data is still conservative
-confirm normalized_testset behavior stayed unchanged
+reduce duplicated AI collaboration and handoff instructions
+keep historical result and QA reports intact
+clarify document roles: AGENTS / skills / handoff / codex_tasks / agent reports
 ```
 
-Do not modify source code, tests, input files, or output files.
+Do not modify code, tests, input files, output files, or legacy datefac/.
 
-Do not commit output files.
-
-Do not run MinerU, OCR, LLM, or VLM.
+Do not delete historical result reports.
