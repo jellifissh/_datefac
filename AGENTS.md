@@ -17,18 +17,18 @@
 当前已经进入：
 
 ```text
-348N-R3-QA Remaining Non-Normalized Unknown-Family Refinement Review
+348N-DOCS-CLEANUP AI Handoff Documentation Simplification
 ```
 
 最近关键结果：
 
 ```text
-348N-R3 refined remaining non-normalized unknown families
-unknown_row_count dropped from 48 to 0
-clean_data_row_count dropped from 37 to 33
-review_queue_row_count increased from 447 to 455
-TESTSET_SUPPORTING_ROW count is 49
-current task is QA/review, not code fix
+348N-R3-QA confirmed remaining unknown-family refinement valid
+unknown_row_count = 0
+clean_data_row_count = 33
+review_queue_row_count = 455
+pytest = 48 passed
+current task is docs-only cleanup before R4 policy review
 ```
 
 当前事实源：
@@ -41,7 +41,7 @@ docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
 当前任务文档：
 
 ```text
-docs/codex_tasks/348N_R3_QA_remaining_non_normalized_unknown_family_refinement_review.md
+docs/codex_tasks/348N_DOCS_CLEANUP_ai_handoff_simplification.md
 ```
 
 ## 3. 默认必读清单
