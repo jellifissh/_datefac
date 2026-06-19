@@ -14,37 +14,22 @@
 
 ## 2. 当前状态
 
-当前已经进入：
+当前阶段、当前任务、最近关键结果以这两个事实源为准（它们随任务更新，AGENTS 不重复抄录具体数字）：
 
 ```text
-348N-DOCS-CLEANUP AI Handoff Documentation Simplification
-```
-
-最近关键结果：
-
-```text
-348N-R3-QA confirmed remaining unknown-family refinement valid
-unknown_row_count = 0
-clean_data_row_count = 33
-review_queue_row_count = 455
-pytest = 48 passed
-current task is docs-only cleanup before R4 policy review
-```
-
-当前事实源：
-
-```text
-docs/agent/项目进程.md
-docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/agent/项目进程.md                        # compact milestone ledger
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md  # current stage + next action
 ```
 
 当前任务文档：
 
 ```text
-docs/codex_tasks/348N_DOCS_CLEANUP_ai_handoff_simplification.md
+docs/codex_tasks/   # 读其中与当前任务对应的那一个
 ```
 
 ## 3. 默认必读清单
+
+完整读单与可选上下文见 `.skills/README.md`（读单在那里单点维护）。最小必读：
 
 ```text
 AGENTS.md
@@ -82,7 +67,9 @@ client_ready / production_ready / formal_client_export_allowed gates
 
 ## 5. 当前 gate
 
-这些 gate 默认保持关闭：
+默认安全 flags 与禁用动作的完整定义见 `.skills/datefac_agent_foundation.md`（Default Safety Flags）和 `.skills/agent_excel_intake_audit_workflow.md`（Forbidden By Default）。AGENTS 只保留稳定要点：
+
+默认关闭：
 
 ```text
 client_ready = false
@@ -94,11 +81,7 @@ demo_export_only = true
 默认不做：
 
 ```text
-MinerU rerun
-OCR
-PDF re-extraction
-LLM/VLM calls
-formal client delivery
+MinerU rerun / OCR / PDF re-extraction / LLM/VLM calls / formal client delivery
 ```
 
 ## 6. 执行规范

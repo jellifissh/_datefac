@@ -151,6 +151,8 @@ production_ready = false
 recommended_next_step
 ```
 
+The three readiness gates (`client_ready` / `production_ready` / `formal_client_export_allowed`) and `demo_export_only` stay at their closed defaults — see `.skills/datefac_agent_foundation.md` (Default Safety Flags); do not redefine them here.
+
 If the output is conservative and mostly review, that is not automatically failure. The manifest should explain why.
 
 ## Next-Step Pattern

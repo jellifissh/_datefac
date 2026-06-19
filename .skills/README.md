@@ -21,6 +21,8 @@ pivot/348-agent-foundation
 
 ## Default Read Order For Normal 348 Agent Tasks
 
+This is the single source for the default read order; `AGENTS.md` §3 references it rather than re-listing files.
+
 Read only:
 
 1. `AGENTS.md`

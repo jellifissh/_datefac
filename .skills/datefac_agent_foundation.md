@@ -140,15 +140,8 @@ unless the user explicitly asks for legacy inspection or one-file checkout.
 
 ## Git Rule
 
-Follow `.skills/git_workflow.md`.
+Follow `.skills/git_workflow.md` for the full staging / protected-file / risk rules. The stable invariants are:
 
-Never use:
-
-```text
-git add .
-git add -A
-git reset --hard
-git checkout --
-```
-
-Use precise path staging only.
+- precise path staging only; never `git add .` / `git add -A`
+- never `git reset --hard` / `git checkout --`
+- never stage `output/` / `temp/` / unrelated dirty files
