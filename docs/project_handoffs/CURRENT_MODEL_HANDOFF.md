@@ -15,28 +15,28 @@ AGENTS.md
 .skills/git_workflow.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
-docs/agent/项目进程.md
-docs/codex_tasks/348N_DOCS_CLEANUP_ai_handoff_simplification.md
+项目进展大白话说明.md
+docs/codex_tasks/348N_R4_clean_data_candidate_policy_review.md
 docs/agent/348N_R3_QA_REMAINING_NON_NORMALIZED_UNKNOWN_FAMILY_REFINEMENT_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-DOCS-CLEANUP AI Handoff Documentation Simplification
+348N-R4 Clean Data Candidate Policy Review
 ```
 
-This is a docs-only cleanup task.
+This is a diagnosis/review task, not an implementation task.
 
 It should create:
 
 ```text
-docs/agent/348N_DOCS_CLEANUP_AI_HANDOFF_SIMPLIFICATION_RESULT.md
+docs/agent/348N_R4_CLEAN_DATA_CANDIDATE_POLICY_REVIEW.md
 ```
 
 ## Current facts
 
-R3-QA has been completed and confirmed:
+R3-QA confirmed:
 
 ```text
 348N_R3_QA_CONFIRMED_REMAINING_UNKNOWN_FAMILY_REFINEMENT_VALID
@@ -49,11 +49,11 @@ pytest = 48 passed
 Current focus:
 
 ```text
-reduce duplicated AI collaboration and handoff instructions
-keep historical result and QA reports intact
-clarify document roles: AGENTS / skills / handoff / codex_tasks / agent reports
+inspect the remaining 33 qualitative_facts clean_data rows
+judge whether they should remain clean_data or move to review-only
+recommend whether an implementation task is needed
 ```
 
 Do not modify code, tests, input files, output files, or legacy datefac/.
 
-Do not delete historical result reports.
+Do not run MinerU, OCR, LLM, or VLM.
