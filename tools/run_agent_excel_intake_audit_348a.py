@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from datefac_agent.audit.evidence_checker import audit_evidence_presence
+from datefac_agent.audit.output_schema_guardrails import validate_outputs
 from datefac_agent.audit.period_alignment_checker import audit_period_alignment
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
 from datefac_agent.audit.valuation_metric_checker import audit_valuation_metrics
@@ -247,6 +248,9 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         excel_path=str(excel_path),
         output_dir=str(output_dir),
     )
+    manifest["clean_data_csv_row_count"] = len(clean_rows)
+    manifest["review_queue_csv_row_count"] = len(review_rows)
+
     run_summary = {
         "decision": decision,
         "sheet_count": intake_result.sheet_count,
@@ -271,6 +275,7 @@ def run_pilot(pdf_path_arg: str, excel_path_arg: str, output_dir_arg: str) -> di
         "review_required_count": summary.review_required_count,
         "excluded_from_clean_data_count": summary.excluded_from_clean_data_count,
     }
+    validate_outputs(clean_rows, review_rows, manifest)
     _write_json(output_dir / "agent_excel_intake_audit_348a_manifest.json", manifest)
     _write_json(output_dir / "agent_excel_intake_audit_348a_run_summary.json", run_summary)
     return manifest

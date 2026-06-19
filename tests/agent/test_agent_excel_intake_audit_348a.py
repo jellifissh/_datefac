@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from datefac_agent.audit.evidence_checker import audit_evidence_presence
+from datefac_agent.audit.output_schema_guardrails import OutputSchemaGuardrailError, validate_outputs
 from datefac_agent.audit.period_alignment_checker import audit_period_alignment, detect_period_labels
 from datefac_agent.audit.row_type_classifier import classify_row_type
 from datefac_agent.audit.unit_semantic_checker import audit_unit_semantics
@@ -875,6 +878,163 @@ def test_runner_helper_manifest_contains_zero_external_calls() -> None:
     assert manifest["client_ready"] is False
     assert manifest["production_ready"] is False
     assert manifest["formal_client_export_allowed"] is False
+
+
+def _guardrail_clean_row(**overrides: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "sheet_name": "利润表",
+        "row_index": "2",
+        "metric_name": "营业收入",
+        "clean_candidate_type": "INTERNAL_CLEAN_CANDIDATE",
+        "row_type": "STRICT_FINANCIAL_TABLE_ROW",
+        "evidence_level": "WEAK_EVIDENCE",
+        "issue_codes": "",
+        "unit_hint": "百万元",
+        "period_labels": "2025A",
+        "period_values_json": '{"2025A": 1}',
+    }
+    row.update(overrides)
+    return row
+
+
+def _guardrail_review_row(**overrides: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "sheet_name": "README",
+        "row_index": "2",
+        "metric_name": "生成时间",
+        "decision": "REVIEW",
+        "clean_candidate_type": "REVIEW_REQUIRED",
+        "issue_count": "1",
+        "issue_codes": "weak_evidence",
+        "evidence_level": "WEAK_EVIDENCE",
+        "row_type": "TESTSET_SUPPORTING_ROW",
+        "unit_hint": "",
+        "period_labels": "",
+        "explicit_evidence_ref": "",
+    }
+    row.update(overrides)
+    return row
+
+
+def _guardrail_manifest(**overrides: object) -> dict[str, object]:
+    manifest: dict[str, object] = {
+        "clean_data_row_count": 1,
+        "clean_data_csv_row_count": 1,
+        "review_queue_row_count": 99,
+        "review_queue_csv_row_count": 1,
+        "unknown_row_count": 0,
+        "client_ready": False,
+        "production_ready": False,
+        "formal_client_export_allowed": False,
+        "demo_export_only": True,
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "legacy_datefac_touched": False,
+        "legacy_outputs_touched": False,
+    }
+    manifest.update(overrides)
+    return manifest
+
+
+def test_output_schema_guardrails_valid_outputs_pass() -> None:
+    validate_outputs(
+        [_guardrail_clean_row()],
+        [_guardrail_review_row()],
+        _guardrail_manifest(),
+    )
+
+
+@pytest.mark.parametrize(
+    "row_type",
+    [
+        "TESTSET_SUPPORTING_ROW",
+        "NORMALIZED_TESTSET_RECORD_ROW",
+        "MARKET_REFERENCE_ROW",
+        "UNKNOWN_ROW",
+    ],
+)
+def test_output_schema_guardrails_forbidden_clean_row_type_raises(row_type: str) -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match="forbidden row_type"):
+        validate_outputs(
+            [_guardrail_clean_row(row_type=row_type)],
+            [_guardrail_review_row()],
+            _guardrail_manifest(),
+        )
+
+
+def test_output_schema_guardrails_invalid_clean_candidate_type_raises() -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match="clean_candidate_type"):
+        validate_outputs(
+            [_guardrail_clean_row(clean_candidate_type="REVIEW_REQUIRED")],
+            [_guardrail_review_row()],
+            _guardrail_manifest(),
+        )
+
+
+def test_output_schema_guardrails_clean_data_count_mismatch_raises() -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match="clean_data count mismatch"):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row()],
+            _guardrail_manifest(clean_data_row_count=0, clean_data_csv_row_count=0),
+        )
+
+
+def test_output_schema_guardrails_review_queue_count_mismatch_raises() -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match="review_queue count mismatch"):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row()],
+            _guardrail_manifest(review_queue_csv_row_count=0),
+        )
+
+
+@pytest.mark.parametrize("field", ["decision", "clean_candidate_type", "evidence_level"])
+def test_output_schema_guardrails_empty_review_queue_required_field_raises(field: str) -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match=field):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row(**{field: ""})],
+            _guardrail_manifest(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "bad_value"),
+    [
+        ("client_ready", True),
+        ("production_ready", True),
+        ("formal_client_export_allowed", True),
+        ("demo_export_only", False),
+    ],
+)
+def test_output_schema_guardrails_open_manifest_gate_raises(field: str, bad_value: bool) -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match=field):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row()],
+            _guardrail_manifest(**{field: bad_value}),
+        )
+
+
+@pytest.mark.parametrize("field", ["llm_api_call_count", "mineru_run_count", "ocr_run_count"])
+def test_output_schema_guardrails_nonzero_external_counter_raises(field: str) -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match=field):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row()],
+            _guardrail_manifest(**{field: 1}),
+        )
+
+
+def test_output_schema_guardrails_legacy_touched_flag_raises() -> None:
+    with pytest.raises(OutputSchemaGuardrailError, match="legacy_datefac_touched"):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row()],
+            _guardrail_manifest(legacy_datefac_touched=True),
+        )
 
 
 def test_unit_semantic_fixture_cases() -> None:
