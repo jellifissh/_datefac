@@ -981,6 +981,17 @@ def test_output_schema_guardrails_clean_data_count_mismatch_raises() -> None:
         )
 
 
+def test_output_schema_guardrails_clean_data_csv_count_mismatch_raises() -> None:
+    # R6B-QA found this exact gap: clean_data_row_count was correct, but the
+    # additive physical CSV count field could diverge without failing.
+    with pytest.raises(OutputSchemaGuardrailError, match="clean_data_csv_row_count"):
+        validate_outputs(
+            [_guardrail_clean_row()],
+            [_guardrail_review_row()],
+            _guardrail_manifest(clean_data_row_count=1, clean_data_csv_row_count=999),
+        )
+
+
 def test_output_schema_guardrails_review_queue_count_mismatch_raises() -> None:
     with pytest.raises(OutputSchemaGuardrailError, match="review_queue count mismatch"):
         validate_outputs(

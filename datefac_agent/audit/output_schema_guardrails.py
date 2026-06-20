@@ -118,6 +118,14 @@ def _validate_count_consistency(
             f"manifest clean_data_row_count={manifest_clean_count}"
         )
 
+    if "clean_data_csv_row_count" in manifest:
+        manifest_clean_csv_count = manifest["clean_data_csv_row_count"]
+        if clean_count != manifest_clean_csv_count:
+            _fail(
+                f"clean_data count mismatch: clean_data.csv has {clean_count} rows but "
+                f"manifest clean_data_csv_row_count={manifest_clean_csv_count}"
+            )
+
     review_count = len(review_rows)
     manifest_review_count = manifest.get("review_queue_csv_row_count", manifest["review_queue_row_count"])
     if review_count != manifest_review_count:
