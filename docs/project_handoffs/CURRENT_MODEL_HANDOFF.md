@@ -16,57 +16,61 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R6B_FIX_QA_clean_data_csv_row_count_guardrail_review.md
+docs/codex_tasks/348N_R6C_output_guardrails_adoption_review.md
+docs/agent/348N_R6B_FIX_QA_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_REVIEW.md
 docs/agent/348N_R6B_FIX_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_RESULT.md
 docs/agent/348N_R6B_QA_OUTPUT_SCHEMA_GUARDRAILS_REVIEW.md
-docs/agent/348N_R6B_OUTPUT_SCHEMA_GUARDRAILS_IMPLEMENTATION_RESULT.md
 ```
 
 ## Current task
 
 ```text
-348N-R6B-FIX-QA Clean Data CSV Row Count Guardrail Review
+348N-R6C Output Guardrails Adoption Review
 ```
 
-This is a focused QA/review task.
+This is a focused adoption/design review task.
 
 It should create:
 
 ```text
-docs/agent/348N_R6B_FIX_QA_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_REVIEW.md
+docs/agent/348N_R6C_OUTPUT_GUARDRAILS_ADOPTION_REVIEW.md
 ```
 
 ## Current facts
 
-R6B-FIX confirmed:
+R6B-FIX-QA confirmed:
 
 ```text
-348N_R6B_FIX_CONFIRMED_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_VALID
-clean_data_csv_row_count mismatch now raises OutputSchemaGuardrailError
+348N_R6B_FIX_QA_CONFIRMED_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_VALID
+clean_data_csv_row_count mismatch loud-fails = yes
+clean_data_row_count guardrail = still valid
+clean_data_csv_row_count guardrail = valid
+review_queue_csv_row_count guardrail = still valid
 pytest = 75 passed
 new_dependency_added = no
 pydantic_used = no
 pandera_used = no
-```
-
-The exact fixed probe:
-
-```text
-len(clean_rows) = 1
-manifest["clean_data_row_count"] = 1
-manifest["clean_data_csv_row_count"] = 999
-validate_outputs(...) must raise OutputSchemaGuardrailError
+LLM / MinerU / OCR / VLM calls = 0
+readiness_gates = closed / unchanged
 ```
 
 Current focus:
 
 ```text
-independently confirm clean_data_csv_row_count mismatch now loud-fails
-confirm clean_data_row_count remains validated
-confirm review_queue_csv_row_count remains validated
-confirm review_queue_row_count / review_queue_csv_row_count semantics remain unchanged
-confirm no dependencies/input/output/legacy boundaries were violated
-confirm 75 tests pass
+decide whether output guardrails are now standard runner contract
+standardize logical count vs physical CSV count language
+recommend future report template count fields
+recommend whether docs/skills/handoff need a follow-up contract update
+recommend next task after R6C
+```
+
+Important count semantics:
+
+```text
+clean_data_row_count = logical clean row count
+clean_data_csv_row_count = physical clean_data.csv row count
+review_queue_row_count = historical logical non-clean/review-required pool count
+review_queue_csv_row_count = physical review_queue.csv row count
 ```
 
 Do not modify source code, tests, dependency files, input files, output files, generated output directories, or legacy datefac/.
