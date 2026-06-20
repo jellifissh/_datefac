@@ -16,67 +16,70 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R6B_QA_output_schema_guardrails_review.md
+docs/codex_tasks/348N_R6B_FIX_clean_data_csv_row_count_guardrail_completion.md
+docs/agent/348N_R6B_QA_OUTPUT_SCHEMA_GUARDRAILS_REVIEW.md
 docs/agent/348N_R6B_OUTPUT_SCHEMA_GUARDRAILS_IMPLEMENTATION_RESULT.md
 docs/agent/348N_R6_SCHEMA_HARDENING_DESIGN.md
-docs/agent/348N_R5_QA_QUALITATIVE_FACTS_HEADER_FIX_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-R6B-QA Output Schema Guardrails Review
+348N-R6B-FIX Clean Data CSV Row Count Guardrail Completion
 ```
 
-This is a QA/review task.
+This is a tiny implementation fix task.
 
 It should create:
 
 ```text
-docs/agent/348N_R6B_QA_OUTPUT_SCHEMA_GUARDRAILS_REVIEW.md
+docs/agent/348N_R6B_FIX_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_RESULT.md
 ```
 
 ## Current facts
 
-R6B reported:
+R6B-QA confirmed:
 
 ```text
-348N_R6B_CONFIRMED_OUTPUT_SCHEMA_GUARDRAILS_VALID
-new_dependency_added = no
-pydantic_used = no
-pandera_used = no
-guardrail_module = datefac_agent/audit/output_schema_guardrails.py
-pytest_result = 74 passed
-LLM / MinerU / OCR / VLM calls = 0
-readiness_gates = closed / unchanged
+348N_R6B_QA_BLOCKED_BY_GUARDRAIL_COVERAGE_GAP
 ```
 
-R6B pilot values:
+The specific blocker:
 
 ```text
-clean_data_row_count = 0
-clean_data_csv_row_count = 0
-review_queue_row_count = 489
-review_queue_csv_row_count = 46
-unknown_row_count = 0
-normalized_testset_record_row_count = 320
-market_reference_row_count = 10
-testset_supporting_row_count = 83
+clean_data_csv_row_count was added by R6B but validate_outputs(...) does not validate it.
+clean_data_row_count is validated.
+review_queue_csv_row_count is validated.
+clean_data_csv_row_count is not validated.
+```
+
+Probe from QA:
+
+```text
+len(clean_rows) = 1
+manifest["clean_data_row_count"] = 1
+manifest["clean_data_csv_row_count"] = 999
+validate_outputs(...) passes unexpectedly
 ```
 
 Current focus:
 
 ```text
-independently review output_schema_guardrails.py
-confirm guardrail violations loud fail
-confirm runner validates before manifest write
-confirm review_queue_row_count historical semantics are preserved
-confirm *_csv_row_count fields are additive and safe
-confirm no dependency/input/output/legacy boundary violations
-confirm tests cover pass and violation cases
+add clean_data_csv_row_count validation to output_schema_guardrails.py
+add negative unit test proving mismatch raises OutputSchemaGuardrailError
+keep clean_data_row_count and review_queue_csv_row_count validation intact
+rerun py_compile, pytest tests\agent -q, and optionally the Linyang pilot
 ```
 
-Do not modify source code, tests, dependency files, input files, output files, generated output directories, or legacy datefac/.
+Allowed implementation area is narrow:
+
+```text
+datefac_agent/audit/output_schema_guardrails.py
+tests/agent/test_agent_excel_intake_audit_348a.py
+docs/agent/348N_R6B_FIX_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_RESULT.md
+```
+
+Only modify `tools/run_agent_excel_intake_audit_348a.py` if strictly necessary; it probably is not necessary.
 
 Do not add dependencies.
 
