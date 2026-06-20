@@ -16,70 +16,60 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R6B_FIX_clean_data_csv_row_count_guardrail_completion.md
+docs/codex_tasks/348N_R6B_FIX_QA_clean_data_csv_row_count_guardrail_review.md
+docs/agent/348N_R6B_FIX_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_RESULT.md
 docs/agent/348N_R6B_QA_OUTPUT_SCHEMA_GUARDRAILS_REVIEW.md
 docs/agent/348N_R6B_OUTPUT_SCHEMA_GUARDRAILS_IMPLEMENTATION_RESULT.md
-docs/agent/348N_R6_SCHEMA_HARDENING_DESIGN.md
 ```
 
 ## Current task
 
 ```text
-348N-R6B-FIX Clean Data CSV Row Count Guardrail Completion
+348N-R6B-FIX-QA Clean Data CSV Row Count Guardrail Review
 ```
 
-This is a tiny implementation fix task.
+This is a focused QA/review task.
 
 It should create:
 
 ```text
-docs/agent/348N_R6B_FIX_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_RESULT.md
+docs/agent/348N_R6B_FIX_QA_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_REVIEW.md
 ```
 
 ## Current facts
 
-R6B-QA confirmed:
+R6B-FIX confirmed:
 
 ```text
-348N_R6B_QA_BLOCKED_BY_GUARDRAIL_COVERAGE_GAP
+348N_R6B_FIX_CONFIRMED_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_VALID
+clean_data_csv_row_count mismatch now raises OutputSchemaGuardrailError
+pytest = 75 passed
+new_dependency_added = no
+pydantic_used = no
+pandera_used = no
 ```
 
-The specific blocker:
-
-```text
-clean_data_csv_row_count was added by R6B but validate_outputs(...) does not validate it.
-clean_data_row_count is validated.
-review_queue_csv_row_count is validated.
-clean_data_csv_row_count is not validated.
-```
-
-Probe from QA:
+The exact fixed probe:
 
 ```text
 len(clean_rows) = 1
 manifest["clean_data_row_count"] = 1
 manifest["clean_data_csv_row_count"] = 999
-validate_outputs(...) passes unexpectedly
+validate_outputs(...) must raise OutputSchemaGuardrailError
 ```
 
 Current focus:
 
 ```text
-add clean_data_csv_row_count validation to output_schema_guardrails.py
-add negative unit test proving mismatch raises OutputSchemaGuardrailError
-keep clean_data_row_count and review_queue_csv_row_count validation intact
-rerun py_compile, pytest tests\agent -q, and optionally the Linyang pilot
+independently confirm clean_data_csv_row_count mismatch now loud-fails
+confirm clean_data_row_count remains validated
+confirm review_queue_csv_row_count remains validated
+confirm review_queue_row_count / review_queue_csv_row_count semantics remain unchanged
+confirm no dependencies/input/output/legacy boundaries were violated
+confirm 75 tests pass
 ```
 
-Allowed implementation area is narrow:
-
-```text
-datefac_agent/audit/output_schema_guardrails.py
-tests/agent/test_agent_excel_intake_audit_348a.py
-docs/agent/348N_R6B_FIX_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_RESULT.md
-```
-
-Only modify `tools/run_agent_excel_intake_audit_348a.py` if strictly necessary; it probably is not necessary.
+Do not modify source code, tests, dependency files, input files, output files, generated output directories, or legacy datefac/.
 
 Do not add dependencies.
 
