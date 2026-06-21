@@ -16,74 +16,51 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R7P_FIX_market_reference_clean_data_boundary_leak_investigation.md
+docs/codex_tasks/348N_R7P_FIX2_market_reference_clean_data_admission_policy_alignment.md
+docs/agent/348N_R7P_FIX_MARKET_REFERENCE_CLEAN_DATA_BOUNDARY_LEAK_INVESTIGATION.md
 docs/agent/348N_R7P_ANOTHER_WORKBOOK_GUARDRAILS_PILOT_RESULT.md
 docs/agent/348N_R7_QUALITATIVE_FACTS_NARROW_CLEAN_ADMISSION_POLICY_DESIGN.md
-docs/agent/348N_R6D_QA_GUARDRAILS_CONTRACT_DOCUMENTATION_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-R7P-FIX Market Reference Clean Data Boundary Leak Investigation
+348N-R7P-FIX2 Market Reference Clean Data Admission Policy Alignment
 ```
 
-This is a focused diagnosis / root-cause task.
+This is a tiny implementation fix task.
 
-It should create:
+Expected result report:
 
 ```text
-docs/agent/348N_R7P_FIX_MARKET_REFERENCE_CLEAN_DATA_BOUNDARY_LEAK_INVESTIGATION.md
+docs/agent/348N_R7P_FIX2_MARKET_REFERENCE_CLEAN_DATA_ADMISSION_POLICY_ALIGNMENT_RESULT.md
 ```
 
 ## Current facts
 
-R7P reported:
+R7P-FIX confirmed the root cause:
 
 ```text
-348N_R7P_BLOCKED_BY_OUTPUT_GUARDRAIL_FAILURE
+MARKET_REFERENCE_ROW + WEAK_EVIDENCE + no unit issue currently becomes INTERNAL_REFERENCE_CANDIDATE.
+clean_rows includes INTERNAL_REFERENCE_CANDIDATE.
+output guardrails forbid MARKET_REFERENCE_ROW in clean_data.
 ```
 
-The failing workbook was:
+Required behavior:
 
 ```text
-input/泰豪科技_深度研报_核心数据提取_豆包AI生成 (1).xlsx
+MARKET_REFERENCE_ROW -> REVIEW_REQUIRED
 ```
 
-The guardrail failure was:
+Allowed files:
 
 ```text
-clean_data boundary violation: row 0
-sheet = 报告核心信息与投资要点
-metric = 收盘价
-row_type = MARKET_REFERENCE_ROW
+datefac_agent/review/clean_candidate_policy.py
+tests/agent/test_agent_excel_intake_audit_348a.py
+docs/agent/348N_R7P_FIX2_MARKET_REFERENCE_CLEAN_DATA_ADMISSION_POLICY_ALIGNMENT_RESULT.md
 ```
 
-The current output guardrails contract forbids these row types in clean_data:
-
-```text
-TESTSET_SUPPORTING_ROW
-NORMALIZED_TESTSET_RECORD_ROW
-MARKET_REFERENCE_ROW
-UNKNOWN_ROW
-```
-
-Current focus:
-
-```text
-investigate why MARKET_REFERENCE_ROW became eligible for clean_data
-identify whether row typing, clean admission policy, clean row assembly, or workbook-family-specific logic is at fault
-prefer diagnosis report first
-only implement a tiny fix if root cause is unambiguous and tests can prove it
-```
-
-Do not modify legacy datefac/.
-
-Do not modify input/output/temp/data.
-
-Do not add dependencies.
-
-Do not use Pydantic, Pandera, or pandas.
+Do not modify legacy datefac, input/output/temp/data source files, dependencies, readiness gates, or export behavior.
 
 Do not run MinerU, OCR, LLM, or VLM.
 
