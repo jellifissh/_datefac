@@ -16,69 +16,70 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R6D_QA_guardrails_contract_documentation_review.md
-docs/agent/348N_R6D_GUARDRAILS_CONTRACT_DOCUMENTATION_UPDATE.md
-docs/agent/348N_R6C_OUTPUT_GUARDRAILS_ADOPTION_REVIEW.md
-docs/agent/348N_R6B_FIX_QA_CLEAN_DATA_CSV_ROW_COUNT_GUARDRAIL_REVIEW.md
+docs/codex_tasks/348N_R7P_FIX_market_reference_clean_data_boundary_leak_investigation.md
+docs/agent/348N_R7P_ANOTHER_WORKBOOK_GUARDRAILS_PILOT_RESULT.md
+docs/agent/348N_R7_QUALITATIVE_FACTS_NARROW_CLEAN_ADMISSION_POLICY_DESIGN.md
+docs/agent/348N_R6D_QA_GUARDRAILS_CONTRACT_DOCUMENTATION_REVIEW.md
 ```
 
 ## Current task
 
 ```text
-348N-R6D-QA Guardrails Contract Documentation Review
+348N-R7P-FIX Market Reference Clean Data Boundary Leak Investigation
 ```
 
-This is a docs QA/review task.
+This is a focused diagnosis / root-cause task.
 
 It should create:
 
 ```text
-docs/agent/348N_R6D_QA_GUARDRAILS_CONTRACT_DOCUMENTATION_REVIEW.md
+docs/agent/348N_R7P_FIX_MARKET_REFERENCE_CLEAN_DATA_BOUNDARY_LEAK_INVESTIGATION.md
 ```
 
 ## Current facts
 
-R6D reported:
+R7P reported:
 
 ```text
-348N_R6D_CONFIRMED_GUARDRAILS_CONTRACT_DOCUMENTED
-guardrails_contract_documented = yes
-count_semantics_documented = yes
-future_report_template_documented = yes
-code_changes_made = no
+348N_R7P_BLOCKED_BY_OUTPUT_GUARDRAIL_FAILURE
 ```
 
-R6D updated:
+The failing workbook was:
 
 ```text
-.skills/agent_excel_intake_audit_workflow.md
-docs/agent/项目进程.md
-项目进展大白话说明.md
-docs/agent/348N_R6D_GUARDRAILS_CONTRACT_DOCUMENTATION_UPDATE.md
+input/泰豪科技_深度研报_核心数据提取_豆包AI生成 (1).xlsx
+```
+
+The guardrail failure was:
+
+```text
+clean_data boundary violation: row 0
+sheet = 报告核心信息与投资要点
+metric = 收盘价
+row_type = MARKET_REFERENCE_ROW
+```
+
+The current output guardrails contract forbids these row types in clean_data:
+
+```text
+TESTSET_SUPPORTING_ROW
+NORMALIZED_TESTSET_RECORD_ROW
+MARKET_REFERENCE_ROW
+UNKNOWN_ROW
 ```
 
 Current focus:
 
 ```text
-verify .skills documents validate_outputs(...) as current Excel audit runner contract
-verify count semantics are clear and correct
-verify future report template lists logical and physical CSV counts
-verify 项目进程 remains compact
-verify 大白话说明 is user-readable
-verify no source/test/dependency/input/output/legacy boundaries were violated
+investigate why MARKET_REFERENCE_ROW became eligible for clean_data
+identify whether row typing, clean admission policy, clean row assembly, or workbook-family-specific logic is at fault
+prefer diagnosis report first
+only implement a tiny fix if root cause is unambiguous and tests can prove it
 ```
 
-Important count semantics to verify:
+Do not modify legacy datefac/.
 
-```text
-clean_data_row_count = logical clean row count
-clean_data_csv_row_count = physical clean_data.csv data-row count
-review_queue_row_count = historical logical non-clean / review-required pool count
-review_queue_csv_row_count = physical review_queue.csv data-row count
-unknown_row_count = logical UNKNOWN_ROW classification count
-```
-
-Do not modify source code, tests, dependency files, input files, output files, generated output directories, or legacy datefac/.
+Do not modify input/output/temp/data.
 
 Do not add dependencies.
 
