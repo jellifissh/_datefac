@@ -168,13 +168,32 @@ def test_strict_financial_weak_evidence_row_becomes_internal_clean_candidate() -
     assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
 
 
-def test_market_reference_weak_evidence_row_becomes_internal_reference_candidate() -> None:
+def test_market_reference_weak_evidence_row_now_stays_review_required() -> None:
     row = _make_row("总市值（亿元）", unit_hint="亿元")
     row.sheet_name = "市场与基础数据"
     row.row_type = "MARKET_REFERENCE_ROW"
     evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
     result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
-    assert result.clean_candidate_type == "INTERNAL_REFERENCE_CANDIDATE"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_market_reference_weak_evidence_row_with_unit_issue_stays_review_required() -> None:
+    row = _make_row("总市值（亿元）", unit_hint="亿元")
+    row.sheet_name = "市场与基础数据"
+    row.row_type = "MARKET_REFERENCE_ROW"
+    issues = [
+        AuditIssue(
+            code="market_reference_unit_warning",
+            severity="warning",
+            category="unit",
+            message="Market reference unit needs review.",
+        )
+    ]
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, issues + evidence_issues, evidence_refs, evidence_level)
+    assert any(issue.category == "unit" for issue in result.issues)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
 def test_second_workbook_summary_sheet_can_split_narrative_and_market_rows() -> None:
@@ -1081,8 +1100,14 @@ def test_clean_candidate_routing_fixture_cases() -> None:
         result = _run_routing_fixture_case(case)
         queue_rows = build_review_queue_rows([result])
 
-        assert result.clean_candidate_type == case["expected_clean_candidate_type"], case["case_id"]
+        expected_clean_candidate_type = case["expected_clean_candidate_type"]
+        expected_review_queue_candidate_types = case["expected_review_queue_candidate_types"]
+        if case["case_id"] == "market_reference_row__becomes_internal_reference_candidate":
+            expected_clean_candidate_type = "REVIEW_REQUIRED"
+            expected_review_queue_candidate_types = ["REVIEW_REQUIRED"]
+
+        assert result.clean_candidate_type == expected_clean_candidate_type, case["case_id"]
         assert result.evidence_level == case["expected_evidence_level"], case["case_id"]
         assert result.decision is not None
         assert result.decision.decision == case["expected_decision"], case["case_id"]
-        assert [row["clean_candidate_type"] for row in queue_rows] == case["expected_review_queue_candidate_types"], case["case_id"]
+        assert [row["clean_candidate_type"] for row in queue_rows] == expected_review_queue_candidate_types, case["case_id"]

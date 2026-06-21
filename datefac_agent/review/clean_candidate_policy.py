@@ -44,8 +44,6 @@ def classify_clean_candidate(result: AuditRowResult) -> CleanCandidateType:
         return "INTERNAL_CLEAN_CANDIDATE"
 
     if result.row_type == "MARKET_REFERENCE_ROW":
-        if _has_category_issue(result.issues, "unit"):
-            return "REVIEW_REQUIRED"
-        return "INTERNAL_REFERENCE_CANDIDATE"
+        return "REVIEW_REQUIRED"
 
     return "REVIEW_REQUIRED"
