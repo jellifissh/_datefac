@@ -140,7 +140,10 @@ review_count
 fail_count
 issue_count_total
 clean_data_row_count
+clean_data_csv_row_count
 review_queue_row_count
+review_queue_csv_row_count
+unknown_row_count
 llm_api_call_count = 0
 mineru_run_count = 0
 ocr_run_count = 0
@@ -154,6 +157,40 @@ recommended_next_step
 The three readiness gates (`client_ready` / `production_ready` / `formal_client_export_allowed`) and `demo_export_only` stay at their closed defaults — see `.skills/datefac_agent_foundation.md` (Default Safety Flags); do not redefine them here.
 
 If the output is conservative and mostly review, that is not automatically failure. The manifest should explain why.
+
+## Output Guardrails Contract
+
+For the current 348A-style / 348N-style Excel audit runner, `datefac_agent.audit.output_schema_guardrails.validate_outputs(...)` is part of the standard runner contract.
+
+Contract requirements:
+
+```text
+validate_outputs(...) runs before manifest success output is written
+guardrail violations must fail loudly
+no Pydantic / Pandera / pandas dependency is required for this contract
+clean_data must not contain TESTSET_SUPPORTING_ROW / NORMALIZED_TESTSET_RECORD_ROW / MARKET_REFERENCE_ROW / UNKNOWN_ROW
+manifest gates must stay closed
+external-call counters must stay zero
+```
+
+Count semantics:
+
+```text
+clean_data_row_count = logical clean row count
+clean_data_csv_row_count = physical clean_data.csv data-row count
+review_queue_row_count = historical logical non-clean / review-required pool count
+review_queue_csv_row_count = physical review_queue.csv data-row count
+unknown_row_count = logical UNKNOWN_ROW classification count
+```
+
+Critical reporting rule:
+
+```text
+Do not interpret review_queue_row_count as the physical review_queue.csv row count.
+When discussing review_queue.csv, use review_queue_csv_row_count.
+```
+
+Future output-guarded reports must list both logical and physical CSV counts.
 
 ## Next-Step Pattern
 
