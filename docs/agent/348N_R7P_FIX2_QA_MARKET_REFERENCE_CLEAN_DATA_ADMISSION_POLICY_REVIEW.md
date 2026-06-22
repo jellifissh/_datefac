@@ -32,24 +32,23 @@ if result.row_type == "MARKET_REFERENCE_ROW":
     return "REVIEW_REQUIRED"
 ```
 
-This means:
+This confirms:
 
-- `MARKET_REFERENCE_ROW` no longer becomes `INTERNAL_REFERENCE_CANDIDATE`
-- the old market-reference clean admission path has been removed
-- the policy now matches the current output guardrail contract, which forbids `MARKET_REFERENCE_ROW` in `clean_data`
+- `MARKET_REFERENCE_ROW` is now routed to `REVIEW_REQUIRED`
+- there is no path in `clean_candidate_policy.py` that still returns `INTERNAL_REFERENCE_CANDIDATE` for `MARKET_REFERENCE_ROW`
+- the fix happened in policy, not in row typing or runner assembly
 
 Also confirmed:
 
-- there is no remaining `MARKET_REFERENCE_ROW -> INTERNAL_REFERENCE_CANDIDATE` path in the policy file
-- `row_type_classifier` semantics were not changed
+- `row_type_classifier` semantics were not changed in this QA scope
 - `output_schema_guardrails` contract was not weakened
-- `clean_rows` assembly logic in the runner was not changed; the fix correctly happened in policy rather than assembly
+- `clean_rows` assembly in `tools/run_agent_excel_intake_audit_348a.py` remains unchanged and still includes only `INTERNAL_CLEAN_CANDIDATE` / `INTERNAL_REFERENCE_CANDIDATE`; therefore the policy change is the effective fix layer
 
 ## Test coverage verification
 
 Conclusion: VALID.
 
-Confirmed test coverage includes:
+Confirmed tests cover both required behaviors:
 
 1. `MARKET_REFERENCE_ROW + WEAK_EVIDENCE + no unit issue -> REVIEW_REQUIRED`
    - `test_market_reference_weak_evidence_row_now_stays_review_required`
@@ -57,17 +56,11 @@ Confirmed test coverage includes:
 2. `MARKET_REFERENCE_ROW + WEAK_EVIDENCE + unit issue -> REVIEW_REQUIRED`
    - `test_market_reference_weak_evidence_row_with_unit_issue_stays_review_required`
 
-3. Existing routing fixture expectations were updated consistently:
-   - `test_clean_candidate_routing_fixture_cases`
-   - the fixture case `market_reference_row__becomes_internal_reference_candidate` is now asserted as `REVIEW_REQUIRED`
+Also confirmed:
 
-4. Existing guardrail and routing tests remain present; none were removed or weakened.
-
-Full suite result:
-
-```text
-pytest = 76 passed
-```
+- existing routing fixture expectations were updated consistently in `test_clean_candidate_routing_fixture_cases`
+- no previous guardrail tests were removed or weakened
+- the full agent suite passes
 
 ## Taihao pilot rerun verification
 
@@ -79,7 +72,7 @@ Rerun command:
 python tools\run_agent_excel_intake_audit_348a.py --pdf-path "input/H3_AP202605231822706325_1.pdf" --excel-path "input/泰豪科技_深度研报_核心数据提取_豆包AI生成 (1).xlsx" --output-dir "output/agent_excel_intake_audit_348n_r7p_fix2_qa_market_reference_boundary"
 ```
 
-Observed result:
+Observed manifest values:
 
 ```text
 decision = AI_EXCEL_INTAKE_AUDIT_348A_NEEDS_FIX
@@ -99,50 +92,48 @@ formal_client_export_allowed = false
 demo_export_only = true
 ```
 
-The previous blocked error:
+The prior failure:
 
 ```text
 clean_data boundary violation ... forbidden row_type 'MARKET_REFERENCE_ROW'
 ```
 
-did **not** appear in the rerun.
+no longer appeared.
 
 ## Output guardrails verification
 
 Conclusion: VALID.
 
-- The previous market-reference clean-data guardrail failure is gone.
-- No new guardrail failure appeared in the Taihao pilot rerun.
-- The output guardrail contract remains strict: it was not relaxed or bypassed.
-- The runner completed normally and wrote a manifest, meaning `validate_outputs(...)` accepted the outputs.
+- The previous guardrail failure is fixed.
+- No new guardrail failure appeared during the Taihao rerun.
+- `validate_outputs(...)` still ran before manifest write, because the runner completed only after producing a valid manifest.
+- The output guardrails contract remains strict; it was not bypassed or relaxed.
 
 ## Boundary check
 
 Conclusion: VALID.
 
-- No source files outside `clean_candidate_policy.py` were modified for the implementation under review.
-- No tests outside the targeted test file were modified.
-- No legacy `datefac/` files were touched.
+- No source code was modified by this QA task.
+- No tests were modified by this QA task.
+- No dependency files were modified.
 - No input files were modified.
 - No output artifacts were committed.
-- No dependency files were changed.
-- No readiness gate semantics changed.
-- No export behavior changed.
-- No MinerU / OCR / LLM / VLM run.
+- No legacy `datefac/` files were touched.
+- No readiness gates were changed.
+- No export behavior was changed.
+- No MinerU / OCR / LLM / VLM calls were made.
 
 ## Validation commands and results
-
-Commands run:
 
 ```text
 python -m py_compile datefac_agent\review\clean_candidate_policy.py tools\run_agent_excel_intake_audit_348a.py
   -> OK
 
 python -m pytest tests\agent -q
-  -> 76 passed in 1.33s
+  -> 76 passed in 0.51s
 
 python tools\run_agent_excel_intake_audit_348a.py --pdf-path "input/H3_AP202605231822706325_1.pdf" --excel-path "input/泰豪科技_深度研报_核心数据提取_豆包AI生成 (1).xlsx" --output-dir "output/agent_excel_intake_audit_348n_r7p_fix2_qa_market_reference_boundary"
-  -> completed, no previous market-reference guardrail failure
+  -> completed successfully with no market-reference clean-data guardrail failure
 
 git diff --check
   -> clean
@@ -152,19 +143,17 @@ git diff --check
 
 `348N_R7P_FIX2_QA_CONFIRMED_MARKET_REFERENCE_POLICY_ALIGNMENT_VALID`
 
-R7P-FIX2 correctly aligned policy with the current output guardrail contract: `MARKET_REFERENCE_ROW` no longer becomes `INTERNAL_REFERENCE_CANDIDATE`, tests cover the new behavior, full tests pass, the Taihao rerun no longer hits the previous clean-data guardrail failure, and no new guardrail failure appeared.
+The FIX2 policy alignment is independently confirmed valid: `MARKET_REFERENCE_ROW` no longer becomes `INTERNAL_REFERENCE_CANDIDATE`, tests cover the intended behavior, the full suite passes, the previous Taihao guardrail failure is gone, and no new guardrail failure appeared.
 
 ## Recommended next task
 
 `348N-R7Q another workbook family pilot review`
 
-Recommended purpose:
+Purpose:
 
-- review the Taihao guarded pilot results as a standalone QA/reporting step,
+- review the Taihao guarded pilot as a standalone result,
 - characterize the new clean/review shape after market-reference alignment,
-- decide whether the next action should be:
-  - another workbook-family pilot under guardrails, or
-  - a narrower design task for future facts-like clean admission categories.
+- decide whether to run another workbook-family pilot or revisit a narrower future clean-admission design.
 
 ## Data Result / 数据结果
 
