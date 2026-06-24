@@ -168,6 +168,163 @@ def test_strict_financial_weak_evidence_row_becomes_internal_clean_candidate() -
     assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
 
 
+# --- R7S: strict-table pseudo-header / comparison-row clean-boundary tests ---
+#
+# R7R found that STRICT_FINANCIAL_TABLE_ROW + WEAK_EVIDENCE over-admitted rows
+# whose period_values carry no numeric fact (e.g. 市场数据 / 厂商 / 对比维度 /
+# 项目 / 指标). These rows are table scaffolding, not stable financial facts,
+# so the project principle "宁可进 review，不轻易进 clean" requires them to route
+# to REVIEW_REQUIRED while normal numeric fact rows keep their clean admission.
+
+
+def _make_strict_scaffolding_row(
+    metric_name: str,
+    *,
+    sheet_name: str = "核心盈利预测与估值",
+    period_values: dict | None = None,
+) -> SpreadsheetRow:
+    """Build a STRICT_FINANCIAL_TABLE_ROW with WEAK_EVIDENCE and given period values.
+
+    period_values default to non-numeric scaffolding content so a caller only
+    needs to override when asserting numeric-fact preservation.
+    """
+
+    row = SpreadsheetRow(
+        source_excel_path="demo.xlsx",
+        sheet_name=sheet_name,
+        row_index=11,
+        column_names=["指标", "2025", "2026E", "2027E"],
+        raw_values={"指标": metric_name, "2025": "数值", "2026E": "基础数据", "2027E": "数值"},
+        metric_name=metric_name,
+        period_values=period_values if period_values is not None else {"2025": "数值", "2026E": "基础数据", "2027E": "数值"},
+        row_type="STRICT_FINANCIAL_TABLE_ROW",
+    )
+    return row
+
+
+def test_r7s_market_data_pseudo_header_row_does_not_enter_clean_data() -> None:
+    # 核心盈利预测与估值,11,市场数据  period_values = "数值","基础数据","数值"
+    row = _make_strict_scaffolding_row("市场数据")
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7s_vendor_comparison_dimension_row_does_not_enter_clean_data() -> None:
+    # 行业赛道数据,13,厂商  period_values = "型号","最大功率","排量","缸型"
+    row = _make_strict_scaffolding_row(
+        "厂商",
+        sheet_name="行业赛道数据",
+        period_values={"2025": "型号", "2026E": "最大功率", "2027E": "排量", "2028E": "缸型"},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7s_comparison_axis_row_does_not_enter_clean_data() -> None:
+    # 行业赛道数据,19,对比维度  period_values = "中速燃气内燃机","重型/航改型燃气轮机"
+    row = _make_strict_scaffolding_row(
+        "对比维度",
+        sheet_name="行业赛道数据",
+        period_values={"2025": "中速燃气内燃机", "2026E": "重型/航改型燃气轮机"},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7s_echoed_period_label_header_row_does_not_enter_clean_data() -> None:
+    # 三大财务报表与核心指标,17,项目  period_values echo the period labels themselves
+    row = _make_strict_scaffolding_row(
+        "项目",
+        sheet_name="三大财务报表与核心指标",
+        period_values={"2025A": "2025A", "2026E": "2026E", "2027E": "2027E", "2028E": "2028E"},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7s_indicator_echoed_label_header_row_does_not_enter_clean_data() -> None:
+    # 三大财务报表与核心指标,35,指标  period_values echo the period labels themselves
+    row = _make_strict_scaffolding_row(
+        "指标",
+        sheet_name="三大财务报表与核心指标",
+        period_values={"2025A": "2025A", "2026E": "2026E", "2027E": "2027E", "2028E": "2028E"},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7s_normal_numeric_fact_row_preserves_clean_admission() -> None:
+    # Normal financial rows (营业总收入 / 归母净利润 / EPS / P/E / ROE / 毛利率 / 收入同比)
+    # must stay INTERNAL_CLEAN_CANDIDATE when their period values are numeric.
+    row = _make_strict_scaffolding_row(
+        "营业总收入(百万元)",
+        period_values={"2024A": 4356, "2025A": 4521, "2026E": 6317, "2027E": 7535, "2028E": 8755},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
+
+
+def test_r7s_numeric_string_fact_row_preserves_clean_admission() -> None:
+    # Numeric strings such as "4356" / "-991.03" still count as numeric facts, so
+    # a strict row whose values are numeric strings must not be blocked.
+    row = _make_strict_scaffolding_row(
+        "归母净利润(百万元)",
+        period_values={"2024A": "-991.03", "2025A": "60.54", "2026E": "356.68"},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
+
+
+def test_r7s_mixed_numeric_and_dash_fact_row_preserves_clean_admission() -> None:
+    # A row like PUE系数 may carry "-" for an early period but real numbers later.
+    # Because at least one value is numeric, it is a fact row, not scaffolding.
+    row = _make_strict_scaffolding_row(
+        "PUE系数",
+        sheet_name="行业赛道数据",
+        period_values={"2025": "-", "2026E": 1.49, "2027E": 1.48, "2028E": 1.47},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
+
+
+def test_r7s_scaffolding_guard_does_not_apply_when_strong_evidence() -> None:
+    # The guard is scoped to WEAK_EVIDENCE strict rows. A STRONG_EVIDENCE strict
+    # row is never INTERNAL_CLEAN_CANDIDATE under the existing policy (it returns
+    # REVIEW_REQUIRED before the scaffolding branch), so the guard must not
+    # change that path.
+    row = _make_strict_scaffolding_row(
+        "营业总收入(百万元)",
+        period_values={"2024A": 4356, "2025A": 4521},
+    )
+    row.explicit_evidence_ref = "page=12"
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert evidence_level == "STRONG_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7s_scaffolding_label_with_numeric_values_stays_clean() -> None:
+    # A metric label that happens to be in the scaffolding set (e.g. 指标) must
+    # NOT be blocked when its period_values are genuinely numeric facts. The
+    # period_values shape is the primary discriminator, never the label alone.
+    row = _make_strict_scaffolding_row(
+        "指标",
+        period_values={"2025A": 3.54, "2026E": 5.01, "2027E": 6.54, "2028E": 7.69},
+    )
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
+
+
 def test_market_reference_weak_evidence_row_now_stays_review_required() -> None:
     row = _make_row("总市值（亿元）", unit_hint="亿元")
     row.sheet_name = "市场与基础数据"
