@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from datefac_agent.audit.evidence_checker import audit_evidence_presence
+from datefac_agent.audit.evidence_checker import audit_evidence_presence, classify_agreement_status, parse_page_number
 from datefac_agent.audit.output_schema_guardrails import OutputSchemaGuardrailError, validate_outputs
 from datefac_agent.audit.period_alignment_checker import audit_period_alignment, detect_period_labels
 from datefac_agent.audit.row_type_classifier import classify_row_type
@@ -296,11 +296,12 @@ def test_r7s_mixed_numeric_and_dash_fact_row_preserves_clean_admission() -> None
     assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
 
 
-def test_r7s_scaffolding_guard_does_not_apply_when_strong_evidence() -> None:
-    # The guard is scoped to WEAK_EVIDENCE strict rows. A STRONG_EVIDENCE strict
-    # row is never INTERNAL_CLEAN_CANDIDATE under the existing policy (it returns
-    # REVIEW_REQUIRED before the scaffolding branch), so the guard must not
-    # change that path.
+def test_r7s_scaffolding_guard_does_not_block_numeric_row_with_explicit_ref_r7x() -> None:
+    # R7X: an explicit page reference makes evidence WEAK_EVIDENCE (UNVERIFIED),
+    # not STRONG_EVIDENCE. Because the row has numeric period_values, the
+    # scaffolding guard does not apply, so the row stays INTERNAL_CLEAN_CANDIDATE.
+    # This confirms the guard only blocks non-numeric scaffolding rows, never
+    # numeric fact rows regardless of evidence provenance.
     row = _make_strict_scaffolding_row(
         "营业总收入(百万元)",
         period_values={"2024A": 4356, "2025A": 4521},
@@ -308,8 +309,9 @@ def test_r7s_scaffolding_guard_does_not_apply_when_strong_evidence() -> None:
     row.explicit_evidence_ref = "page=12"
     evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
     result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
-    assert evidence_level == "STRONG_EVIDENCE"
-    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.agreement_status == "UNVERIFIED"
+    assert result.clean_candidate_type == "INTERNAL_CLEAN_CANDIDATE"
 
 
 def test_r7s_scaffolding_label_with_numeric_values_stays_clean() -> None:
@@ -651,7 +653,8 @@ def test_market_base_data_rows_become_market_reference_rows_but_do_not_expand_cl
     evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
     result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
     assert row.row_type == "MARKET_REFERENCE_ROW"
-    assert evidence_level == "STRONG_EVIDENCE"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.agreement_status == "UNVERIFIED"
     assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
@@ -757,8 +760,11 @@ def test_qualitative_facts_metric_name_prefers_indicator_over_fact_id() -> None:
 
 
 def test_qualitative_facts_rows_become_testset_supporting_and_stay_out_of_clean_data() -> None:
-    # A STRONG-evidenced qualitative_facts row (页码=1 restored) must route to
-    # TESTSET_SUPPORTING_ROW and resolve to REVIEW_REQUIRED, never INTERNAL_CLEAN_CANDIDATE.
+    # A qualitative_facts row (页码=1 restored) must route to TESTSET_SUPPORTING_ROW
+    # and resolve to REVIEW_REQUIRED, never INTERNAL_CLEAN_CANDIDATE. R7X: the
+    # explicit page reference is parsed and agreement_status is UNVERIFIED, so
+    # evidence_level is WEAK_EVIDENCE (not STRONG) until a future value-agreement
+    # checker verifies it.
     row = SpreadsheetRow(
         source_excel_path="demo.xlsx",
         sheet_name="qualitative_facts",
@@ -783,7 +789,8 @@ def test_qualitative_facts_rows_become_testset_supporting_and_stay_out_of_clean_
     evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
     result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
     assert row.row_type == "TESTSET_SUPPORTING_ROW"
-    assert evidence_level == "STRONG_EVIDENCE"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.agreement_status == "UNVERIFIED"
     assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
@@ -872,12 +879,129 @@ def test_period_issue_strict_row_does_not_enter_clean_data() -> None:
     assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
-def test_explicit_evidence_ref_is_strong_evidence() -> None:
+def test_explicit_evidence_ref_is_unverified_weak_evidence_r7x() -> None:
+    # R7X: explicit page provenance that has not been value-verified is
+    # WEAK_EVIDENCE, not STRONG_EVIDENCE. agreement_status carries the
+    # UNVERIFIED state separately, and the page number is parsed into the
+    # structured EvidenceRef.page_number field.
     row = _make_row("营业收入(百万元)")
     row.explicit_evidence_ref = "page=12"
-    issues, _, evidence_level = audit_evidence_presence(row, "demo.pdf")
-    assert evidence_level == "STRONG_EVIDENCE"
-    assert issues == []
+    issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    assert evidence_level == "WEAK_EVIDENCE"
+    explicit_ref = next(ref for ref in evidence_refs if ref.is_explicit)
+    assert explicit_ref.page_number == 12
+    assert classify_agreement_status(row, evidence_refs) == "UNVERIFIED"
+
+
+# --- R7X: evidence provenance parsing (page_number) + agreement_status tests ---
+#
+# R7W designed a deterministic WEAK->STRONG path. R7X implements the first slice:
+# parse explicit_evidence_ref into EvidenceRef.page_number, add agreement_status,
+# and ensure unverified page provenance does not become verified STRONG_EVIDENCE.
+
+
+def test_r7x_parse_chinese_page_ref_populates_page_number() -> None:
+    # 第12页 -> page_number = 12, agreement_status = UNVERIFIED
+    row = _make_row("营业收入(百万元)")
+    row.explicit_evidence_ref = "第12页"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    explicit_ref = next(ref for ref in evidence_refs if ref.is_explicit)
+    assert explicit_ref.page_number == 12
+    assert explicit_ref.locator == "营业收入(百万元)"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert classify_agreement_status(row, evidence_refs) == "UNVERIFIED"
+
+
+def test_r7x_parse_english_page_ref_variants_populate_page_number() -> None:
+    # page 12 / p.12 / P12 all parse to page_number = 12
+    for ref_text in ("page 12", "p.12", "P12"):
+        assert parse_page_number(ref_text) == 12, ref_text
+
+
+def test_r7x_parse_page_range_preserves_locator_and_uses_first_page() -> None:
+    # 第12-13页 -> page_number = 12 (first page), raw locator preserved
+    row = _make_row("归母净利润(百万元)")
+    row.explicit_evidence_ref = "第12-13页"
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    explicit_ref = next(ref for ref in evidence_refs if ref.is_explicit)
+    assert explicit_ref.page_number == 12
+    assert explicit_ref.source_id == "第12-13页"
+    # pp. 12-13 variant
+    assert parse_page_number("pp. 12-13") == 12
+
+
+def test_r7x_unparseable_explicit_ref_preserves_locator_without_page_number() -> None:
+    # 附录A -> page_number stays None, raw locator preserved, agreement UNVERIFIED
+    row = _make_row("营业收入(百万元)")
+    row.explicit_evidence_ref = "附录A"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    explicit_ref = next(ref for ref in evidence_refs if ref.is_explicit)
+    assert explicit_ref.page_number is None
+    assert explicit_ref.source_id == "附录A"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert classify_agreement_status(row, evidence_refs) == "UNVERIFIED"
+
+
+def test_r7x_missing_explicit_ref_yields_missing_agreement_status() -> None:
+    # No explicit_evidence_ref -> agreement_status = MISSING, evidence WEAK
+    row = _make_row("营业收入(百万元)")
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert classify_agreement_status(row, evidence_refs) == "MISSING"
+    result = build_row_audit_result(row, [], evidence_refs, evidence_level)
+    assert result.agreement_status == "MISSING"
+
+
+def test_r7x_parsed_page_unverified_does_not_claim_verified_strong_evidence() -> None:
+    # The core R7X guard: parsed page_number + UNVERIFIED must not produce
+    # STRONG_EVIDENCE. Evidence stays WEAK until a future value-agreement
+    # checker verifies it.
+    row = _make_row("营业收入(百万元)")
+    row.explicit_evidence_ref = "第12页"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, [], evidence_refs, evidence_level)
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.agreement_status == "UNVERIFIED"
+    # No EvidenceRef should claim is_explicit with a page_number that triggers STRONG
+    assert all(ref.page_number is None or ref.source_type == "explicit_workbook_evidence" for ref in evidence_refs)
+
+
+def test_r7x_workbook_row_weak_evidence_behavior_preserved() -> None:
+    # Existing workbook-row-based weak evidence (no explicit ref) still works.
+    row = _make_row("营业收入(百万元)")
+    row.row_type = "STRICT_FINANCIAL_TABLE_ROW"
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, evidence_issues, evidence_refs, evidence_level)
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.agreement_status == "MISSING"
+
+
+def test_r7x_parse_page_number_none_for_empty_and_non_numeric() -> None:
+    assert parse_page_number(None) is None
+    assert parse_page_number("") is None
+    assert parse_page_number("   ") is None
+    assert parse_page_number("附录") is None
+
+
+def test_r7x_evidence_index_writer_includes_agreement_status() -> None:
+    # agreement_status must be auditable in the evidence index output.
+    import json
+    import tempfile
+
+    from datefac_agent.delivery.evidence_index_writer import write_evidence_index
+
+    row = _make_row("营业收入(百万元)")
+    row.explicit_evidence_ref = "第12页"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, [], evidence_refs, evidence_level)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out_path = Path(tmp) / "evidence_index.json"
+        write_evidence_index(out_path, [result])
+        payload = json.loads(out_path.read_text(encoding="utf-8"))
+        assert payload[0]["agreement_status"] == "UNVERIFIED"
+        explicit_ref = next(ref for ref in payload[0]["evidence_refs"] if ref["is_explicit"])
+        assert explicit_ref["page_number"] == 12
 
 
 def test_missing_lineage_is_missing_evidence() -> None:

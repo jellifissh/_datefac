@@ -31,6 +31,7 @@ def write_evidence_index(output_path: str | Path, row_results: list[AuditRowResu
                 "decision": result.decision.decision if result.decision else "",
                 "clean_candidate_type": result.clean_candidate_type,
                 "evidence_level": result.evidence_level,
+                "agreement_status": result.agreement_status,
                 "row_type": result.row_type,
                 "explicit_evidence_ref": result.row.explicit_evidence_ref,
                 "evidence_refs": [

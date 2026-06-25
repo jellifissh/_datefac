@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datefac_agent.audit.evidence_checker import classify_agreement_status
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.schemas.audit_models import AuditDecision, AuditIssue, AuditRowResult, EvidenceLevel, SpreadsheetRow
 
@@ -35,6 +36,7 @@ def build_row_audit_result(
         issues=issues,
         evidence_refs=list(evidence_refs),
         evidence_level=evidence_level,
+        agreement_status=classify_agreement_status(row, list(evidence_refs)),
         row_type=row.row_type,
         decision=build_audit_decision(issues),
     )

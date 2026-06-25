@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 EvidenceLevel = Literal["STRONG_EVIDENCE", "WEAK_EVIDENCE", "MISSING_EVIDENCE", "NOT_APPLICABLE"]
+EvidenceAgreementStatus = Literal["MISSING", "UNVERIFIED", "VERIFIED", "DISAGREED"]
 RowType = Literal[
     "STRICT_FINANCIAL_TABLE_ROW",
     "MARKET_REFERENCE_ROW",
@@ -102,6 +103,7 @@ class AuditRowResult:
     issues: list[AuditIssue] = field(default_factory=list)
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
     evidence_level: EvidenceLevel = "MISSING_EVIDENCE"
+    agreement_status: EvidenceAgreementStatus = "MISSING"
     row_type: RowType = "UNKNOWN_ROW"
     clean_candidate_type: CleanCandidateType = "REVIEW_REQUIRED"
     decision: AuditDecision | None = None
