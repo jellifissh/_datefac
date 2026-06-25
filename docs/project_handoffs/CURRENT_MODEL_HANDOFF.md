@@ -23,43 +23,57 @@ docs/agent/项目进程.md
 项目进展大白话说明.md
 ```
 
-Full task specs live in `docs/codex_tasks/`. Chat output should normally include only the decision, next task document path, and short local-agent prompt.
+Before writing the local-agent prompt, always include a reasoning-level recommendation:
+
+```text
+recommended_reasoning_level = high / very high / max
+reason = why this task needs that level
+```
+
+Default rule:
+
+```text
+high = ordinary docs sync / simple QA / small bounded changes
+very high = implementation + tests, QA touching evidence / clean_data / guardrails
+max = architecture, readiness, cross-family regression, evidence-strength semantics, production-boundary decisions
+```
+
+Full task specs live in `docs/codex_tasks/`. Chat output should normally include only the decision, next task document path, reasoning-level recommendation, and short local-agent prompt.
 
 ## Current task
 
 ```text
-348N-R7X-QA evidence provenance parsing review
+348N-R7Y deterministic source-value agreement checker / evidence agreement verification slice
+```
+
+Recommended reasoning level:
+
+```text
+recommended_reasoning_level = max
+reason = R7Y touches VERIFIED / DISAGREED evidence agreement semantics. A wrong implementation can pollute future evidence_strength and readiness interpretation.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7X_QA_evidence_provenance_parsing_review.md
-```
-
-Expected report:
-
-```text
-docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
+docs/codex_tasks/348N_R7Y_deterministic_source_value_agreement_checker.md
 ```
 
 Task type:
 
 ```text
-QA / review task
+implementation + tests
 ```
 
-R7X-QA focus:
+R7Y focus:
 
 ```text
-page_number parsed = provenance anchor exists
-agreement_status = UNVERIFIED = source-value agreement not checked yet
-UNVERIFIED provenance remains WEAK_EVIDENCE
-parsed page_number does not automatically become VERIFIED or STRONG_EVIDENCE
-MARKET_REFERENCE_ROW policy unchanged
-qualitative_facts admission unchanged
-R7S strict-table clean-boundary unchanged
-readiness gates closed
+Add deterministic source-value agreement checking.
+Populate VERIFIED only when structured numeric values are deterministically found in trusted source evidence text.
+Populate DISAGREED only when deterministic comparison proves mismatch.
+Keep unavailable / ambiguous / partial evidence as UNVERIFIED.
+Do not map VERIFIED to production readiness.
+Do not make VERIFIED automatic clean admission.
 ```
 
 ## Minimum read order
@@ -72,14 +86,40 @@ AGENTS.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
-docs/codex_tasks/348N_R7X_QA_evidence_provenance_parsing_review.md
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
 docs/agent/348N_R7W_EVIDENCE_STRENGTHENING_DESIGN_WEAK_TO_STRONG_PATH.md
-docs/agent/348N_R7V_CROSS_FAMILY_CLEAN_BOUNDARY_SUMMARY_AND_READINESS_REVIEW.md
-docs/agent/348N_R7U_LINYANG_ANJING_WORKBOOK_FAMILY_REGRESSION_CHECK.md
-docs/agent/348N_R7T_TAIHAO_STRICT_TABLE_SCAFFOLDING_CLEAN_BOUNDARY_PILOT_RERUN.md
+docs/codex_tasks/348N_R7Y_deterministic_source_value_agreement_checker.md
 ```
 
 ## Latest completed result
+
+### R7X-QA evidence provenance parsing review
+
+```text
+commit = 6fb00ec docs: add R7X QA review
+Decision = 348N_R7X_QA_CONFIRMED_EVIDENCE_PROVENANCE_PARSING_VALID
+build_result = COMPILE_OK
+test_result = tests/agent 95 passed
+qa_result = VALID
+page_number_parsing_result = valid
+agreement_status_result = valid
+strong_evidence_claim_result = valid
+readiness_gates = closed
+```
+
+R7X-QA confirmed:
+
+```text
+page_number parsed = provenance anchor exists
+agreement_status = UNVERIFIED = source-value agreement not checked yet
+UNVERIFIED provenance remains WEAK_EVIDENCE
+parsed page_number does not automatically become VERIFIED or STRONG_EVIDENCE
+MARKET_REFERENCE_ROW policy unchanged
+qualitative_facts admission unchanged
+R7S strict-table clean-boundary unchanged
+readiness gates closed
+```
 
 ### R7X evidence provenance parsing
 
@@ -140,15 +180,13 @@ demo_export_only = true
 
 ## Next-step guidance
 
-Current next step is R7X-QA.
+Current next step is R7Y.
 
-If R7X-QA passes, recommended next task:
+R7Y should move from page provenance to deterministic source-value agreement verification.
 
-```text
-348N-R7Y deterministic source-value agreement checker / evidence agreement verification slice
-```
+R7Y should still keep readiness gates closed.
 
-R7Y should move from page provenance to deterministic source-value agreement verification. R7Y should still keep readiness gates closed.
+After R7Y, the expected next task is R7Y-QA before any workbook-family rerun or readiness claim.
 
 ## Boundaries
 
@@ -161,5 +199,7 @@ readiness gates stay closed
 qualitative_facts admission remains closed
 MARKET_REFERENCE_ROW policy stays conservative
 page_number parsing is not source-value verification
+VERIFIED is not automatic clean admission
+VERIFIED is not production readiness
 agent tasks should stage only explicit allowed paths
 ```
