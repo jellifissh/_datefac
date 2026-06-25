@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from datefac_agent.schemas.audit_models import AuditIssue, EvidenceAgreementStatus, EvidenceLevel, EvidenceRef, SpreadsheetRow
@@ -12,6 +13,7 @@ from datefac_agent.schemas.audit_models import AuditIssue, EvidenceAgreementStat
 # number of a range so page_number stays a single int while the raw locator
 # string is preserved separately on the EvidenceRef.
 _PAGE_NUMBER_RE = re.compile(r"(\d+)")
+_NUMERIC_TOKEN_RE = re.compile(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)?%?(?![\w.])|\(\s*\d[\d,]*(?:\.\d+)?%?\s*\)")
 
 
 def parse_page_number(ref_text: str | None) -> int | None:
@@ -100,17 +102,83 @@ def classify_evidence_level(row: SpreadsheetRow, pdf_path: str | Path, evidence_
     return "MISSING_EVIDENCE"
 
 
-def classify_agreement_status(row: SpreadsheetRow, evidence_refs: list[EvidenceRef]) -> EvidenceAgreementStatus:
-    """Classify evidence agreement status for a single row.
+def _normalize_numeric_value(value: object) -> Decimal | None:
+    """Normalize common financial numeric values for deterministic equality."""
 
-    R7X populates only MISSING and UNVERIFIED because no PDF value-agreement
-    checker exists yet. VERIFIED / DISAGREED are reserved for a future task.
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip()
+    if not text or text in {"-", "--", "—", "N/A", "n/a"}:
+        return None
+
+    is_negative_parentheses = text.startswith("(") and text.endswith(")")
+    if is_negative_parentheses:
+        text = text[1:-1].strip()
+    if text.endswith("%"):
+        text = text[:-1].strip()
+    text = text.replace(",", "")
+    if not text:
+        return None
+
+    try:
+        number = Decimal(text)
+    except InvalidOperation:
+        return None
+    if is_negative_parentheses:
+        number = -number
+    return number
+
+
+def _extract_numeric_tokens(text: str) -> set[Decimal]:
+    tokens: set[Decimal] = set()
+    for match in _NUMERIC_TOKEN_RE.finditer(text):
+        number = _normalize_numeric_value(match.group(0))
+        if number is not None:
+            tokens.add(number)
+    return tokens
+
+
+def _numeric_period_values(row: SpreadsheetRow) -> list[Decimal]:
+    values: list[Decimal] = []
+    for value in row.period_values.values():
+        number = _normalize_numeric_value(value)
+        if number is not None:
+            values.append(number)
+    return values
+
+
+def classify_agreement_status(
+    row: SpreadsheetRow,
+    evidence_refs: list[EvidenceRef],
+    source_text: str | None = None,
+) -> EvidenceAgreementStatus:
+    """Classify deterministic source-value agreement for a single row.
+
+    R7Y keeps production row-building conservative: explicit/page provenance
+    without supplied source text remains UNVERIFIED. VERIFIED / DISAGREED are
+    returned only by deterministic numeric comparison against trusted source text.
     """
 
     has_explicit = any(ref.is_explicit or ref.page_number is not None for ref in evidence_refs) or bool(row.explicit_evidence_ref)
-    if has_explicit:
+    if not has_explicit:
+        return "MISSING"
+    if not source_text:
         return "UNVERIFIED"
-    return "MISSING"
+
+    row_numbers = _numeric_period_values(row)
+    if not row_numbers:
+        return "UNVERIFIED"
+
+    source_numbers = _extract_numeric_tokens(source_text)
+    if not source_numbers:
+        return "UNVERIFIED"
+
+    matched_count = sum(1 for value in row_numbers if value in source_numbers)
+    if matched_count == len(row_numbers):
+        return "VERIFIED"
+    if matched_count == 0:
+        return "DISAGREED"
+    return "UNVERIFIED"
 
 
 def audit_evidence_presence(

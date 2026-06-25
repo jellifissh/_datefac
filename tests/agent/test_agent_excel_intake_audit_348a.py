@@ -355,6 +355,128 @@ def test_market_reference_weak_evidence_row_with_unit_issue_stays_review_require
     assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
+# --- R7Y: deterministic source-value agreement checker tests ---
+
+
+def _make_r7y_explicit_row(period_values: dict) -> SpreadsheetRow:
+    row = _make_row("营业收入(百万元)", period_values=period_values)
+    row.explicit_evidence_ref = "第12页"
+    return row
+
+
+def test_r7y_no_explicit_evidence_returns_missing_agreement() -> None:
+    row = _make_row("营业收入(百万元)", period_values={"2024A": 1234})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="营业收入 1,234") == "MISSING"
+
+
+def test_r7y_explicit_page_ref_without_source_text_returns_unverified() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert classify_agreement_status(row, evidence_refs) == "UNVERIFIED"
+
+
+def test_r7y_exact_numeric_value_returns_verified() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="2024A 营业收入 1234 百万元") == "VERIFIED"
+
+
+def test_r7y_comma_formatted_equivalent_value_returns_verified() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="2024A 营业收入 1,234 百万元") == "VERIFIED"
+
+
+def test_r7y_percentage_equivalent_value_returns_verified() -> None:
+    row = _make_r7y_explicit_row({"2024A": "12.30%"})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="毛利率为 12.3%") == "VERIFIED"
+
+
+def test_r7y_parentheses_negative_value_returns_verified() -> None:
+    row = _make_r7y_explicit_row({"2024A": -123})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="归母净利润 (123) 百万元") == "VERIFIED"
+
+
+def test_r7y_numeric_mismatch_returns_disagreed() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="2024A 营业收入 999 百万元") == "DISAGREED"
+
+
+def test_r7y_partial_multi_period_coverage_stays_unverified() -> None:
+    row = _make_r7y_explicit_row({"2024A": 100, "2025A": 200})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="2024A 营业收入 100 百万元") == "UNVERIFIED"
+
+
+def test_r7y_text_valued_facts_stay_unverified() -> None:
+    row = _make_r7y_explicit_row({"2024A": "基础数据", "2025A": "数值"})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="基础数据 数值") == "UNVERIFIED"
+
+
+def test_r7y_verified_does_not_change_evidence_level_or_clean_policy() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    row.row_type = "MARKET_REFERENCE_ROW"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, [], evidence_refs, evidence_level)
+    assert classify_agreement_status(row, evidence_refs, source_text="总市值 1,234 亿元") == "VERIFIED"
+    assert evidence_level == "WEAK_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+
+
+def test_r7y_manifest_readiness_gates_remain_closed() -> None:
+    manifest = build_manifest(
+        "REVIEW_REQUIRED",
+        type("Intake", (), {"sheet_count": 1, "row_count_total": 1})(),
+        type(
+            "Summary",
+            (),
+            {
+                "fail_count": 0,
+                "row_count_audited": 1,
+                "pass_count": 0,
+                "review_count": 1,
+                "issue_count_total": 0,
+                "unit_issue_count": 0,
+                "period_issue_count": 0,
+                "valuation_issue_count": 0,
+                "evidence_issue_count": 0,
+                "strong_evidence_count": 0,
+                "weak_evidence_count": 1,
+                "missing_evidence_count": 0,
+                "not_applicable_evidence_count": 0,
+                "weak_evidence_issue_count": 0,
+                "missing_evidence_issue_count": 0,
+                "strict_financial_table_row_count": 0,
+                "market_reference_row_count": 1,
+                "narrative_assertion_count": 0,
+                "normalized_testset_record_row_count": 0,
+                "testset_supporting_row_count": 0,
+                "unknown_row_count": 0,
+                "clean_data_row_count": 0,
+                "review_queue_row_count": 1,
+                "internal_clean_candidate_count": 0,
+                "internal_reference_candidate_count": 0,
+                "narrative_review_count": 0,
+                "review_required_count": 1,
+                "excluded_from_clean_data_count": 0,
+            },
+        )(),
+        "demo.pdf",
+        "demo.xlsx",
+        "output/demo",
+    )
+    assert manifest["demo_export_only"] is True
+    assert manifest["formal_client_export_allowed"] is False
+    assert manifest["client_ready"] is False
+    assert manifest["production_ready"] is False
+
+
 def test_second_workbook_summary_sheet_can_split_narrative_and_market_rows() -> None:
     narrative_row = SpreadsheetRow(
         source_excel_path="demo.xlsx",
