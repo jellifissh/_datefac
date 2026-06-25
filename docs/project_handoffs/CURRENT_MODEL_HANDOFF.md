@@ -43,37 +43,47 @@ Full task specs live in `docs/codex_tasks/`. Chat output should normally include
 ## Current task
 
 ```text
-348N-R7Y deterministic source-value agreement checker / evidence agreement verification slice
+348N-R7Y-QA deterministic source-value agreement checker review
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7Y touches VERIFIED / DISAGREED evidence agreement semantics. A wrong implementation can pollute future evidence_strength and readiness interpretation.
+reason = R7Y-QA reviews VERIFIED / DISAGREED evidence-agreement semantics. A false pass can pollute future evidence_strength and readiness interpretation.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7Y_deterministic_source_value_agreement_checker.md
+docs/codex_tasks/348N_R7Y_QA_deterministic_source_value_agreement_checker_review.md
+```
+
+Expected report:
+
+```text
+docs/agent/348N_R7Y_QA_DETERMINISTIC_SOURCE_VALUE_AGREEMENT_CHECKER_REVIEW.md
 ```
 
 Task type:
 
 ```text
-implementation + tests
+QA / review task
 ```
 
-R7Y focus:
+R7Y-QA focus:
 
 ```text
-Add deterministic source-value agreement checking.
-Populate VERIFIED only when structured numeric values are deterministically found in trusted source evidence text.
-Populate DISAGREED only when deterministic comparison proves mismatch.
-Keep unavailable / ambiguous / partial evidence as UNVERIFIED.
-Do not map VERIFIED to production readiness.
-Do not make VERIFIED automatic clean admission.
+VERIFIED only when all row numeric period_values match source_text deterministically
+DISAGREED only when source text has numeric tokens and no row numeric values match
+partial coverage remains UNVERIFIED
+text-only facts remain UNVERIFIED
+VERIFIED does not become STRONG_EVIDENCE automatically
+VERIFIED does not become clean admission automatically
+VERIFIED does not open readiness gates
+MARKET_REFERENCE_ROW policy unchanged
+qualitative_facts admission unchanged
+R7S strict-table clean-boundary unchanged
 ```
 
 ## Minimum read order
@@ -87,24 +97,54 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/codex_tasks/348N_R7Y_QA_deterministic_source_value_agreement_checker_review.md
+docs/codex_tasks/348N_R7Y_deterministic_source_value_agreement_checker.md
 docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
 docs/agent/348N_R7W_EVIDENCE_STRENGTHENING_DESIGN_WEAK_TO_STRONG_PATH.md
-docs/codex_tasks/348N_R7Y_deterministic_source_value_agreement_checker.md
 ```
 
 ## Latest completed result
+
+### R7Y deterministic source-value agreement checker
+
+```text
+commit = 973ff68 feat: add deterministic evidence agreement checker
+Decision = PASS，R7Y deterministic source-value agreement checker 已完成并推送
+build_result = PASS，py_compile 全部通过
+test_result = PASS，pytest tests/agent -q => 106 passed in 0.77s
+files_modified = 2
+agreement_checker_result = PASS
+verified_status_result = PASS
+disagreed_status_result = PASS
+strong_evidence_claim_result = PASS
+readiness_gates = CLOSED
+```
+
+R7Y implemented:
+
+```text
+classify_agreement_status(row, evidence_refs, source_text=None)
+numeric normalization using Decimal
+VERIFIED for deterministic full numeric coverage in source_text
+DISAGREED for deterministic numeric mismatch when source has numbers and no values match
+UNVERIFIED for no source_text / partial coverage / text-valued facts / ambiguity
+```
+
+Important boundary:
+
+```text
+VERIFIED != STRONG_EVIDENCE
+VERIFIED != clean admission
+VERIFIED != production readiness
+```
 
 ### R7X-QA evidence provenance parsing review
 
 ```text
 commit = 6fb00ec docs: add R7X QA review
 Decision = 348N_R7X_QA_CONFIRMED_EVIDENCE_PROVENANCE_PARSING_VALID
-build_result = COMPILE_OK
 test_result = tests/agent 95 passed
 qa_result = VALID
-page_number_parsing_result = valid
-agreement_status_result = valid
-strong_evidence_claim_result = valid
 readiness_gates = closed
 ```
 
@@ -115,36 +155,6 @@ page_number parsed = provenance anchor exists
 agreement_status = UNVERIFIED = source-value agreement not checked yet
 UNVERIFIED provenance remains WEAK_EVIDENCE
 parsed page_number does not automatically become VERIFIED or STRONG_EVIDENCE
-MARKET_REFERENCE_ROW policy unchanged
-qualitative_facts admission unchanged
-R7S strict-table clean-boundary unchanged
-readiness gates closed
-```
-
-### R7X evidence provenance parsing
-
-```text
-commit = 5d8aa24 feat: add evidence provenance parsing
-modified files = 5
-pytest tests/agent -q = 95 passed
-full pytest = 33 historical legacy failures, unrelated to R7X
-```
-
-R7X implemented:
-
-```text
-page_number parsing from explicit_evidence_ref
-agreement_status field on AuditRowResult
-evidence_index_writer emits agreement_status
-explicit/page provenance + UNVERIFIED remains WEAK_EVIDENCE
-VERIFIED / DISAGREED reserved for a future deterministic value-agreement checker
-```
-
-Important boundary:
-
-```text
-page_number parsed != VERIFIED
-UNVERIFIED != STRONG_EVIDENCE
 ```
 
 ## Clean-boundary summary
@@ -155,18 +165,6 @@ R7S narrowed STRICT_FINANCIAL_TABLE_ROW + WEAK_EVIDENCE clean admission for scaf
 R7T confirmed Taihao: clean_data 92 -> 72, review_queue 66 -> 86, 20 risky rows moved to review_queue.
 R7U confirmed no R7S regression on Linyang and Anjing.
 R7V confirmed cross-family clean-boundary valid, readiness gates remain closed.
-```
-
-Current data state:
-
-```text
-Taihao R7T clean_data_row_count = 72
-Taihao R7T review_queue_row_count = 86
-Taihao R7T risky_rows_in_clean_after = no
-Linyang R7U clean_data_row_count = 0
-Linyang R7U review_queue_row_count = 489
-Anjing R7U clean_data_row_count = 65
-Anjing R7U review_queue_row_count = 17
 ```
 
 Readiness gates:
@@ -180,13 +178,21 @@ demo_export_only = true
 
 ## Next-step guidance
 
-Current next step is R7Y.
+Current next step is R7Y-QA.
 
-R7Y should move from page provenance to deterministic source-value agreement verification.
+If R7Y-QA passes, recommended next step is not production readiness. Prefer either:
 
-R7Y should still keep readiness gates closed.
+```text
+R7Z source_text integration design / evidence index wiring
+```
 
-After R7Y, the expected next task is R7Y-QA before any workbook-family rerun or readiness claim.
+or:
+
+```text
+R7Z targeted fixture coverage for deterministic agreement checker edge cases
+```
+
+Decision should depend on QA findings.
 
 ## Boundaries
 
