@@ -7,7 +7,62 @@ D:\_datefac_agent
 pivot/348-agent-foundation
 ```
 
-## Read order
+## Operating model
+
+After each meaningful completed task, the workflow is:
+
+```text
+review execution report -> decide result -> write next task doc -> give short local-agent prompt -> sync progress docs
+```
+
+Progress sync targets:
+
+```text
+docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/agent/项目进程.md
+项目进展大白话说明.md
+```
+
+Full task specs live in `docs/codex_tasks/`. Chat output should normally include only the decision, next task document path, and short local-agent prompt.
+
+## Current task
+
+```text
+348N-R7X-QA evidence provenance parsing review
+```
+
+Task document:
+
+```text
+docs/codex_tasks/348N_R7X_QA_evidence_provenance_parsing_review.md
+```
+
+Expected report:
+
+```text
+docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
+```
+
+Task type:
+
+```text
+QA / review task
+```
+
+R7X-QA focus:
+
+```text
+page_number parsed = provenance anchor exists
+agreement_status = UNVERIFIED = source-value agreement not checked yet
+UNVERIFIED provenance remains WEAK_EVIDENCE
+parsed page_number does not automatically become VERIFIED or STRONG_EVIDENCE
+MARKET_REFERENCE_ROW policy unchanged
+qualitative_facts admission unchanged
+R7S strict-table clean-boundary unchanged
+readiness gates closed
+```
+
+## Minimum read order
 
 ```text
 AGENTS.md
@@ -16,85 +71,95 @@ AGENTS.md
 .skills/datefac_agent_foundation.md
 .skills/agent_excel_intake_audit_workflow.md
 项目进展大白话说明.md
-docs/codex_tasks/348N_R7R_strict_table_pseudo_header_comparison_row_clean_boundary_design.md
-docs/agent/348N_R7Q_ANOTHER_WORKBOOK_FAMILY_PILOT_REVIEW.md
-docs/agent/348N_R7P_FIX2_QA_MARKET_REFERENCE_CLEAN_DATA_ADMISSION_POLICY_REVIEW.md
-docs/agent/348N_R7P_FIX2_MARKET_REFERENCE_CLEAN_DATA_ADMISSION_POLICY_ALIGNMENT_RESULT.md
-```
-
-## Current task
-
-```text
-348N-R7R strict_table pseudo-header / comparison-row clean-boundary design
-```
-
-This is a review / diagnosis / policy design task, not an implementation task.
-
-Expected next result report:
-
-```text
-docs/agent/348N_R7R_STRICT_TABLE_PSEUDO_HEADER_COMPARISON_ROW_CLEAN_BOUNDARY_DESIGN.md
+docs/agent/项目进程.md
+docs/codex_tasks/348N_R7X_QA_evidence_provenance_parsing_review.md
+docs/agent/348N_R7W_EVIDENCE_STRENGTHENING_DESIGN_WEAK_TO_STRONG_PATH.md
+docs/agent/348N_R7V_CROSS_FAMILY_CLEAN_BOUNDARY_SUMMARY_AND_READINESS_REVIEW.md
+docs/agent/348N_R7U_LINYANG_ANJING_WORKBOOK_FAMILY_REGRESSION_CHECK.md
+docs/agent/348N_R7T_TAIHAO_STRICT_TABLE_SCAFFOLDING_CLEAN_BOUNDARY_PILOT_RERUN.md
 ```
 
 ## Latest completed result
 
-R7Q completed:
+### R7X evidence provenance parsing
 
 ```text
-docs/agent/348N_R7Q_ANOTHER_WORKBOOK_FAMILY_PILOT_REVIEW.md
+commit = 5d8aa24 feat: add evidence provenance parsing
+modified files = 5
+pytest tests/agent -q = 95 passed
+full pytest = 33 historical legacy failures, unrelated to R7X
 ```
 
-Taihao reviewed workbook family:
+R7X implemented:
 
 ```text
-input/泰豪科技_深度研报_核心数据提取_豆包AI生成 (1).xlsx
-pilot output = output/agent_excel_intake_audit_348n_r7p_fix2_qa_market_reference_boundary
+page_number parsing from explicit_evidence_ref
+agreement_status field on AuditRowResult
+evidence_index_writer emits agreement_status
+explicit/page provenance + UNVERIFIED remains WEAK_EVIDENCE
+VERIFIED / DISAGREED reserved for a future deterministic value-agreement checker
 ```
 
-R7Q confirmed:
+Important boundary:
 
 ```text
-decision = AI_EXCEL_INTAKE_AUDIT_348A_NEEDS_FIX
-clean_data_row_count = 92
-clean_data_csv_row_count = 92
-review_queue_row_count = 66
-review_queue_csv_row_count = 66
-unknown_row_count = 0
-market_reference_row_count = 2
+page_number parsed != VERIFIED
+UNVERIFIED != STRONG_EVIDENCE
+```
+
+## Clean-boundary summary
+
+```text
+R7P-FIX2 fixed MARKET_REFERENCE_ROW clean_data leak.
+R7S narrowed STRICT_FINANCIAL_TABLE_ROW + WEAK_EVIDENCE clean admission for scaffolding / pseudo-header / comparison rows.
+R7T confirmed Taihao: clean_data 92 -> 72, review_queue 66 -> 86, 20 risky rows moved to review_queue.
+R7U confirmed no R7S regression on Linyang and Anjing.
+R7V confirmed cross-family clean-boundary valid, readiness gates remain closed.
+```
+
+Current data state:
+
+```text
+Taihao R7T clean_data_row_count = 72
+Taihao R7T review_queue_row_count = 86
+Taihao R7T risky_rows_in_clean_after = no
+Linyang R7U clean_data_row_count = 0
+Linyang R7U review_queue_row_count = 489
+Anjing R7U clean_data_row_count = 65
+Anjing R7U review_queue_row_count = 17
+```
+
+Readiness gates:
+
+```text
 client_ready = false
 production_ready = false
 formal_client_export_allowed = false
 demo_export_only = true
 ```
 
-Key findings:
-
-```text
-post-FIX2 Taihao pilot has no logical / physical count confusion
-clean_data has no forbidden row_type
-收盘价 / 总市值 MARKET_REFERENCE_ROW rows now remain in review_queue
-Taihao does not expose a qualitative_facts-like facts schema
-new remaining issue is narrower: some STRICT_FINANCIAL_TABLE_ROW clean rows look like pseudo-header / comparison-dimension rows (e.g. 市场数据 / 厂商 / 对比维度)
-```
-
 ## Next-step guidance
 
-Do not jump to broad clean-admission promotion.
+Current next step is R7X-QA.
 
-Do not reopen qualitative_facts policy expansion from this workbook family.
-
-Next step should first design the strict-table boundary question:
+If R7X-QA passes, recommended next task:
 
 ```text
-348N-R7R strict_table pseudo-header / comparison-row clean-boundary design
+348N-R7Y deterministic source-value agreement checker / evidence agreement verification slice
 ```
 
-## Guardrails and boundaries
+R7Y should move from page provenance to deterministic source-value agreement verification. R7Y should still keep readiness gates closed.
 
-Do not modify code or tests unless a later task explicitly changes from design to implementation.
+## Boundaries
 
-Do not modify legacy datefac, input/output/temp/data source files, dependencies, readiness gates, or export behavior.
-
-Do not run MinerU, OCR, LLM, or VLM.
-
-Do not commit output files.
+```text
+legacy datefac/ stays reference-only by default
+input/output/temp/data source files stay untouched unless a task explicitly allows generated output
+output files are not committed
+MinerU / OCR / LLM / VLM remain unused unless a task explicitly allows them
+readiness gates stay closed
+qualitative_facts admission remains closed
+MARKET_REFERENCE_ROW policy stays conservative
+page_number parsing is not source-value verification
+agent tasks should stage only explicit allowed paths
+```
