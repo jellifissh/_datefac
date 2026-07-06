@@ -35,44 +35,37 @@ Full task specs live in `docs/codex_tasks/`.
 ## Current task
 
 ```text
-348N-R7AA source_text integration design / evidence index wiring
+348N-R7AB source_text availability / evidence index wiring implementation
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7AA designs how real source_text enters the evidence agreement pipeline. A wrong design would make future evidence_strength interpretation unreliable.
+reason = R7AB introduces the first source_text metadata and checker injection implementation. It must preserve conservative defaults and avoid clean/readiness changes.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AA_source_text_integration_design_evidence_index_wiring.md
-```
-
-Expected report:
-
-```text
-docs/agent/348N_R7AA_SOURCE_TEXT_INTEGRATION_DESIGN_EVIDENCE_INDEX_WIRING.md
+docs/codex_tasks/348N_R7AB_source_text_availability_evidence_index_wiring_implementation.md
 ```
 
 Task type:
 
 ```text
-design / review task
+implementation + tests
 ```
 
-R7AA focus:
+R7AB focus:
 
 ```text
-source_text availability
-source_text provenance contract
-binding source_text to source_id / page_number / locator
-evidence_index output design
-review_queue output design
-missing or untrusted source_text remains UNVERIFIED
-no source_text wiring implementation yet
+source_text sidecar/index contract
+trusted source_text selection by source_id/page_number/locator
+checker-call-time source_text injection
+evidence_index source_text metadata
+review_queue compact fields if safe
+default behavior remains UNVERIFIED without trusted source_text
 no OCR / LLM / VLM
 no readiness gate changes
 ```
@@ -88,7 +81,8 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
-docs/codex_tasks/348N_R7AA_source_text_integration_design_evidence_index_wiring.md
+docs/codex_tasks/348N_R7AB_source_text_availability_evidence_index_wiring_implementation.md
+docs/agent/348N_R7AA_SOURCE_TEXT_INTEGRATION_DESIGN_EVIDENCE_INDEX_WIRING.md
 docs/agent/348N_R7Z_QA_AGREEMENT_CHECKER_EDGE_CASE_REVIEW.md
 docs/agent/348N_R7Y_QA_DETERMINISTIC_SOURCE_VALUE_AGREEMENT_CHECKER_REVIEW.md
 docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
@@ -96,47 +90,35 @@ docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
 
 ## Latest completed result
 
-### R7Z-QA agreement checker edge-case review
+### R7AA source_text integration design
 
 ```text
-commit = 898fa24 docs: add R7Z QA review
-Decision = PASS，R7Z-QA confirms multiplicity-aware agreement checker is valid
-build_result = PASS，py_compile 全部通过
-test_result = PASS，pytest tests/agent -q => 111 passed in 0.68s
-qa_result = VALID
-verified_false_positive_result = REDUCED
-disagreed_status_result = PASS
-source_text_integration_result = NOT_CHANGED
+commit = e5ec327 docs: add R7AA source text integration design
+Decision = PASS，R7AA source_text integration design completed
+build_result = PASS
+test_result = PASS，pytest tests/agent -q => 111 passed
+source_text_availability_result = CURRENT_PIPELINE_HAS_NO_TRUSTED_SOURCE_TEXT
+integration_design_result = PASS
+evidence_index_design_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7Z-QA confirmed:
+R7AA concluded:
 
 ```text
-duplicate row numeric values require duplicate source occurrences
-one source occurrence for two identical row values stays UNVERIFIED
-enough duplicate source occurrences can verify
-partial coverage remains UNVERIFIED
-text-only facts remain UNVERIFIED
-full mismatch remains DISAGREED only when no row values match
-VERIFIED does not become STRONG_EVIDENCE
-VERIFIED does not become clean admission
-VERIFIED does not open readiness gates
-source_text is still not wired into the real pipeline
-```
-
-Remaining known limitation:
-
-```text
-row-level matching is still not period-aware or coordinate-aware
+active pipeline has no trusted production source_text carrier
+workbook fields are provenance hints / extracted workbook fields, not trusted source evidence text
+source_text should use a provenance-tied sidecar/index
+missing / untrusted / mismatched source_text remains UNVERIFIED
+full source_text should not be serialized by default
 ```
 
 ## Clean-boundary summary
 
 ```text
 R7P-FIX2 fixed MARKET_REFERENCE_ROW clean_data leak.
-R7S narrowed STRICT_FINANCIAL_TABLE_ROW + WEAK_EVIDENCE clean admission for scaffolding / pseudo-header / comparison rows.
-R7T confirmed Taihao: clean_data 92 -> 72, review_queue 66 -> 86.
+R7S narrowed strict-table scaffolding clean admission.
+R7T confirmed Taihao clean 92 -> 72, review 66 -> 86.
 R7U confirmed no R7S regression on Linyang and Anjing.
 R7V confirmed cross-family clean-boundary valid, readiness gates remain closed.
 ```
@@ -152,11 +134,9 @@ demo_export_only = true
 
 ## Next-step guidance
 
-Current next step is R7AA.
+Current next step is R7AB.
 
-R7AA is design-only. It should not implement source_text wiring.
-
-If R7AA passes, the likely next step is a narrow implementation slice for source_text availability / evidence index wiring, followed by QA.
+After R7AB, expected next task is R7AB-QA before any real workbook rerun or wider source_text pipeline.
 
 ## Boundaries
 
