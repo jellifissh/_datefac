@@ -33,47 +33,42 @@ reason = why this task needs that level
 ## Current task
 
 ```text
-348N-R7AC source_text sidecar fixture integration / dry-run design
+348N-R7AD source_text sidecar fixture dry-run implementation
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7AC designs the first safe fixture/dry-run path for exercising R7AB source_text wiring without trusting unsafe workbook fields or opening readiness gates.
+reason = R7AD implements controlled fixture dry-run coverage for source_text wiring. It must prove metadata and review_queue behavior without real reruns, full text serialization, or readiness changes.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AC_source_text_sidecar_fixture_integration_dry_run_design.md
-```
-
-Expected report:
-
-```text
-docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
+docs/codex_tasks/348N_R7AD_source_text_sidecar_fixture_dry_run_implementation.md
 ```
 
 Task type:
 
 ```text
-design / review task
+implementation + tests, tests-only preferred
 ```
 
-R7AC focus:
+R7AD focus:
 
 ```text
-fixture sidecar format recommendation
-fixture location recommendation
-dry-run path recommendation
-positive fixture cases
-negative fixture cases
-evidence_index metadata validation design
-review_queue compact field validation design
+in-test SourceTextEvidence objects
+tempfile evidence_index validation
+in-memory review_queue validation
+positive trusted source_text cases
+negative missing/mismatch/untrusted/empty source_text cases
+full source_text absent from serialized outputs
+VERIFIED does not become STRONG_EVIDENCE
+VERIFIED does not become clean admission
+readiness gates remain closed
 no workbook rerun
 no MinerU / OCR / LLM / VLM
-no readiness gate changes
 ```
 
 ## Minimum read order
@@ -87,38 +82,38 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
-docs/codex_tasks/348N_R7AC_source_text_sidecar_fixture_integration_dry_run_design.md
+docs/codex_tasks/348N_R7AD_source_text_sidecar_fixture_dry_run_implementation.md
+docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
 docs/agent/348N_R7AB_QA_SOURCE_TEXT_AVAILABILITY_EVIDENCE_INDEX_WIRING_REVIEW.md
-docs/codex_tasks/348N_R7AB_QA_source_text_availability_evidence_index_wiring_review.md
 docs/codex_tasks/348N_R7AB_source_text_availability_evidence_index_wiring_implementation.md
 docs/agent/348N_R7AA_SOURCE_TEXT_INTEGRATION_DESIGN_EVIDENCE_INDEX_WIRING.md
-docs/agent/348N_R7Z_QA_AGREEMENT_CHECKER_EDGE_CASE_REVIEW.md
 ```
 
 ## Latest completed result
 
-### R7AB-QA source_text availability / evidence index wiring review
+### R7AC source_text sidecar fixture integration / dry-run design
 
 ```text
-commit = 758ec98 docs: add R7AB QA review
-Decision = PASS，R7AB-QA confirms source_text wiring valid
+commit = a3cc7f8 docs: add R7AC source text fixture design
+Decision = PASS，R7AC design completed
 build_result = PASS
 test_result = PASS，pytest tests/agent -q => 123 passed
-files_modified = 1
-boundary_check = PASS
-qa_result = VALID
+fixture_design_result = PASS
+dry_run_design_result = PASS
+evidence_index_validation_design_result = PASS
+review_queue_validation_design_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7AB-QA confirmed:
+R7AC concluded:
 
 ```text
-source text contract review = PASS
-source text selection review = PASS
-agreement checker injection review = PASS
-evidence index metadata review = PASS, metadata/hash only, no full source_text
-review queue compact fields review = PASS, no full source_text
-VERIFIED does not affect STRONG_EVIDENCE, clean admission, or readiness
+fixture format: in-test SourceTextEvidence objects first
+future file-backed fixtures: tests/agent/fixtures/source_text_sidecars/
+dry-run path: lower-level helpers first, not run_pilot(...) or real workbook reruns
+evidence_index validation: tempfile
+review_queue validation: in-memory
+full source_text must not be serialized
 ```
 
 ## Current boundaries
@@ -142,6 +137,6 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Current next step is R7AC.
+Current next step is R7AD.
 
-R7AC is design-only. If it passes, likely next step is R7AD fixture sidecar dry-run implementation, followed by R7AD-QA.
+If R7AD passes, expected next task is R7AD-QA before any real workbook dry-run or file-backed sidecar loader.
