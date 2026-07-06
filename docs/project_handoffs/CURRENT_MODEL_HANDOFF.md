@@ -16,7 +16,7 @@ review execution report -> decide result -> write next task doc -> give local-ag
 ## Current task
 
 ```text
-348N-R7AI real PDF text-layer provider design
+348N-R7AJ dependency audit for real PDF text-layer provider
 ```
 
 Task sizing:
@@ -24,68 +24,67 @@ Task sizing:
 ```text
 task_size = small
 recommended_reasoning_level = max
-execution_mode = design-review-only
-reason = R7AI designs the first real PDF text-layer provider boundary after the lightweight synthetic prototype passed QA. It must avoid implementation, new dependencies, real PDF runs, MinerU-first behavior, and readiness leakage.
+execution_mode = dependency-audit-only
+reason = R7AJ checks whether real PDF text-layer provider implementation can use existing dependencies or must split dependency addition into a separate QA-gated task.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AI_real_pdf_text_layer_provider_design.md
+docs/codex_tasks/348N_R7AJ_dependency_audit_for_real_pdf_text_layer_provider.md
 ```
 
 Expected report:
 
 ```text
-docs/agent/348N_R7AI_REAL_PDF_TEXT_LAYER_PROVIDER_DESIGN.md
+docs/agent/348N_R7AJ_DEPENDENCY_AUDIT_FOR_REAL_PDF_TEXT_LAYER_PROVIDER.md
 ```
 
-R7AI focus:
+R7AJ focus:
 
 ```text
-real PDF text-layer provider interface
-whether to mirror R7AH synthetic provider API
-dependency strategy: PyMuPDF / pdfplumber / pypdf / optional dependency / dependency audit first
-text-layer detection policy
-scanned/image-only PDF policy
-target-page extraction when page_number exists
-capped candidate search when page_number is missing
-cache key using source_file_sha256 + provider metadata + extraction config
-cache manifest and invalidation
-SourceTextEvidence mapping
-trusted_source / extraction_method / text_kind definitions
-agreement and confidence boundaries
-MinerU/OCR/manual review fallback policy
-R7AJ implementation vs dependency audit recommendation
+dependency/config inventory
+whether PyMuPDF / fitz exists
+whether pdfplumber exists
+whether pypdf / PyPDF2 exists
+whether pdfminer.six exists
+lock file constraints
+candidate comparison
+optional import strategy
+missing dependency status design
+implementation readiness decision
+recommended R7AK slice
+no dependency addition
+no PDF parser implementation
+no real PDF run
+no MinerU/OCR/LLM/VLM
+readiness gates remain closed
 ```
 
 ## Latest completed result
 
 ```text
-R7AH-QA commit = d0529a7
-Decision = PASS; 348N_R7AH_QA_CONFIRMED_LIGHTWEIGHT_PDF_EVIDENCE_BRIDGE_PROTOTYPE_VALID
-test_result = PASS; 180 passed in 0.88s
-qa_result = VALID
+R7AI commit = acd68dc
+Decision = PASS，348N_R7AI_REAL_PDF_TEXT_LAYER_PROVIDER_DESIGN_VALID
+test_result = PASS，180 passed
+provider_design_result = PASS
+dependency_strategy_result = PASS，next is R7AJ dependency audit
+cost_control_result = PASS
+cache_design_result = PASS
+fallback_policy_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7AH-QA confirmed:
+R7AI conclusion:
 
 ```text
-prototype test-only under tests/agent/
-synthetic page-text provider only
-no real PDF IO
-no PyMuPDF/pdfplumber/pypdf imports
-no new dependencies
-no MinerU/OCR/LLM/VLM
-no production hook
-value + metric + period proximity required
-conservative failures remain conservative
-SourceTextEvidence mapping valid
-evidence_index metadata-only
-review_queue compact-only
-full snippet text absent from serialized outputs
-VERIFIED does not affect STRONG_EVIDENCE, clean admission, or readiness
+real PDF text-layer provider remains bounded
+optional-dependency-first
+cache-manifested
+metadata-only
+non-promotional
+MinerU fallback, not default
+OCR fallback, not default
 ```
 
 ## Current boundaries
@@ -106,4 +105,4 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Execute R7AI. If R7AI passes, choose R7AJ based on dependency findings: either real PDF text-layer provider test-only implementation or dependency audit. Do not jump to real PDF batch runs, MinerU-first, OCR, or production readiness.
+Execute R7AJ. If R7AJ passes, choose R7AK based on dependency findings: real PDF text-layer provider test-only implementation, optional dependency addition design, or adapter-boundary-only provider skeleton. Do not jump to real PDF batch runs, MinerU-first, OCR, or production readiness.
