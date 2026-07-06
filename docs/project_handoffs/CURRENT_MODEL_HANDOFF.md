@@ -30,52 +30,53 @@ recommended_reasoning_level = high / very high / max
 reason = why this task needs that level
 ```
 
-Default rule:
-
-```text
-high = ordinary docs sync / simple QA / small bounded changes
-very high = implementation + tests, QA touching evidence / clean_data / guardrails
-max = architecture, readiness, cross-family regression, evidence-strength semantics, production-boundary decisions
-```
-
 Full task specs live in `docs/codex_tasks/`.
 
 ## Current task
 
 ```text
-348N-R7Z agreement checker edge-case fixture coverage
+348N-R7Z-QA agreement checker edge-case review
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7Z hardens VERIFIED / DISAGREED boundary cases before any source-text wiring. False positives would pollute future evidence_strength and readiness interpretation.
+reason = R7Z-QA verifies that multiplicity-aware matching reduces VERIFIED false positives without making DISAGREED too aggressive or changing clean/readiness boundaries.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7Z_agreement_checker_edge_case_fixture_coverage.md
+docs/codex_tasks/348N_R7Z_QA_agreement_checker_edge_case_review.md
+```
+
+Expected report:
+
+```text
+docs/agent/348N_R7Z_QA_AGREEMENT_CHECKER_EDGE_CASE_REVIEW.md
 ```
 
 Task type:
 
 ```text
-implementation + tests, test-first preferred
+QA / review task
 ```
 
-R7Z focus:
+R7Z-QA focus:
 
 ```text
-duplicate numeric values
-partial multi-period coverage
-source text with unrelated numeric tokens
-source text with no numeric tokens
-text-only facts
-reduce VERIFIED false-positive risk
-preserve conservative DISAGREED behavior
-no source-text wiring into real pipeline yet
+duplicate row numeric values require duplicate source occurrences
+one source occurrence for two identical row values stays UNVERIFIED
+enough duplicate source occurrences can verify
+partial coverage remains UNVERIFIED
+source text with no numeric tokens remains UNVERIFIED
+text-only facts remain UNVERIFIED
+full mismatch remains DISAGREED only when no row values match
+VERIFIED does not become STRONG_EVIDENCE
+VERIFIED does not become clean admission
+VERIFIED does not open readiness gates
+source_text is still not wired into the real pipeline
 ```
 
 ## Minimum read order
@@ -89,47 +90,50 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
-docs/codex_tasks/348N_R7Z_agreement_checker_edge_case_fixture_coverage.md
+docs/codex_tasks/348N_R7Z_QA_agreement_checker_edge_case_review.md
 docs/agent/348N_R7Y_QA_DETERMINISTIC_SOURCE_VALUE_AGREEMENT_CHECKER_REVIEW.md
-docs/codex_tasks/348N_R7Y_QA_deterministic_source_value_agreement_checker_review.md
-docs/codex_tasks/348N_R7Y_deterministic_source_value_agreement_checker.md
 docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
-docs/agent/348N_R7W_EVIDENCE_STRENGTHENING_DESIGN_WEAK_TO_STRONG_PATH.md
 ```
 
 ## Latest completed result
 
-### R7Y-QA deterministic source-value agreement checker review
+### R7Z agreement checker edge-case fixture coverage
 
 ```text
-commit = 4e71f28 docs: add R7Y QA review
-Decision = PASS，R7Y deterministic source-value agreement checker QA valid
+commit = 004e307 fix: make agreement checker multiplicity conservative
+Decision = PASS，R7Z agreement checker edge-case coverage and conservative multiplicity fix completed
 build_result = PASS，py_compile 全部通过
-test_result = PASS，pytest tests/agent -q => 106 passed in 0.58s
-qa_result = VALID
-agreement_checker_result = PASS
-verified_status_result = PASS
+test_result = PASS，pytest tests/agent -q => 111 passed in 0.84s
+files_modified = 2
+edge_case_coverage_result = PASS
+verified_false_positive_result = REDUCED
 disagreed_status_result = PASS
-strong_evidence_claim_result = PASS
+source_text_integration_result = NOT_CHANGED
 readiness_gates = CLOSED
 ```
 
-R7Y-QA confirmed:
+R7Z fixed:
 
 ```text
-VERIFIED only comes from full deterministic numeric coverage
-partial / text-only / no source text remains UNVERIFIED
-DISAGREED only comes from deterministic numeric mismatch
-VERIFIED does not become STRONG_EVIDENCE
-VERIFIED does not become clean admission
-VERIFIED does not open readiness gates
+before: source numeric tokens were stored as a set
+problem: row values [100, 100] could be satisfied by one source token 100 -> unsafe VERIFIED
+after: source numeric tokens are counted with Counter[Decimal]
+result: duplicate row values require duplicate source occurrences
 ```
 
-R7Y-QA noted future precision risks:
+Concrete example:
 
 ```text
-row-level token matching is not yet period-aware or coordinate-aware
-duplicate numeric values are matched against a source token set
+row period_values = {2024A: 100, 2025A: 100}
+source_text = one occurrence of 100
+before R7Z -> VERIFIED
+after R7Z -> UNVERIFIED
+```
+
+Still not solved intentionally:
+
+```text
+row-level matching is still not period-aware or coordinate-aware
 ```
 
 ## Clean-boundary summary
@@ -153,9 +157,15 @@ demo_export_only = true
 
 ## Next-step guidance
 
-Current next step is R7Z.
+Current next step is R7Z-QA.
 
-After R7Z, expected next task is R7Z-QA before any source-text wiring or workbook-family rerun.
+If R7Z-QA passes, recommended next step is not production readiness. Prefer:
+
+```text
+R7AA source_text integration design / evidence index wiring design
+```
+
+or a more limited targeted design task depending on QA findings.
 
 ## Boundaries
 
