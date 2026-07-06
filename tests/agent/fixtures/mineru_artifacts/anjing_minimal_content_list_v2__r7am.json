@@ -1,0 +1,76 @@
+[
+  [
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {
+            "type": "text",
+            "content": "2026Q1 实现营业收入 47.10 亿元，同比+30.84%；归母净利润 5.63 亿元，同比+42.74%，扣非归母净利润 5.25 亿元，同比+53.04%。毛利率达到 24.99%（同比+1.67pct），净利率达到 12.05%（同比+1.12pct）。"
+          }
+        ]
+      },
+      "bbox": [356, 205, 947, 266]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "47.10 只是一个孤立数字，没有指标和期间。"}
+        ]
+      },
+      "bbox": [100, 300, 420, 330]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "2026Q1 营业收入 指标被提及，但没有可核验数值。"}
+        ]
+      },
+      "bbox": [100, 340, 520, 370]
+    }
+  ],
+  [
+    {
+      "type": "table",
+      "content": {
+        "table_caption": [{"type": "text", "content": "财务数据与估值"}],
+        "table_footnote": [{"type": "text", "content": "资料来源：山西证券研究所"}],
+        "html": "<table><tr><th>指标</th><th>2025A</th><th>2026E</th><th>2027E</th></tr><tr><td>EPS(摊薄/元)</td><td>4.86</td><td>5.37</td><td>6.30</td></tr><tr><td>P/E(倍)</td><td>20.2</td><td>18.3</td><td>15.6</td></tr><tr><td>营业收入(百万元)</td><td>16193</td><td>18,379</td><td>20308</td></tr><tr><td>净利润(百万元)</td><td>1618</td><td>1,791</td><td>2099</td></tr><tr><td>ROE(%)</td><td>9.7</td><td>10.3</td><td>11.2</td></tr><tr><td>P/B(倍)</td><td>2.1</td><td>1.9</td><td>1.7</td></tr></table>",
+        "table_type": "simple_table",
+        "table_nest_level": 1
+      },
+      "bbox": [359, 131, 944, 316]
+    }
+  ],
+  [
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "2026Q1 营业收入 47.10 亿元，重复候选证据 A。"}
+        ]
+      },
+      "bbox": [100, 100, 500, 130]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "2026Q1 营业收入 47.10 亿元，重复候选证据 B。"}
+        ]
+      },
+      "bbox": [100, 140, 500, 170]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "2026Q1 毛利率 20.00%，这是用于冲突检测的错误数值。"}
+        ]
+      },
+      "bbox": [100, 180, 560, 210]
+    }
+  ]
+]
