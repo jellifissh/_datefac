@@ -16,77 +16,67 @@ review execution report -> decide result -> write next task doc -> give local-ag
 ## Current task
 
 ```text
-348N-R7AH lightweight PDF evidence bridge test-only prototype
+348N-R7AH-QA lightweight PDF evidence bridge prototype review
 ```
 
 Task sizing:
 
 ```text
-task_size = large
+task_size = small
 recommended_reasoning_level = max
-execution_mode = phased-hard-stop + implementation-with-self-QA
-reason = R7AH implements a bounded test-only prototype for lightweight evidence bridging. It should prove the low-cost anchor route without real PDFs, new parser dependencies, MinerU, OCR, LLM, VLM, or production hooks.
+execution_mode = QA-review-only
+reason = R7AH-QA reviews the first lightweight evidence bridge prototype and must confirm it remains test-only, synthetic-only, no-heavy-parser, metadata-only, and boundary-safe.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AH_lightweight_pdf_evidence_bridge_test_only_prototype.md
+docs/codex_tasks/348N_R7AH_QA_lightweight_pdf_evidence_bridge_prototype_review.md
 ```
 
-Expected modified files:
+Expected report:
 
 ```text
-tests/agent/lightweight_pdf_evidence_bridge_348n.py
-tests/agent/test_lightweight_pdf_evidence_bridge_348n.py
+docs/agent/348N_R7AH_QA_LIGHTWEIGHT_PDF_EVIDENCE_BRIDGE_PROTOTYPE_REVIEW.md
 ```
 
-R7AH focus:
+R7AH-QA focus:
 
 ```text
-test-only helper under tests/agent/
-synthetic page-text provider
-row hints: source_document_id / page_number / metric_name / period / value
-value + metric + period proximity -> SourceTextEvidence
-value-only -> conservative no trusted evidence
-wrong page -> no trusted evidence
-missing page text -> no trusted evidence
-scanned/image-only marker -> fallback-needed status
-SourceTextEvidence mapping
-agreement checker can produce VERIFIED from accepted snippet
-evidence_index metadata-only
-review_queue compact-only
-no full source_text serialization
-no real PDF
+prototype limited to tests/agent/
+no datefac_agent production code
+no real PDF parser
+no PyMuPDF/pdfplumber/pypdf imports
 no new dependencies
 no MinerU/OCR/LLM/VLM
-no production hook
-readiness gates remain closed
+synthetic page-text provider only
+target-page lookup and capped candidate search
+value + metric + period proximity required
+conservative failures for value-only/no-value/wrong-page/duplicate ambiguous/missing text/scanned marker
+SourceTextEvidence mapping correct
+evidence_index metadata-only
+review_queue compact-only
+no full snippet text serialization
+VERIFIED does not promote to STRONG_EVIDENCE, clean_data, or readiness
 ```
 
 ## Latest completed result
 
 ```text
-R7AG commit = ea68e33
-Decision = PASS; 348N_R7AG_LIGHTWEIGHT_PDF_EVIDENCE_BRIDGE_DESIGN_VALID
-test_result = PASS; 162 passed in 0.94s
-mineru_default_policy = NOT_DEFAULT
-lightweight_bridge_design_result = PASS
-cost_control_result = PASS
+R7AH commit = 26e2717
+Decision = PASS; R7AH test-only lightweight bridge prototype implemented
+test_result = PASS; 180 passed in 0.78s
+files_modified = 2
+boundary_check = PASS
+no_heavy_parser_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7AG conclusion:
+R7AH modified:
 
 ```text
-MinerU-first is not default
-lightweight PDF text bridge is the cost-control default
-page-number rows target specific pages
-no-page rows use capped candidate search
-trusted snippets require value + metric + period proximity
-raw Excel/JSON excerpts are hints only
-MinerU/OCR/manual review are fallback paths
-VERIFIED remains non-promotional
+tests/agent/lightweight_pdf_evidence_bridge_348n.py
+tests/agent/test_lightweight_pdf_evidence_bridge_348n.py
 ```
 
 ## Current boundaries
@@ -107,4 +97,4 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Execute R7AH. If R7AH passes, expected next task is R7AH-QA. Do not jump to real PDF runs, batch production, MinerU-first, or production readiness.
+Execute R7AH-QA. If R7AH-QA passes, expected next task is R7AI real PDF text-layer provider design. Do not jump to real PDF batch runs, MinerU-first, or production readiness.
