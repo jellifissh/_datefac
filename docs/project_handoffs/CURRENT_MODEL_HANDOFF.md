@@ -33,47 +33,47 @@ reason = why this task needs that level
 ## Current task
 
 ```text
-348N-R7AB-QA source_text availability / evidence index wiring review
+348N-R7AC source_text sidecar fixture integration / dry-run design
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7AB-QA reviews the first trusted source_text metadata and checker injection implementation. It must verify conservative defaults, metadata-only serialization, and closed readiness gates.
+reason = R7AC designs the first safe fixture/dry-run path for exercising R7AB source_text wiring without trusting unsafe workbook fields or opening readiness gates.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AB_QA_source_text_availability_evidence_index_wiring_review.md
+docs/codex_tasks/348N_R7AC_source_text_sidecar_fixture_integration_dry_run_design.md
 ```
 
 Expected report:
 
 ```text
-docs/agent/348N_R7AB_QA_SOURCE_TEXT_AVAILABILITY_EVIDENCE_INDEX_WIRING_REVIEW.md
+docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
 ```
 
 Task type:
 
 ```text
-QA / review task
+design / review task
 ```
 
-R7AB-QA focus:
+R7AC focus:
 
 ```text
-SourceTextEvidence / SourceTextSelection contract
-trusted selection by explicit provenance + source_id + page_number + locator
-untrusted / empty / mismatched source_text remains UNVERIFIED
-default behavior remains UNVERIFIED without source_text index
-checker receives source_text only when selected
-evidence_index writes metadata but not full text
-review_queue compact fields are safe
-VERIFIED does not become STRONG_EVIDENCE
-VERIFIED does not become clean admission
-readiness gates remain closed
+fixture sidecar format recommendation
+fixture location recommendation
+dry-run path recommendation
+positive fixture cases
+negative fixture cases
+evidence_index metadata validation design
+review_queue compact field validation design
+no workbook rerun
+no MinerU / OCR / LLM / VLM
+no readiness gate changes
 ```
 
 ## Minimum read order
@@ -87,88 +87,51 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/codex_tasks/348N_R7AC_source_text_sidecar_fixture_integration_dry_run_design.md
+docs/agent/348N_R7AB_QA_SOURCE_TEXT_AVAILABILITY_EVIDENCE_INDEX_WIRING_REVIEW.md
 docs/codex_tasks/348N_R7AB_QA_source_text_availability_evidence_index_wiring_review.md
 docs/codex_tasks/348N_R7AB_source_text_availability_evidence_index_wiring_implementation.md
 docs/agent/348N_R7AA_SOURCE_TEXT_INTEGRATION_DESIGN_EVIDENCE_INDEX_WIRING.md
 docs/agent/348N_R7Z_QA_AGREEMENT_CHECKER_EDGE_CASE_REVIEW.md
-docs/agent/348N_R7Y_QA_DETERMINISTIC_SOURCE_VALUE_AGREEMENT_CHECKER_REVIEW.md
-docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
 ```
 
 ## Latest completed result
 
-### R7AB source_text availability / evidence index wiring implementation
+### R7AB-QA source_text availability / evidence index wiring review
 
 ```text
-commit = 12a4726 feat: wire trusted source text metadata
-Decision = PASS，R7AB implementation completed and pushed
+commit = 758ec98 docs: add R7AB QA review
+Decision = PASS，R7AB-QA confirms source_text wiring valid
 build_result = PASS
 test_result = PASS，pytest tests/agent -q => 123 passed
-files_modified = 7
-source_text_contract_result = PASS
-source_text_selection_result = PASS
-agreement_injection_result = PASS
-evidence_index_wiring_result = PASS
-review_queue_wiring_result = ADDED compact fields
+files_modified = 1
+boundary_check = PASS
+qa_result = VALID
 readiness_gates = CLOSED
 ```
 
-R7AB modified:
+R7AB-QA confirmed:
 
 ```text
-datefac_agent/schemas/audit_models.py
-datefac_agent/audit/evidence_checker.py
-datefac_agent/review/review_queue_builder.py
-datefac_agent/delivery/evidence_index_writer.py
-tools/run_agent_excel_intake_audit_348a.py
-tests/agent/test_agent_excel_intake_audit_348a.py
-tests/agent/conftest.py
+source text contract review = PASS
+source text selection review = PASS
+agreement checker injection review = PASS
+evidence index metadata review = PASS, metadata/hash only, no full source_text
+review queue compact fields review = PASS, no full source_text
+VERIFIED does not affect STRONG_EVIDENCE, clean admission, or readiness
 ```
 
-R7AB boundaries:
-
-```text
-no workbook rerun
-no MinerU / OCR / LLM / VLM / PDF extraction
-no docs/input/output/temp/data/legacy/config/dependency changes
-no clean admission changes
-no evidence_level promotion changes
-no readiness gate changes
-```
-
-## Clean-boundary summary
-
-```text
-R7P-FIX2 fixed MARKET_REFERENCE_ROW clean_data leak.
-R7S narrowed strict-table scaffolding clean admission.
-R7T confirmed Taihao clean 92 -> 72, review 66 -> 86.
-R7U confirmed no R7S regression on Linyang and Anjing.
-R7V confirmed cross-family clean-boundary valid, readiness gates remain closed.
-```
-
-Readiness gates:
+## Current boundaries
 
 ```text
 client_ready = false
 production_ready = false
 formal_client_export_allowed = false
 demo_export_only = true
-```
-
-## Next-step guidance
-
-Current next step is R7AB-QA.
-
-If R7AB-QA passes, decide whether the next task should be a real fixture/sidecar integration slice or a small workbook-family dry-run review. Do not jump to production readiness.
-
-## Boundaries
-
-```text
 legacy datefac/ stays reference-only by default
 input/output/temp/data source files stay untouched unless a task explicitly allows generated output
 output files are not committed
 MinerU / OCR / LLM / VLM remain unused unless a task explicitly allows them
-readiness gates stay closed
 qualitative_facts admission remains closed
 MARKET_REFERENCE_ROW policy stays conservative
 page_number parsing is not source-value verification
@@ -176,3 +139,9 @@ VERIFIED is not automatic clean admission
 VERIFIED is not production readiness
 agent tasks should stage only explicit allowed paths
 ```
+
+## Next-step guidance
+
+Current next step is R7AC.
+
+R7AC is design-only. If it passes, likely next step is R7AD fixture sidecar dry-run implementation, followed by R7AD-QA.
