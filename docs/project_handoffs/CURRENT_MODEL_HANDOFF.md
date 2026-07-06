@@ -23,60 +23,70 @@ docs/agent/项目进程.md
 项目进展大白话说明.md
 ```
 
+Task sizing rule:
+
+```text
+small = high-risk boundary tasks; use task doc + execution + QA + sync
+large = lower-risk or bounded implementation; use phased-hard-stop + implementation-with-self-QA
+```
+
 Before writing the local-agent prompt, always include:
 
 ```text
+task_size = small / medium / large
 recommended_reasoning_level = high / very high / max
+execution_mode = single-step / phased-hard-stop / implementation-with-self-QA
 reason = why this task needs that level
 ```
 
 ## Current task
 
 ```text
-348N-R7AE source_text file-backed sidecar loader design
+348N-R7AF test-only source_text file-backed sidecar loader implementation
 ```
 
-Recommended reasoning level:
+Task sizing:
 
 ```text
+task_size = large
 recommended_reasoning_level = max
-reason = R7AE designs the file-backed source_text sidecar loader contract after fixture dry-run QA. It must keep fail-closed behavior and avoid turning fixture evidence into production readiness.
+execution_mode = phased-hard-stop + implementation-with-self-QA
+reason = R7AF implements the first file-backed test-only source_text loader and fixtures. It should be faster than design-only microtasks, but must keep fail-closed behavior and avoid production integration.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AE_source_text_file_backed_sidecar_loader_design.md
-```
-
-Expected report:
-
-```text
-docs/agent/348N_R7AE_SOURCE_TEXT_FILE_BACKED_SIDECAR_LOADER_DESIGN.md
+docs/codex_tasks/348N_R7AF_test_only_source_text_file_backed_sidecar_loader_implementation.md
 ```
 
 Task type:
 
 ```text
-design / review task
+implementation + tests + self-QA
 ```
 
-R7AE focus:
+R7AF focus:
 
 ```text
-JSON vs JSONL sidecar format
-sidecar schema and required fields
-fixture location
-loader placement: test-only first or runner-visible later
-fail-closed validation rules
-text_sha256 calculation and validation
-full source_text handling
-mapping file records into SourceTextEvidence
-source_document_id to EvidenceRef.source_id binding
-evidence_index / review_queue metadata-only validation
+test-only JSON object v1 sidecar loader
+fixture_scope=test_only
+strict required keys, no unknown keys
+fixtures under tests/agent/fixtures/source_text_sidecars/
+fail-closed invalid file handling
+text_sha256 recomputed from UTF-8 text
+char_count validation
+map records to SourceTextEvidence
+valid fixture drives VERIFIED through existing wiring
+trusted numeric mismatch remains DISAGREED
+missing/mismatch cases remain UNVERIFIED
+evidence_index metadata-only validation
+review_queue compact fields validation
+full source_text absent from serialized outputs
+no production loader / CLI / runner hook
 no workbook rerun
 no MinerU / OCR / LLM / VLM
-no readiness gate changes
+readiness gates remain closed
 ```
 
 ## Minimum read order
@@ -90,42 +100,39 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
-docs/codex_tasks/348N_R7AE_source_text_file_backed_sidecar_loader_design.md
+docs/codex_tasks/348N_R7AF_test_only_source_text_file_backed_sidecar_loader_implementation.md
+docs/agent/348N_R7AE_SOURCE_TEXT_FILE_BACKED_SIDECAR_LOADER_DESIGN.md
 docs/agent/348N_R7AD_QA_SOURCE_TEXT_FIXTURE_DRY_RUN_REVIEW.md
-docs/codex_tasks/348N_R7AD_QA_source_text_fixture_dry_run_review.md
-docs/codex_tasks/348N_R7AD_source_text_sidecar_fixture_dry_run_implementation.md
 docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
 ```
 
 ## Latest completed result
 
-### R7AD-QA source_text fixture dry-run review
+### R7AE source_text file-backed sidecar loader design
 
 ```text
-commit = 39e01ba docs: add R7AD QA review
-Decision = PASS，R7AD-QA confirms fixture dry-run is valid
+commit = d24abf9 docs: add R7AE source text loader design
+Decision = PASS，R7AE source_text file-backed sidecar loader design completed
 build_result = PASS
 test_result = PASS，pytest tests/agent -q => 134 passed
-files_modified = 1
-fixture_dry_run_result = PASS
-evidence_index_validation_result = PASS
-review_queue_validation_result = PASS
-full_text_serialization_result = PASS
-qa_result = VALID
+sidecar_format_result = PASS，JSON object v1
+loader_design_result = PASS，test-only first
+fail_closed_design_result = PASS
+evidence_index_review_queue_design_result = PASS，no full source_text
 readiness_gates = CLOSED
 ```
 
-R7AD-QA confirmed:
+R7AE concluded:
 
 ```text
-R7AD is tests-only
-in-test SourceTextEvidence objects, no loader
-trusted fixture verifies
-trusted mismatch DISAGREED
-missing / mismatch / untrusted / empty -> UNVERIFIED
-evidence_index metadata-only, no full source_text
-review_queue compact fields, no full source_text
-VERIFIED does not affect STRONG_EVIDENCE, clean admission, or readiness
+JSON object v1, not JSONL
+schema_version + fixture_scope=test_only + records[]
+strict required fields, no unknown keys
+fixture location = tests/agent/fixtures/source_text_sidecars/
+loader placement = test-only first
+malformed/unsafe/hash mismatch/duplicate/unsupported fields reject with no partial records
+text_sha256 = recompute UTF-8 SHA-256
+full text remains test-only and must not serialize to evidence_index/review_queue
 ```
 
 ## Current boundaries
@@ -149,6 +156,6 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Current next step is R7AE.
+Current next step is R7AF.
 
-If R7AE passes, likely next task is R7AF file-backed source_text sidecar loader implementation. Do not jump to real workbook rerun or production readiness.
+R7AF is intentionally a larger bounded task. If R7AF passes, expected next step is R7AF-QA before real workbook dry-run or production integration.
