@@ -33,42 +33,49 @@ reason = why this task needs that level
 ## Current task
 
 ```text
-348N-R7AD source_text sidecar fixture dry-run implementation
+348N-R7AD-QA source_text fixture dry-run review
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7AD implements controlled fixture dry-run coverage for source_text wiring. It must prove metadata and review_queue behavior without real reruns, full text serialization, or readiness changes.
+reason = R7AD-QA reviews controlled fixture dry-run coverage for source_text wiring. It must verify positive/negative coverage, metadata-only outputs, and closed clean/readiness boundaries.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AD_source_text_sidecar_fixture_dry_run_implementation.md
+docs/codex_tasks/348N_R7AD_QA_source_text_fixture_dry_run_review.md
+```
+
+Expected report:
+
+```text
+docs/agent/348N_R7AD_QA_SOURCE_TEXT_FIXTURE_DRY_RUN_REVIEW.md
 ```
 
 Task type:
 
 ```text
-implementation + tests, tests-only preferred
+QA / review task
 ```
 
-R7AD focus:
+R7AD-QA focus:
 
 ```text
-in-test SourceTextEvidence objects
-tempfile evidence_index validation
-in-memory review_queue validation
-positive trusted source_text cases
-negative missing/mismatch/untrusted/empty source_text cases
-full source_text absent from serialized outputs
+R7AD remains tests-only
+in-test SourceTextEvidence objects, no loader
+no workbook rerun / run_pilot / real family rerun
+no MinerU / OCR / LLM / VLM / PDF extraction
+trusted fixture verifies
+trusted numeric mismatch -> DISAGREED
+missing / source_id mismatch / page mismatch / locator mismatch / untrusted / empty -> UNVERIFIED
+evidence_index tempfile validation, metadata only, no full source_text
+review_queue in-memory validation, compact fields only, no full source_text
 VERIFIED does not become STRONG_EVIDENCE
 VERIFIED does not become clean admission
 readiness gates remain closed
-no workbook rerun
-no MinerU / OCR / LLM / VLM
 ```
 
 ## Minimum read order
@@ -82,38 +89,46 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/codex_tasks/348N_R7AD_QA_source_text_fixture_dry_run_review.md
 docs/codex_tasks/348N_R7AD_source_text_sidecar_fixture_dry_run_implementation.md
 docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
 docs/agent/348N_R7AB_QA_SOURCE_TEXT_AVAILABILITY_EVIDENCE_INDEX_WIRING_REVIEW.md
-docs/codex_tasks/348N_R7AB_source_text_availability_evidence_index_wiring_implementation.md
-docs/agent/348N_R7AA_SOURCE_TEXT_INTEGRATION_DESIGN_EVIDENCE_INDEX_WIRING.md
 ```
 
 ## Latest completed result
 
-### R7AC source_text sidecar fixture integration / dry-run design
+### R7AD source_text sidecar fixture dry-run implementation
 
 ```text
-commit = a3cc7f8 docs: add R7AC source text fixture design
-Decision = PASS，R7AC design completed
+commit = 9cd4ef6 test: add source text fixture dry-run coverage
+Decision = PASS，R7AD source_text fixture dry-run coverage implemented
 build_result = PASS
-test_result = PASS，pytest tests/agent -q => 123 passed
-fixture_design_result = PASS
-dry_run_design_result = PASS
-evidence_index_validation_design_result = PASS
-review_queue_validation_design_result = PASS
+test_result = PASS，pytest tests/agent -q => 134 passed
+files_modified = 1
+fixture_dry_run_result = PASS
+evidence_index_validation_result = PASS
+review_queue_validation_result = PASS
+full_text_serialization_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7AC concluded:
+R7AD modified:
 
 ```text
-fixture format: in-test SourceTextEvidence objects first
-future file-backed fixtures: tests/agent/fixtures/source_text_sidecars/
-dry-run path: lower-level helpers first, not run_pilot(...) or real workbook reruns
-evidence_index validation: tempfile
-review_queue validation: in-memory
-full source_text must not be serialized
+tests/agent/test_agent_excel_intake_audit_348a.py
+```
+
+R7AD boundaries:
+
+```text
+tests-only
+no loader
+no workbook rerun
+no MinerU / OCR / LLM / VLM / PDF extraction
+no docs/input/output/temp/data/legacy/config/dependency changes
+no clean admission changes
+no evidence_level promotion changes
+no readiness gate changes
 ```
 
 ## Current boundaries
@@ -137,6 +152,6 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Current next step is R7AD.
+Current next step is R7AD-QA.
 
-If R7AD passes, expected next task is R7AD-QA before any real workbook dry-run or file-backed sidecar loader.
+If R7AD-QA passes, decide between a real workbook dry-run design or a file-backed source_text sidecar loader design. Do not jump to production readiness.
