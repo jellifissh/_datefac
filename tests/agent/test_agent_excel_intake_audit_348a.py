@@ -590,6 +590,181 @@ def test_r7ab_verified_still_does_not_change_evidence_level_or_market_policy() -
     assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
+# --- R7AD: controlled source_text fixture dry-run coverage ---
+
+
+def _make_r7ad_manifest(**summary_overrides: object) -> dict[str, object]:
+    summary_values: dict[str, object] = {
+        "fail_count": 0,
+        "row_count_audited": 1,
+        "pass_count": 0,
+        "review_count": 1,
+        "issue_count_total": 0,
+        "unit_issue_count": 0,
+        "period_issue_count": 0,
+        "valuation_issue_count": 0,
+        "evidence_issue_count": 0,
+        "strong_evidence_count": 0,
+        "weak_evidence_count": 1,
+        "missing_evidence_count": 0,
+        "not_applicable_evidence_count": 0,
+        "weak_evidence_issue_count": 0,
+        "missing_evidence_issue_count": 0,
+        "strict_financial_table_row_count": 0,
+        "market_reference_row_count": 1,
+        "narrative_assertion_count": 0,
+        "normalized_testset_record_row_count": 0,
+        "testset_supporting_row_count": 0,
+        "unknown_row_count": 0,
+        "clean_data_row_count": 0,
+        "review_queue_row_count": 1,
+        "internal_clean_candidate_count": 0,
+        "internal_reference_candidate_count": 0,
+        "narrative_review_count": 0,
+        "review_required_count": 1,
+        "excluded_from_clean_data_count": 0,
+    }
+    summary_values.update(summary_overrides)
+    return build_manifest(
+        "REVIEW_REQUIRED",
+        type("Intake", (), {"sheet_count": 1, "row_count_total": 1})(),
+        type("Summary", (), summary_values)(),
+        "demo.pdf",
+        "demo.xlsx",
+        "output/demo",
+    )
+
+
+def test_r7ad_fixture_dry_run_evidence_index_metadata_without_full_text() -> None:
+    import tempfile
+
+    from datefac_agent.delivery.evidence_index_writer import write_evidence_index
+
+    source_text = _make_r7ab_source_text(
+        source_text_id="r7ad-positive-source-text",
+        text="R7AD confidential fixture payload carrying 1,234",
+    )
+    verified_result = _build_r7ab_result([source_text])
+    missing_result = _build_r7ab_result(None)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out_path = Path(tmp) / "evidence_index.json"
+        write_evidence_index(out_path, [verified_result, missing_result])
+        raw_payload = out_path.read_text(encoding="utf-8")
+        payload = json.loads(raw_payload)
+
+    assert source_text.text not in raw_payload
+    assert payload[0]["agreement_status"] == "VERIFIED"
+    assert payload[0]["source_text_status"] == "AVAILABLE_USED"
+    assert payload[0]["source_text_id"] == "r7ad-positive-source-text"
+    assert payload[0]["source_text_source_id"] == "demo.pdf"
+    assert payload[0]["source_text_page_number"] == 12
+    assert payload[0]["source_text_locator"] == "营业收入(百万元)"
+    assert payload[0]["source_text_kind"] == "snippet_text"
+    assert payload[0]["source_text_sha256"] == source_text.text_sha256
+    assert payload[0]["source_text_char_count"] == len(source_text.text)
+    assert payload[0]["source_text_used_for_agreement"] is True
+    assert payload[0]["source_text_unavailable_reason"] is None
+    assert payload[1]["agreement_status"] == "UNVERIFIED"
+    assert payload[1]["source_text_status"] == "MISSING"
+    assert payload[1]["source_text_id"] is None
+    assert payload[1]["source_text_used_for_agreement"] is False
+    assert payload[1]["source_text_unavailable_reason"] == "MISSING"
+
+
+@pytest.mark.parametrize(
+    ("source_text_index", "expected_status"),
+    [
+        (None, "MISSING"),
+        ([_make_r7ab_source_text(source_document_id="other.pdf")], "SOURCE_ID_MISMATCH"),
+        ([_make_r7ab_source_text(page_number=99)], "PAGE_NUMBER_MISMATCH"),
+        ([_make_r7ab_source_text(locator="其他指标")], "LOCATOR_MISMATCH"),
+        ([_make_r7ab_source_text(trusted_source=False)], "UNTRUSTED"),
+        ([_make_r7ab_source_text(text="")], "EMPTY_TEXT"),
+    ],
+)
+def test_r7ad_fixture_dry_run_negative_selection_cases_stay_unverified(
+    source_text_index: list[SourceTextEvidence] | None,
+    expected_status: str,
+) -> None:
+    result = _build_r7ab_result(source_text_index)
+    assert result.agreement_status == "UNVERIFIED"
+    assert result.source_text_selection.status == expected_status
+    assert result.source_text_selection.used_for_agreement is False
+    assert result.source_text_selection.unavailable_reason == expected_status
+
+
+def test_r7ad_fixture_dry_run_numeric_mismatch_can_disagree_without_evidence_promotion() -> None:
+    result = _build_r7ab_result([_make_r7ab_source_text(text="R7AD fixture mismatch value 999")])
+    assert result.agreement_status == "DISAGREED"
+    assert result.source_text_selection.status == "AVAILABLE_USED"
+    assert result.source_text_selection.used_for_agreement is True
+    assert result.evidence_level == "WEAK_EVIDENCE"
+
+
+def test_r7ad_fixture_dry_run_review_queue_compact_fields_without_full_text() -> None:
+    source_text = _make_r7ab_source_text(
+        source_text_id="r7ad-review-source-text",
+        text="R7AD review queue secret fixture payload 1,234",
+    )
+    verified_result = _build_r7ab_result([source_text], include_evidence_issues=True)
+    missing_result = _build_r7ab_result(None, include_evidence_issues=True)
+    queue_rows = build_review_queue_rows([verified_result, missing_result])
+    serialized_queue = json.dumps(queue_rows, ensure_ascii=False)
+
+    assert source_text.text not in serialized_queue
+    assert queue_rows[0]["agreement_status"] == "VERIFIED"
+    assert queue_rows[0]["source_text_status"] == "AVAILABLE_USED"
+    assert queue_rows[0]["source_text_page_number"] == "12"
+    assert queue_rows[0]["source_text_locator"] == "营业收入(百万元)"
+    assert queue_rows[0]["source_text_unavailable_reason"] == ""
+    assert queue_rows[1]["agreement_status"] == "UNVERIFIED"
+    assert queue_rows[1]["source_text_status"] == "MISSING"
+    assert queue_rows[1]["source_text_page_number"] == ""
+    assert queue_rows[1]["source_text_locator"] == ""
+    assert queue_rows[1]["source_text_unavailable_reason"] == "MISSING"
+
+
+def test_r7ad_workbook_raw_text_decoys_are_not_trusted_source_text() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    row.raw_values.update(
+        {
+            "value_text_original": "R7AD raw workbook decoy says 1,234",
+            "source_page": "第12页",
+            "来源页": "第12页",
+            "页码": 12,
+            "摘录/说明": "R7AD raw workbook decoy says 1,234",
+        }
+    )
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(row, [], evidence_refs, evidence_level)
+    assert result.agreement_status == "UNVERIFIED"
+    assert result.source_text_selection.status == "MISSING"
+    assert result.source_text_selection.used_for_agreement is False
+
+
+def test_r7ad_verified_fixture_keeps_market_policy_and_readiness_closed() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    row.row_type = "MARKET_REFERENCE_ROW"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(
+        row,
+        [],
+        evidence_refs,
+        evidence_level,
+        source_text_index=[_make_r7ab_source_text()],
+    )
+    manifest = _make_r7ad_manifest()
+
+    assert result.agreement_status == "VERIFIED"
+    assert result.evidence_level == "WEAK_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
+    assert manifest["demo_export_only"] is True
+    assert manifest["formal_client_export_allowed"] is False
+    assert manifest["client_ready"] is False
+    assert manifest["production_ready"] is False
+
+
 def test_r7y_text_valued_facts_stay_unverified() -> None:
     row = _make_r7y_explicit_row({"2024A": "基础数据", "2025A": "数值"})
     _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
