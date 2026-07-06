@@ -7,16 +7,10 @@ D:\_datefac_agent
 pivot/348-agent-foundation
 ```
 
-## Operating model
-
-```text
-review execution report -> decide result -> write next task doc -> give local-agent prompt -> sync progress docs
-```
-
 ## Current task
 
 ```text
-348N-R7AJ dependency audit for real PDF text-layer provider
+348N-R7AK optional PDF dependency addition design
 ```
 
 Task sizing:
@@ -24,67 +18,49 @@ Task sizing:
 ```text
 task_size = small
 recommended_reasoning_level = max
-execution_mode = dependency-audit-only
-reason = R7AJ checks whether real PDF text-layer provider implementation can use existing dependencies or must split dependency addition into a separate QA-gated task.
+execution_mode = design-review-only
+reason = R7AJ confirmed there is no declared project PDF text-layer dependency. R7AK must choose a safe optional dependency strategy before any install or implementation.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AJ_dependency_audit_for_real_pdf_text_layer_provider.md
+docs/codex_tasks/348N_R7AK_optional_pdf_dependency_addition_design.md
 ```
 
 Expected report:
 
 ```text
-docs/agent/348N_R7AJ_DEPENDENCY_AUDIT_FOR_REAL_PDF_TEXT_LAYER_PROVIDER.md
+docs/agent/348N_R7AK_OPTIONAL_PDF_DEPENDENCY_ADDITION_DESIGN.md
 ```
 
-R7AJ focus:
+R7AK focus:
 
 ```text
-dependency/config inventory
-whether PyMuPDF / fitz exists
-whether pdfplumber exists
-whether pypdf / PyPDF2 exists
-whether pdfminer.six exists
-lock file constraints
-candidate comparison
-optional import strategy
+compare pypdf / PyMuPDF / pdfplumber / pdfminer.six
+select first optional PDF text-layer dependency
+optional import design
 missing dependency status design
-implementation readiness decision
-recommended R7AK slice
-no dependency addition
-no PDF parser implementation
-no real PDF run
-no MinerU/OCR/LLM/VLM
-readiness gates remain closed
+Windows/install risk
+native/binary risk
+scanned PDF limitation
+encrypted/unreadable PDF behavior
+whether dependency addition and provider implementation should be split
+QA gates before/after dependency addition
+keep MinerU/OCR fallback only
+keep metadata-only outputs
+keep VERIFIED non-promotional
 ```
 
 ## Latest completed result
 
 ```text
-R7AI commit = acd68dc
-Decision = PASS，348N_R7AI_REAL_PDF_TEXT_LAYER_PROVIDER_DESIGN_VALID
-test_result = PASS，180 passed
-provider_design_result = PASS
-dependency_strategy_result = PASS，next is R7AJ dependency audit
-cost_control_result = PASS
-cache_design_result = PASS
-fallback_policy_result = PASS
+R7AJ commit = 6ceddc0
+Decision = PASS，348N_R7AJ_DEPENDENCY_AUDIT_CONFIRMED_NO_DECLARED_PDF_TEXT_LAYER_DEPENDENCY
+pdf_library_available_result = NO_DECLARED_PROJECT_PDF_TEXT_LAYER_LIBRARY
+implementation_readiness_result = NOT_READY
+recommended_next_task = 348N-R7AK optional PDF dependency addition design
 readiness_gates = CLOSED
-```
-
-R7AI conclusion:
-
-```text
-real PDF text-layer provider remains bounded
-optional-dependency-first
-cache-manifested
-metadata-only
-non-promotional
-MinerU fallback, not default
-OCR fallback, not default
 ```
 
 ## Current boundaries
@@ -96,8 +72,6 @@ formal_client_export_allowed = false
 demo_export_only = true
 output files are not committed
 MinerU / OCR / LLM / VLM remain unused unless explicitly allowed
-qualitative_facts admission remains closed
-MARKET_REFERENCE_ROW policy stays conservative
 VERIFIED is not automatic clean admission
 VERIFIED is not production readiness
 agent tasks should stage only explicit allowed paths
@@ -105,4 +79,4 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Execute R7AJ. If R7AJ passes, choose R7AK based on dependency findings: real PDF text-layer provider test-only implementation, optional dependency addition design, or adapter-boundary-only provider skeleton. Do not jump to real PDF batch runs, MinerU-first, OCR, or production readiness.
+Execute R7AK. Do not add dependencies, install packages, implement PDF parsing, run real PDFs, or open readiness gates in this task.
