@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "fixture_scope": "test_only",
+  "records": [
+    {
+      "source_text_id": "st-valid-001",
+      "source_document_id": "source-pdf-001",
+      "page_number": 3,
+      "locator": "p3:table:row:revenue",
+      "text_kind": "table_row",
+      "text": "Revenue 2023 123.45",
+      "text_sha256": "ce95918070fa9b87529f4b857dd8adfa577c1882836167f58d2b06152c241812",
+      "char_count": 19,
+      "trusted_source": true,
+      "extraction_method": "fixture_manual"
+    }
+  ]
+}
