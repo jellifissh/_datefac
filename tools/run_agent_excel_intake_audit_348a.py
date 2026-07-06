@@ -21,7 +21,15 @@ from datefac_agent.delivery.audit_report_writer import write_audit_report
 from datefac_agent.delivery.evidence_index_writer import write_csv_rows, write_evidence_index
 from datefac_agent.intake.excel_intake import read_excel_workbook
 from datefac_agent.review.review_queue_builder import build_review_queue_rows, build_row_audit_result
-from datefac_agent.schemas.audit_models import AuditRowResult, AuditSummary, SpreadsheetRow, WorkbookIntakeResult
+from datefac_agent.schemas.audit_models import (
+    AuditRowResult,
+    AuditSummary,
+    SourceTextEvidence,
+    SpreadsheetRow,
+    WorkbookIntakeResult,
+)
+
+SourceTextIndex = list[SourceTextEvidence] | dict[str, SourceTextEvidence]
 
 
 def resolve_input_path(path_arg: str, suffix: str) -> Path:
@@ -121,7 +129,11 @@ def _row_to_clean_csv(result: AuditRowResult) -> dict[str, str]:
     }
 
 
-def audit_workbook(pdf_path: str | Path, excel_path: str | Path) -> tuple[WorkbookIntakeResult, list[AuditRowResult], AuditSummary]:
+def audit_workbook(
+    pdf_path: str | Path,
+    excel_path: str | Path,
+    source_text_index: SourceTextIndex | None = None,
+) -> tuple[WorkbookIntakeResult, list[AuditRowResult], AuditSummary]:
     """Run the full 348A in-memory audit flow."""
 
     intake_result = read_excel_workbook(excel_path)
@@ -134,7 +146,15 @@ def audit_workbook(pdf_path: str | Path, excel_path: str | Path) -> tuple[Workbo
         issues.extend(audit_valuation_metrics(row))
         evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, pdf_path)
         issues.extend(evidence_issues)
-        row_results.append(build_row_audit_result(row, issues, evidence_refs, evidence_level))
+        row_results.append(
+            build_row_audit_result(
+                row,
+                issues,
+                evidence_refs,
+                evidence_level,
+                source_text_index=source_text_index,
+            )
+        )
 
     summary = _summarize_issues(row_results)
     return intake_result, row_results, summary

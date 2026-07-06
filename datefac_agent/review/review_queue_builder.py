@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from datefac_agent.audit.evidence_checker import classify_agreement_status
+from datefac_agent.audit.evidence_checker import (
+    SourceTextIndex,
+    classify_agreement_status,
+    select_source_text_for_row,
+)
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.schemas.audit_models import AuditDecision, AuditIssue, AuditRowResult, EvidenceLevel, SpreadsheetRow
 
@@ -28,15 +32,28 @@ def build_row_audit_result(
     issues: list[AuditIssue],
     evidence_refs: list,
     evidence_level: EvidenceLevel,
+    source_text_index: SourceTextIndex | None = None,
 ) -> AuditRowResult:
     """Bundle a row, issues, evidence, row type, and decision."""
+
+    evidence_ref_list = list(evidence_refs)
+    source_text_selection = select_source_text_for_row(row, evidence_ref_list, source_text_index)
+    if source_text_selection.used_for_agreement and source_text_selection.source_text is not None:
+        agreement_status = classify_agreement_status(
+            row,
+            evidence_ref_list,
+            source_text=source_text_selection.source_text.text,
+        )
+    else:
+        agreement_status = classify_agreement_status(row, evidence_ref_list)
 
     result = AuditRowResult(
         row=row,
         issues=issues,
-        evidence_refs=list(evidence_refs),
+        evidence_refs=evidence_ref_list,
         evidence_level=evidence_level,
-        agreement_status=classify_agreement_status(row, list(evidence_refs)),
+        agreement_status=agreement_status,
+        source_text_selection=source_text_selection,
         row_type=row.row_type,
         decision=build_audit_decision(issues),
     )
@@ -63,10 +80,23 @@ def build_review_queue_rows(row_results: list[AuditRowResult]) -> list[dict[str,
                 "issue_count": str(result.decision.issue_count),
                 "issue_codes": ";".join(result.decision.reason_codes),
                 "evidence_level": result.evidence_level,
+                "agreement_status": result.agreement_status,
                 "row_type": result.row_type,
                 "unit_hint": result.row.unit_hint or "",
                 "period_labels": ";".join(result.row.period_values.keys()),
                 "explicit_evidence_ref": result.row.explicit_evidence_ref or "",
+                "source_text_status": result.source_text_selection.status,
+                "source_text_page_number": (
+                    str(result.source_text_selection.source_text.page_number)
+                    if result.source_text_selection.source_text is not None
+                    else ""
+                ),
+                "source_text_locator": (
+                    result.source_text_selection.source_text.locator or ""
+                    if result.source_text_selection.source_text is not None
+                    else ""
+                ),
+                "source_text_unavailable_reason": result.source_text_selection.unavailable_reason or "",
             }
         )
     return rows

@@ -16,6 +16,23 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
+def _source_text_metadata(result: AuditRowResult) -> dict[str, Any]:
+    selection = result.source_text_selection
+    source_text = selection.source_text
+    return {
+        "source_text_status": selection.status,
+        "source_text_id": source_text.source_text_id if source_text else None,
+        "source_text_source_id": source_text.source_document_id if source_text else None,
+        "source_text_page_number": source_text.page_number if source_text else None,
+        "source_text_locator": source_text.locator if source_text else None,
+        "source_text_kind": source_text.text_kind if source_text else None,
+        "source_text_sha256": source_text.text_sha256 if source_text else None,
+        "source_text_char_count": source_text.char_count if source_text else None,
+        "source_text_used_for_agreement": selection.used_for_agreement,
+        "source_text_unavailable_reason": selection.unavailable_reason,
+    }
+
+
 def write_evidence_index(output_path: str | Path, row_results: list[AuditRowResult]) -> None:
     """Write row-level evidence metadata to JSON."""
 
@@ -32,6 +49,7 @@ def write_evidence_index(output_path: str | Path, row_results: list[AuditRowResu
                 "clean_candidate_type": result.clean_candidate_type,
                 "evidence_level": result.evidence_level,
                 "agreement_status": result.agreement_status,
+                **_source_text_metadata(result),
                 "row_type": result.row_type,
                 "explicit_evidence_ref": result.row.explicit_evidence_ref,
                 "evidence_refs": [

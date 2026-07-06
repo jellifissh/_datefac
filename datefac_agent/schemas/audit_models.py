@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 EvidenceLevel = Literal["STRONG_EVIDENCE", "WEAK_EVIDENCE", "MISSING_EVIDENCE", "NOT_APPLICABLE"]
 EvidenceAgreementStatus = Literal["MISSING", "UNVERIFIED", "VERIFIED", "DISAGREED"]
+SourceTextKind = Literal["page_text", "table_row_text", "snippet_text"]
+SourceTextStatus = Literal[
+    "AVAILABLE_USED",
+    "MISSING",
+    "UNTRUSTED",
+    "SOURCE_ID_MISMATCH",
+    "PAGE_NUMBER_MISMATCH",
+    "EMPTY_TEXT",
+    "NO_EXPLICIT_PAGE_PROVENANCE",
+    "LOCATOR_MISMATCH",
+]
 RowType = Literal[
     "STRICT_FINANCIAL_TABLE_ROW",
     "MARKET_REFERENCE_ROW",
@@ -33,6 +45,39 @@ class EvidenceRef:
     page_number: int | None = None
     locator: str | None = None
     is_explicit: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class SourceTextEvidence:
+    """Trusted source-text sidecar record for deterministic agreement checks."""
+
+    source_text_id: str
+    source_document_id: str
+    page_number: int
+    text: str
+    locator: str | None = None
+    text_kind: SourceTextKind = "page_text"
+    trusted_source: bool = False
+    extraction_method: str | None = None
+    text_sha256: str = ""
+    char_count: int = 0
+
+    def __post_init__(self) -> None:
+        text = self.text or ""
+        if not self.text_sha256:
+            object.__setattr__(self, "text_sha256", hashlib.sha256(text.encode("utf-8")).hexdigest())
+        if self.char_count == 0 and text:
+            object.__setattr__(self, "char_count", len(text))
+
+
+@dataclass(frozen=True, slots=True)
+class SourceTextSelection:
+    """Result of binding row provenance to a source-text sidecar record."""
+
+    status: SourceTextStatus
+    source_text: SourceTextEvidence | None = None
+    used_for_agreement: bool = False
+    unavailable_reason: SourceTextStatus | None = None
 
 
 @dataclass(slots=True)
@@ -104,6 +149,9 @@ class AuditRowResult:
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
     evidence_level: EvidenceLevel = "MISSING_EVIDENCE"
     agreement_status: EvidenceAgreementStatus = "MISSING"
+    source_text_selection: SourceTextSelection = field(
+        default_factory=lambda: SourceTextSelection(status="MISSING", unavailable_reason="MISSING")
+    )
     row_type: RowType = "UNKNOWN_ROW"
     clean_candidate_type: CleanCandidateType = "REVIEW_REQUIRED"
     decision: AuditDecision | None = None

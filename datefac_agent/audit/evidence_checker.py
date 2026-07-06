@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from collections import Counter
 import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from datefac_agent.schemas.audit_models import AuditIssue, EvidenceAgreementStatus, EvidenceLevel, EvidenceRef, SpreadsheetRow
+from datefac_agent.schemas.audit_models import (
+    AuditIssue,
+    EvidenceAgreementStatus,
+    EvidenceLevel,
+    EvidenceRef,
+    SourceTextEvidence,
+    SourceTextSelection,
+    SourceTextStatus,
+    SpreadsheetRow,
+)
+
+SourceTextIndex = Mapping[str, SourceTextEvidence] | Iterable[SourceTextEvidence]
 
 # R7X: deterministic page-reference parser. Matches a leading or embedded page
 # number in common Chinese / English reference forms. Captures the first page
@@ -101,6 +113,103 @@ def classify_evidence_level(row: SpreadsheetRow, pdf_path: str | Path, evidence_
         return "MISSING_EVIDENCE"
 
     return "MISSING_EVIDENCE"
+
+
+def _iter_source_text_records(source_text_index: SourceTextIndex | None) -> list[SourceTextEvidence]:
+    if source_text_index is None:
+        return []
+    if isinstance(source_text_index, Mapping):
+        records = list(source_text_index.values())
+    else:
+        records = list(source_text_index)
+    return sorted(
+        records,
+        key=lambda record: (
+            record.source_document_id,
+            record.page_number,
+            record.locator or "",
+            record.source_text_id,
+        ),
+    )
+
+
+def _make_source_text_selection(
+    status: SourceTextStatus,
+    source_text: SourceTextEvidence | None = None,
+    *,
+    used_for_agreement: bool = False,
+) -> SourceTextSelection:
+    return SourceTextSelection(
+        status=status,
+        source_text=source_text,
+        used_for_agreement=used_for_agreement,
+        unavailable_reason=None if used_for_agreement else status,
+    )
+
+
+def _source_pdf_id(evidence_refs: list[EvidenceRef]) -> str | None:
+    for ref in evidence_refs:
+        if ref.source_type == "source_pdf" and ref.source_id:
+            return ref.source_id
+    return None
+
+
+def _explicit_page_ref(evidence_refs: list[EvidenceRef]) -> EvidenceRef | None:
+    for ref in evidence_refs:
+        if (ref.is_explicit or ref.page_number is not None) and ref.page_number is not None:
+            return ref
+    return None
+
+
+def _locator_is_compatible(evidence_ref: EvidenceRef, source_text: SourceTextEvidence) -> bool:
+    if source_text.text_kind == "page_text":
+        return True
+    if not source_text.locator or not evidence_ref.locator:
+        return True
+    return source_text.locator == evidence_ref.locator
+
+
+def select_source_text_for_row(
+    row: SpreadsheetRow,
+    evidence_refs: list[EvidenceRef],
+    source_text_index: SourceTextIndex | None = None,
+) -> SourceTextSelection:
+    """Select a trusted sidecar source text only when provenance binding is safe."""
+
+    page_ref = _explicit_page_ref(evidence_refs)
+    if page_ref is None:
+        return _make_source_text_selection("NO_EXPLICIT_PAGE_PROVENANCE")
+
+    records = _iter_source_text_records(source_text_index)
+    if not records:
+        return _make_source_text_selection("MISSING")
+
+    source_document_id = _source_pdf_id(evidence_refs)
+    source_id_matches = [
+        record
+        for record in records
+        if source_document_id and record.source_document_id == source_document_id
+    ]
+    if not source_id_matches:
+        return _make_source_text_selection("SOURCE_ID_MISMATCH", records[0])
+
+    page_matches = [record for record in source_id_matches if record.page_number == page_ref.page_number]
+    if not page_matches:
+        return _make_source_text_selection("PAGE_NUMBER_MISMATCH", source_id_matches[0])
+
+    locator_matches = [record for record in page_matches if _locator_is_compatible(page_ref, record)]
+    if not locator_matches:
+        return _make_source_text_selection("LOCATOR_MISMATCH", page_matches[0])
+
+    trusted_matches = [record for record in locator_matches if record.trusted_source]
+    if not trusted_matches:
+        return _make_source_text_selection("UNTRUSTED", locator_matches[0])
+
+    non_empty_matches = [record for record in trusted_matches if record.text and record.text.strip()]
+    if not non_empty_matches:
+        return _make_source_text_selection("EMPTY_TEXT", trusted_matches[0])
+
+    return _make_source_text_selection("AVAILABLE_USED", non_empty_matches[0], used_for_agreement=True)
 
 
 def _normalize_numeric_value(value: object) -> Decimal | None:

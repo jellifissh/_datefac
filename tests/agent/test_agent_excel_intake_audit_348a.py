@@ -24,7 +24,7 @@ from datefac_agent.intake.excel_intake import (
 )
 from datefac_agent.review.clean_candidate_policy import classify_clean_candidate
 from datefac_agent.review.review_queue_builder import build_audit_decision, build_row_audit_result, build_review_queue_rows
-from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SpreadsheetRow
+from datefac_agent.schemas.audit_models import AuditIssue, AuditRowResult, SourceTextEvidence, SpreadsheetRow
 from tools.run_agent_excel_intake_audit_348a import build_manifest
 
 FIXTURE_DIR = Path(__file__).with_name("fixtures")
@@ -447,6 +447,147 @@ def test_r7z_source_text_without_numeric_tokens_stays_unverified() -> None:
     row = _make_r7y_explicit_row({"2024A": 100})
     _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
     assert classify_agreement_status(row, evidence_refs, source_text="营业收入详见管理层讨论") == "UNVERIFIED"
+
+
+# --- R7AB: trusted source_text sidecar / evidence index wiring tests ---
+
+
+def _make_r7ab_source_text(**overrides: object) -> SourceTextEvidence:
+    values = {
+        "source_text_id": "source-text-1",
+        "source_document_id": "demo.pdf",
+        "page_number": 12,
+        "locator": "营业收入(百万元)",
+        "text_kind": "snippet_text",
+        "text": "2024A 营业收入 1,234 百万元",
+        "trusted_source": True,
+        "extraction_method": "fixture_sidecar",
+    }
+    values.update(overrides)
+    return SourceTextEvidence(**values)
+
+
+def _build_r7ab_result(
+    source_text_index: list[SourceTextEvidence] | None,
+    *,
+    period_values: dict | None = None,
+    include_evidence_issues: bool = False,
+) -> AuditRowResult:
+    row = _make_r7y_explicit_row(period_values or {"2024A": 1234})
+    evidence_issues, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    return build_row_audit_result(
+        row,
+        evidence_issues if include_evidence_issues else [],
+        evidence_refs,
+        evidence_level,
+        source_text_index=source_text_index,
+    )
+
+
+def test_r7ab_no_source_text_sidecar_preserves_unverified_default() -> None:
+    result = _build_r7ab_result(None)
+    assert result.agreement_status == "UNVERIFIED"
+    assert result.source_text_selection.status == "MISSING"
+    assert result.source_text_selection.used_for_agreement is False
+
+
+def test_r7ab_trusted_matching_source_text_can_verify() -> None:
+    result = _build_r7ab_result([_make_r7ab_source_text()])
+    assert result.agreement_status == "VERIFIED"
+    assert result.source_text_selection.status == "AVAILABLE_USED"
+    assert result.source_text_selection.used_for_agreement is True
+
+
+def test_r7ab_trusted_matching_source_text_can_disagree() -> None:
+    result = _build_r7ab_result([_make_r7ab_source_text(text="2024A 营业收入 999 百万元")])
+    assert result.agreement_status == "DISAGREED"
+    assert result.source_text_selection.status == "AVAILABLE_USED"
+
+
+@pytest.mark.parametrize(
+    ("source_text", "expected_status"),
+    [
+        (_make_r7ab_source_text(source_document_id="other.pdf"), "SOURCE_ID_MISMATCH"),
+        (_make_r7ab_source_text(page_number=99), "PAGE_NUMBER_MISMATCH"),
+        (_make_r7ab_source_text(locator="other metric"), "LOCATOR_MISMATCH"),
+        (_make_r7ab_source_text(trusted_source=False), "UNTRUSTED"),
+        (_make_r7ab_source_text(text=""), "EMPTY_TEXT"),
+    ],
+)
+def test_r7ab_unbound_or_untrusted_source_text_stays_unverified(
+    source_text: SourceTextEvidence,
+    expected_status: str,
+) -> None:
+    result = _build_r7ab_result([source_text])
+    assert result.agreement_status == "UNVERIFIED"
+    assert result.source_text_selection.status == expected_status
+    assert result.source_text_selection.used_for_agreement is False
+    assert result.source_text_selection.unavailable_reason == expected_status
+
+
+def test_r7ab_source_text_without_explicit_page_provenance_stays_missing() -> None:
+    row = _make_row("营业收入(百万元)", period_values={"2024A": 1234})
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(
+        row,
+        [],
+        evidence_refs,
+        evidence_level,
+        source_text_index=[_make_r7ab_source_text()],
+    )
+    assert result.agreement_status == "MISSING"
+    assert result.source_text_selection.status == "NO_EXPLICIT_PAGE_PROVENANCE"
+
+
+def test_r7ab_evidence_index_serializes_metadata_without_full_source_text() -> None:
+    import tempfile
+
+    from datefac_agent.delivery.evidence_index_writer import write_evidence_index
+
+    source_text = _make_r7ab_source_text(text="confidential source text 1,234")
+    result = _build_r7ab_result([source_text])
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out_path = Path(tmp) / "evidence_index.json"
+        write_evidence_index(out_path, [result])
+        raw_payload = out_path.read_text(encoding="utf-8")
+        payload = json.loads(raw_payload)
+
+    assert "confidential source text" not in raw_payload
+    assert payload[0]["source_text_status"] == "AVAILABLE_USED"
+    assert payload[0]["source_text_id"] == "source-text-1"
+    assert payload[0]["source_text_source_id"] == "demo.pdf"
+    assert payload[0]["source_text_page_number"] == 12
+    assert payload[0]["source_text_sha256"] == source_text.text_sha256
+    assert payload[0]["source_text_char_count"] == len(source_text.text)
+    assert payload[0]["source_text_used_for_agreement"] is True
+
+
+def test_r7ab_review_queue_adds_compact_source_text_fields_without_full_text() -> None:
+    source_text = _make_r7ab_source_text(text="review queue hidden 1,234")
+    result = _build_r7ab_result([source_text], include_evidence_issues=True)
+    queue_rows = build_review_queue_rows([result])
+    assert queue_rows[0]["agreement_status"] == "VERIFIED"
+    assert queue_rows[0]["source_text_status"] == "AVAILABLE_USED"
+    assert queue_rows[0]["source_text_page_number"] == "12"
+    assert queue_rows[0]["source_text_locator"] == "营业收入(百万元)"
+    assert "review queue hidden" not in json.dumps(queue_rows, ensure_ascii=False)
+
+
+def test_r7ab_verified_still_does_not_change_evidence_level_or_market_policy() -> None:
+    row = _make_r7y_explicit_row({"2024A": 1234})
+    row.row_type = "MARKET_REFERENCE_ROW"
+    _, evidence_refs, evidence_level = audit_evidence_presence(row, "demo.pdf")
+    result = build_row_audit_result(
+        row,
+        [],
+        evidence_refs,
+        evidence_level,
+        source_text_index=[_make_r7ab_source_text()],
+    )
+    assert result.agreement_status == "VERIFIED"
+    assert result.evidence_level == "WEAK_EVIDENCE"
+    assert result.clean_candidate_type == "REVIEW_REQUIRED"
 
 
 def test_r7y_text_valued_facts_stay_unverified() -> None:
