@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -129,12 +130,12 @@ def _normalize_numeric_value(value: object) -> Decimal | None:
     return number
 
 
-def _extract_numeric_tokens(text: str) -> set[Decimal]:
-    tokens: set[Decimal] = set()
+def _extract_numeric_tokens(text: str) -> Counter[Decimal]:
+    tokens: Counter[Decimal] = Counter()
     for match in _NUMERIC_TOKEN_RE.finditer(text):
         number = _normalize_numeric_value(match.group(0))
         if number is not None:
-            tokens.add(number)
+            tokens[number] += 1
     return tokens
 
 
@@ -173,7 +174,12 @@ def classify_agreement_status(
     if not source_numbers:
         return "UNVERIFIED"
 
-    matched_count = sum(1 for value in row_numbers if value in source_numbers)
+    matched_count = 0
+    remaining_source_numbers = source_numbers.copy()
+    for value in row_numbers:
+        if remaining_source_numbers[value] > 0:
+            matched_count += 1
+            remaining_source_numbers[value] -= 1
     if matched_count == len(row_numbers):
         return "VERIFIED"
     if matched_count == 0:

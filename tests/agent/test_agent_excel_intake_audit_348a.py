@@ -413,6 +413,42 @@ def test_r7y_partial_multi_period_coverage_stays_unverified() -> None:
     assert classify_agreement_status(row, evidence_refs, source_text="2024A 营业收入 100 百万元") == "UNVERIFIED"
 
 
+# --- R7Z: agreement checker edge-case fixture coverage ---
+
+
+def test_r7z_duplicate_row_values_need_duplicate_source_occurrences() -> None:
+    row = _make_r7y_explicit_row({"2024A": 100, "2025A": 100})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="2024A/2025A 营业收入 100 百万元") == "UNVERIFIED"
+
+
+def test_r7z_duplicate_row_values_with_enough_source_occurrences_can_verify() -> None:
+    row = _make_r7y_explicit_row({"2024A": 100, "2025A": 100})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    source_text = "2024A 营业收入 100 百万元；2025A 营业收入 100 百万元"
+    assert classify_agreement_status(row, evidence_refs, source_text=source_text) == "VERIFIED"
+
+
+def test_r7z_unrelated_numeric_tokens_do_not_turn_partial_match_verified() -> None:
+    row = _make_r7y_explicit_row({"2024A": 100, "2025A": 200})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    source_text = "page 12 table 3 code 888 years 2024 2025 营业收入 100 百万元"
+    assert classify_agreement_status(row, evidence_refs, source_text=source_text) == "UNVERIFIED"
+
+
+def test_r7z_full_mismatch_with_unrelated_numeric_tokens_stays_disagreed() -> None:
+    row = _make_r7y_explicit_row({"2024A": 100, "2025A": 200})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    source_text = "page 12 table 3 code 888 years 2024 2025 营业收入 999 百万元"
+    assert classify_agreement_status(row, evidence_refs, source_text=source_text) == "DISAGREED"
+
+
+def test_r7z_source_text_without_numeric_tokens_stays_unverified() -> None:
+    row = _make_r7y_explicit_row({"2024A": 100})
+    _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
+    assert classify_agreement_status(row, evidence_refs, source_text="营业收入详见管理层讨论") == "UNVERIFIED"
+
+
 def test_r7y_text_valued_facts_stay_unverified() -> None:
     row = _make_r7y_explicit_row({"2024A": "基础数据", "2025A": "数值"})
     _, evidence_refs, _ = audit_evidence_presence(row, "demo.pdf")
