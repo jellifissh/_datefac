@@ -35,57 +35,61 @@ Before writing the local-agent prompt, always include:
 ```text
 task_size = small / medium / large
 recommended_reasoning_level = high / very high / max
-execution_mode = single-step / phased-hard-stop / implementation-with-self-QA
+execution_mode = single-step / phased-hard-stop / implementation-with-self-QA / QA-review-only
 reason = why this task needs that level
 ```
 
 ## Current task
 
 ```text
-348N-R7AF test-only source_text file-backed sidecar loader implementation
+348N-R7AF-QA source_text file-backed sidecar loader review
 ```
 
 Task sizing:
 
 ```text
-task_size = large
+task_size = small
 recommended_reasoning_level = max
-execution_mode = phased-hard-stop + implementation-with-self-QA
-reason = R7AF implements the first file-backed test-only source_text loader and fixtures. It should be faster than design-only microtasks, but must keep fail-closed behavior and avoid production integration.
+execution_mode = QA-review-only
+reason = R7AF-QA reviews the first file-backed source_text sidecar loader and must confirm it remains test-only, fail-closed, metadata-only, and boundary-safe.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AF_test_only_source_text_file_backed_sidecar_loader_implementation.md
+docs/codex_tasks/348N_R7AF_QA_source_text_file_backed_sidecar_loader_review.md
+```
+
+Expected report:
+
+```text
+docs/agent/348N_R7AF_QA_SOURCE_TEXT_FILE_BACKED_SIDECAR_LOADER_REVIEW.md
 ```
 
 Task type:
 
 ```text
-implementation + tests + self-QA
+QA / review task
 ```
 
-R7AF focus:
+R7AF-QA focus:
 
 ```text
-test-only JSON object v1 sidecar loader
-fixture_scope=test_only
-strict required keys, no unknown keys
-fixtures under tests/agent/fixtures/source_text_sidecars/
-fail-closed invalid file handling
-text_sha256 recomputed from UTF-8 text
-char_count validation
-map records to SourceTextEvidence
+R7AF limited to tests/agent helper/test/fixture files
+loader remains test-only
+no datefac_agent / runner / CLI / run_pilot hook
+JSON object v1 sidecar schema strict
+unknown/missing/duplicate/bad hash/bad char_count/untrusted records fail closed
+no partial records returned on invalid file
+valid sidecar maps to SourceTextEvidence
 valid fixture drives VERIFIED through existing wiring
-trusted numeric mismatch remains DISAGREED
-missing/mismatch cases remain UNVERIFIED
-evidence_index metadata-only validation
-review_queue compact fields validation
+trusted mismatch remains DISAGREED
+missing/source/page/locator mismatch remains UNVERIFIED or conservative
+metadata-only evidence_index
+compact review_queue fields
 full source_text absent from serialized outputs
-no production loader / CLI / runner hook
-no workbook rerun
-no MinerU / OCR / LLM / VLM
+VERIFIED does not become STRONG_EVIDENCE
+VERIFIED does not become clean admission
 readiness gates remain closed
 ```
 
@@ -100,39 +104,51 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/codex_tasks/348N_R7AF_QA_source_text_file_backed_sidecar_loader_review.md
 docs/codex_tasks/348N_R7AF_test_only_source_text_file_backed_sidecar_loader_implementation.md
 docs/agent/348N_R7AE_SOURCE_TEXT_FILE_BACKED_SIDECAR_LOADER_DESIGN.md
 docs/agent/348N_R7AD_QA_SOURCE_TEXT_FIXTURE_DRY_RUN_REVIEW.md
-docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
 ```
 
 ## Latest completed result
 
-### R7AE source_text file-backed sidecar loader design
+### R7AF test-only source_text file-backed sidecar loader implementation
 
 ```text
-commit = d24abf9 docs: add R7AE source text loader design
-Decision = PASS，R7AE source_text file-backed sidecar loader design completed
+commit = 3285ca6 test: add source text sidecar loader coverage
+Decision = PASS，R7AF test-only sidecar loader implemented
 build_result = PASS
-test_result = PASS，pytest tests/agent -q => 134 passed
-sidecar_format_result = PASS，JSON object v1
-loader_design_result = PASS，test-only first
-fail_closed_design_result = PASS
-evidence_index_review_queue_design_result = PASS，no full source_text
+test_result = PASS，pytest tests/agent -q => 162 passed
+files_modified = 3
+sidecar_loader_result = PASS
+fail_closed_result = PASS
+evidence_index_validation_result = PASS
+review_queue_validation_result = PASS
+full_text_serialization_result = PASS
+self_qa_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7AE concluded:
+R7AF modified:
 
 ```text
-JSON object v1, not JSONL
-schema_version + fixture_scope=test_only + records[]
-strict required fields, no unknown keys
-fixture location = tests/agent/fixtures/source_text_sidecars/
-loader placement = test-only first
-malformed/unsafe/hash mismatch/duplicate/unsupported fields reject with no partial records
-text_sha256 = recompute UTF-8 SHA-256
-full text remains test-only and must not serialize to evidence_index/review_queue
+tests/agent/source_text_sidecar_loader_348n.py
+tests/agent/test_source_text_sidecar_loader_348n.py
+tests/agent/fixtures/source_text_sidecars/r7af_source_text_sidecar__basic_positive_negative__v1.json
+```
+
+R7AF boundaries:
+
+```text
+test-only helper under tests/agent/
+no datefac_agent production change
+no runner / CLI / run_pilot hook
+no workbook rerun
+no MinerU / OCR / LLM / VLM / PDF extraction
+no docs/output/input/temp/data/legacy/config/dependency changes
+no clean admission changes
+no evidence_level promotion changes
+no readiness gate changes
 ```
 
 ## Current boundaries
@@ -156,6 +172,6 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Current next step is R7AF.
+Current next step is R7AF-QA.
 
-R7AF is intentionally a larger bounded task. If R7AF passes, expected next step is R7AF-QA before real workbook dry-run or production integration.
+If R7AF-QA passes, expected next task is R7AG single-real-MinerU-artifact adapter design. Keep it scoped to one real artifact/demo path, not batch production.
