@@ -33,49 +33,50 @@ reason = why this task needs that level
 ## Current task
 
 ```text
-348N-R7AD-QA source_text fixture dry-run review
+348N-R7AE source_text file-backed sidecar loader design
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7AD-QA reviews controlled fixture dry-run coverage for source_text wiring. It must verify positive/negative coverage, metadata-only outputs, and closed clean/readiness boundaries.
+reason = R7AE designs the file-backed source_text sidecar loader contract after fixture dry-run QA. It must keep fail-closed behavior and avoid turning fixture evidence into production readiness.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AD_QA_source_text_fixture_dry_run_review.md
+docs/codex_tasks/348N_R7AE_source_text_file_backed_sidecar_loader_design.md
 ```
 
 Expected report:
 
 ```text
-docs/agent/348N_R7AD_QA_SOURCE_TEXT_FIXTURE_DRY_RUN_REVIEW.md
+docs/agent/348N_R7AE_SOURCE_TEXT_FILE_BACKED_SIDECAR_LOADER_DESIGN.md
 ```
 
 Task type:
 
 ```text
-QA / review task
+design / review task
 ```
 
-R7AD-QA focus:
+R7AE focus:
 
 ```text
-R7AD remains tests-only
-in-test SourceTextEvidence objects, no loader
-no workbook rerun / run_pilot / real family rerun
-no MinerU / OCR / LLM / VLM / PDF extraction
-trusted fixture verifies
-trusted numeric mismatch -> DISAGREED
-missing / source_id mismatch / page mismatch / locator mismatch / untrusted / empty -> UNVERIFIED
-evidence_index tempfile validation, metadata only, no full source_text
-review_queue in-memory validation, compact fields only, no full source_text
-VERIFIED does not become STRONG_EVIDENCE
-VERIFIED does not become clean admission
-readiness gates remain closed
+JSON vs JSONL sidecar format
+sidecar schema and required fields
+fixture location
+loader placement: test-only first or runner-visible later
+fail-closed validation rules
+text_sha256 calculation and validation
+full source_text handling
+mapping file records into SourceTextEvidence
+source_document_id to EvidenceRef.source_id binding
+evidence_index / review_queue metadata-only validation
+no workbook rerun
+no MinerU / OCR / LLM / VLM
+no readiness gate changes
 ```
 
 ## Minimum read order
@@ -89,19 +90,20 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
+docs/codex_tasks/348N_R7AE_source_text_file_backed_sidecar_loader_design.md
+docs/agent/348N_R7AD_QA_SOURCE_TEXT_FIXTURE_DRY_RUN_REVIEW.md
 docs/codex_tasks/348N_R7AD_QA_source_text_fixture_dry_run_review.md
 docs/codex_tasks/348N_R7AD_source_text_sidecar_fixture_dry_run_implementation.md
 docs/agent/348N_R7AC_SOURCE_TEXT_SIDECAR_FIXTURE_INTEGRATION_DRY_RUN_DESIGN.md
-docs/agent/348N_R7AB_QA_SOURCE_TEXT_AVAILABILITY_EVIDENCE_INDEX_WIRING_REVIEW.md
 ```
 
 ## Latest completed result
 
-### R7AD source_text sidecar fixture dry-run implementation
+### R7AD-QA source_text fixture dry-run review
 
 ```text
-commit = 9cd4ef6 test: add source text fixture dry-run coverage
-Decision = PASS，R7AD source_text fixture dry-run coverage implemented
+commit = 39e01ba docs: add R7AD QA review
+Decision = PASS，R7AD-QA confirms fixture dry-run is valid
 build_result = PASS
 test_result = PASS，pytest tests/agent -q => 134 passed
 files_modified = 1
@@ -109,26 +111,21 @@ fixture_dry_run_result = PASS
 evidence_index_validation_result = PASS
 review_queue_validation_result = PASS
 full_text_serialization_result = PASS
+qa_result = VALID
 readiness_gates = CLOSED
 ```
 
-R7AD modified:
+R7AD-QA confirmed:
 
 ```text
-tests/agent/test_agent_excel_intake_audit_348a.py
-```
-
-R7AD boundaries:
-
-```text
-tests-only
-no loader
-no workbook rerun
-no MinerU / OCR / LLM / VLM / PDF extraction
-no docs/input/output/temp/data/legacy/config/dependency changes
-no clean admission changes
-no evidence_level promotion changes
-no readiness gate changes
+R7AD is tests-only
+in-test SourceTextEvidence objects, no loader
+trusted fixture verifies
+trusted mismatch DISAGREED
+missing / mismatch / untrusted / empty -> UNVERIFIED
+evidence_index metadata-only, no full source_text
+review_queue compact fields, no full source_text
+VERIFIED does not affect STRONG_EVIDENCE, clean admission, or readiness
 ```
 
 ## Current boundaries
@@ -152,6 +149,6 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Current next step is R7AD-QA.
+Current next step is R7AE.
 
-If R7AD-QA passes, decide between a real workbook dry-run design or a file-backed source_text sidecar loader design. Do not jump to production readiness.
+If R7AE passes, likely next task is R7AF file-backed source_text sidecar loader implementation. Do not jump to real workbook rerun or production readiness.
