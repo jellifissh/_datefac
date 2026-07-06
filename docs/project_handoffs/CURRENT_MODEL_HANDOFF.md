@@ -13,94 +13,80 @@ pivot/348-agent-foundation
 review execution report -> decide result -> write next task doc -> give local-agent prompt -> sync progress docs
 ```
 
-Progress sync targets:
-
-```text
-docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
-docs/agent/项目进程.md
-项目进展大白话说明.md
-```
-
-Task sizing rule:
-
-```text
-small = high-risk boundary tasks; use task doc + execution + QA + sync
-large = bounded implementation; use phased-hard-stop + implementation-with-self-QA
-```
-
 ## Current task
 
 ```text
-348N-R7AG lightweight PDF evidence bridge design
+348N-R7AH lightweight PDF evidence bridge test-only prototype
 ```
 
 Task sizing:
 
 ```text
-task_size = small
+task_size = large
 recommended_reasoning_level = max
-execution_mode = design-review-only
-reason = R7AG changes the next direction from MinerU-first to lightweight evidence bridging so PDF processing cost stays controlled while audit boundaries stay closed.
+execution_mode = phased-hard-stop + implementation-with-self-QA
+reason = R7AH implements a bounded test-only prototype for lightweight evidence bridging. It should prove the low-cost anchor route without real PDFs, new parser dependencies, MinerU, OCR, LLM, VLM, or production hooks.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AG_lightweight_pdf_evidence_bridge_design.md
+docs/codex_tasks/348N_R7AH_lightweight_pdf_evidence_bridge_test_only_prototype.md
 ```
 
-Expected report:
+Expected modified files:
 
 ```text
-docs/agent/348N_R7AG_LIGHTWEIGHT_PDF_EVIDENCE_BRIDGE_DESIGN.md
+tests/agent/lightweight_pdf_evidence_bridge_348n.py
+tests/agent/test_lightweight_pdf_evidence_bridge_348n.py
 ```
 
-R7AG focus:
+R7AH focus:
 
 ```text
-avoid MinerU-first default
-use lightweight PDF text-layer/page-text bridge
-use extraction product page_number / metric_name / period / value as hints
-extract only needed pages when page_number exists
-design no-page-number fallback search
-numeric anchor matching
-keyword and period proximity
-repeated-number handling
-snippet generation
+test-only helper under tests/agent/
+synthetic page-text provider
+row hints: source_document_id / page_number / metric_name / period / value
+value + metric + period proximity -> SourceTextEvidence
+value-only -> conservative no trusted evidence
+wrong page -> no trusted evidence
+missing page text -> no trusted evidence
+scanned/image-only marker -> fallback-needed status
 SourceTextEvidence mapping
-source_text_provider and source_text_quality metadata
-scanned PDF policy
-MinerU/OCR/manual review fallback policy
-source_file_sha256 cache policy
-cost-control workflow for many PDFs
-no real PDF run
-no dependencies added
-no production parser added
+agreement checker can produce VERIFIED from accepted snippet
+evidence_index metadata-only
+review_queue compact-only
+no full source_text serialization
+no real PDF
+no new dependencies
+no MinerU/OCR/LLM/VLM
+no production hook
 readiness gates remain closed
 ```
 
 ## Latest completed result
 
 ```text
-R7AF-QA commit = 2723251
-qa_result = VALID
-test_result = PASS; 162 passed in 0.97s
-external calls = 0
+R7AG commit = ea68e33
+Decision = PASS; 348N_R7AG_LIGHTWEIGHT_PDF_EVIDENCE_BRIDGE_DESIGN_VALID
+test_result = PASS; 162 passed in 0.94s
+mineru_default_policy = NOT_DEFAULT
+lightweight_bridge_design_result = PASS
+cost_control_result = PASS
 readiness_gates = CLOSED
 ```
 
-R7AF-QA confirmed:
+R7AG conclusion:
 
 ```text
-loader test-only under tests/agent/
-no production hook
-JSON object v1 strict schema
-bad sidecars fail closed
-no partial records
-evidence_index metadata-only
-review_queue compact-only
-full source_text absent from serialized outputs
-VERIFIED does not promote to STRONG_EVIDENCE, clean_data, or readiness
+MinerU-first is not default
+lightweight PDF text bridge is the cost-control default
+page-number rows target specific pages
+no-page rows use capped candidate search
+trusted snippets require value + metric + period proximity
+raw Excel/JSON excerpts are hints only
+MinerU/OCR/manual review are fallback paths
+VERIFIED remains non-promotional
 ```
 
 ## Current boundaries
@@ -110,9 +96,8 @@ client_ready = false
 production_ready = false
 formal_client_export_allowed = false
 demo_export_only = true
-legacy datefac/ stays reference-only by default
 output files are not committed
-MinerU / OCR / LLM / VLM remain unused unless a task explicitly allows them
+MinerU / OCR / LLM / VLM remain unused unless explicitly allowed
 qualitative_facts admission remains closed
 MARKET_REFERENCE_ROW policy stays conservative
 VERIFIED is not automatic clean admission
@@ -122,4 +107,4 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Current next step is R7AG. If R7AG passes, expected next task is R7AH lightweight PDF evidence bridge test-only prototype. Do not jump to batch production, MinerU-first, or production readiness.
+Execute R7AH. If R7AH passes, expected next task is R7AH-QA. Do not jump to real PDF runs, batch production, MinerU-first, or production readiness.
