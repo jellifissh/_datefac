@@ -35,48 +35,46 @@ Full task specs live in `docs/codex_tasks/`.
 ## Current task
 
 ```text
-348N-R7Z-QA agreement checker edge-case review
+348N-R7AA source_text integration design / evidence index wiring
 ```
 
 Recommended reasoning level:
 
 ```text
 recommended_reasoning_level = max
-reason = R7Z-QA verifies that multiplicity-aware matching reduces VERIFIED false positives without making DISAGREED too aggressive or changing clean/readiness boundaries.
+reason = R7AA designs how real source_text enters the evidence agreement pipeline. A wrong design would make future evidence_strength interpretation unreliable.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7Z_QA_agreement_checker_edge_case_review.md
+docs/codex_tasks/348N_R7AA_source_text_integration_design_evidence_index_wiring.md
 ```
 
 Expected report:
 
 ```text
-docs/agent/348N_R7Z_QA_AGREEMENT_CHECKER_EDGE_CASE_REVIEW.md
+docs/agent/348N_R7AA_SOURCE_TEXT_INTEGRATION_DESIGN_EVIDENCE_INDEX_WIRING.md
 ```
 
 Task type:
 
 ```text
-QA / review task
+design / review task
 ```
 
-R7Z-QA focus:
+R7AA focus:
 
 ```text
-duplicate row numeric values require duplicate source occurrences
-one source occurrence for two identical row values stays UNVERIFIED
-enough duplicate source occurrences can verify
-partial coverage remains UNVERIFIED
-source text with no numeric tokens remains UNVERIFIED
-text-only facts remain UNVERIFIED
-full mismatch remains DISAGREED only when no row values match
-VERIFIED does not become STRONG_EVIDENCE
-VERIFIED does not become clean admission
-VERIFIED does not open readiness gates
-source_text is still not wired into the real pipeline
+source_text availability
+source_text provenance contract
+binding source_text to source_id / page_number / locator
+evidence_index output design
+review_queue output design
+missing or untrusted source_text remains UNVERIFIED
+no source_text wiring implementation yet
+no OCR / LLM / VLM
+no readiness gate changes
 ```
 
 ## Minimum read order
@@ -90,47 +88,44 @@ AGENTS.md
 项目进展大白话说明.md
 docs/agent/项目进程.md
 docs/project_handoffs/CURRENT_MODEL_HANDOFF.md
-docs/codex_tasks/348N_R7Z_QA_agreement_checker_edge_case_review.md
+docs/codex_tasks/348N_R7AA_source_text_integration_design_evidence_index_wiring.md
+docs/agent/348N_R7Z_QA_AGREEMENT_CHECKER_EDGE_CASE_REVIEW.md
 docs/agent/348N_R7Y_QA_DETERMINISTIC_SOURCE_VALUE_AGREEMENT_CHECKER_REVIEW.md
 docs/agent/348N_R7X_QA_EVIDENCE_PROVENANCE_PARSING_REVIEW.md
 ```
 
 ## Latest completed result
 
-### R7Z agreement checker edge-case fixture coverage
+### R7Z-QA agreement checker edge-case review
 
 ```text
-commit = 004e307 fix: make agreement checker multiplicity conservative
-Decision = PASS，R7Z agreement checker edge-case coverage and conservative multiplicity fix completed
+commit = 898fa24 docs: add R7Z QA review
+Decision = PASS，R7Z-QA confirms multiplicity-aware agreement checker is valid
 build_result = PASS，py_compile 全部通过
-test_result = PASS，pytest tests/agent -q => 111 passed in 0.84s
-files_modified = 2
-edge_case_coverage_result = PASS
+test_result = PASS，pytest tests/agent -q => 111 passed in 0.68s
+qa_result = VALID
 verified_false_positive_result = REDUCED
 disagreed_status_result = PASS
 source_text_integration_result = NOT_CHANGED
 readiness_gates = CLOSED
 ```
 
-R7Z fixed:
+R7Z-QA confirmed:
 
 ```text
-before: source numeric tokens were stored as a set
-problem: row values [100, 100] could be satisfied by one source token 100 -> unsafe VERIFIED
-after: source numeric tokens are counted with Counter[Decimal]
-result: duplicate row values require duplicate source occurrences
+duplicate row numeric values require duplicate source occurrences
+one source occurrence for two identical row values stays UNVERIFIED
+enough duplicate source occurrences can verify
+partial coverage remains UNVERIFIED
+text-only facts remain UNVERIFIED
+full mismatch remains DISAGREED only when no row values match
+VERIFIED does not become STRONG_EVIDENCE
+VERIFIED does not become clean admission
+VERIFIED does not open readiness gates
+source_text is still not wired into the real pipeline
 ```
 
-Concrete example:
-
-```text
-row period_values = {2024A: 100, 2025A: 100}
-source_text = one occurrence of 100
-before R7Z -> VERIFIED
-after R7Z -> UNVERIFIED
-```
-
-Still not solved intentionally:
+Remaining known limitation:
 
 ```text
 row-level matching is still not period-aware or coordinate-aware
@@ -157,15 +152,11 @@ demo_export_only = true
 
 ## Next-step guidance
 
-Current next step is R7Z-QA.
+Current next step is R7AA.
 
-If R7Z-QA passes, recommended next step is not production readiness. Prefer:
+R7AA is design-only. It should not implement source_text wiring.
 
-```text
-R7AA source_text integration design / evidence index wiring design
-```
-
-or a more limited targeted design task depending on QA findings.
+If R7AA passes, the likely next step is a narrow implementation slice for source_text availability / evidence index wiring, followed by QA.
 
 ## Boundaries
 
