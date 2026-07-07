@@ -67,7 +67,9 @@ REQUIRED_AUDIT_METADATA_FIELDS: tuple[str, ...] = (
     "adapter_version",
     "input_file_hashes",
     "comparison_row_count",
+    "comparison_status_counts",
     "review_queue_count",
+    "review_queue_status_counts",
     "discrepancy_report_count",
     "delivery_clean_candidate_count",
     "blocked_delivery_row_count",
@@ -101,6 +103,54 @@ REQUIRED_REVIEW_ITEM_FIELDS: tuple[str, ...] = (
     "review_subqueue",
 )
 
+REQUIRED_DISCREPANCY_REPORT_FIELDS: tuple[str, ...] = (
+    "review_item_id",
+    "source_row_id",
+    "candidate_metric_name",
+    "candidate_period",
+    "candidate_value",
+    "candidate_unit",
+    "agreement_status",
+    "review_subqueue",
+    "severity",
+    "review_status",
+    "reviewer_decision",
+    "source_text_status",
+    "evidence_type",
+    "matched_locator",
+    "matched_text_sha256",
+    "evidence_preview",
+    "risk_reason",
+    "suggested_action",
+)
+
+REQUIRED_BLOCKED_DELIVERY_FIELDS: tuple[str, ...] = (
+    "review_item_id",
+    "source_row_id",
+    "agreement_status",
+    "review_subqueue",
+    "severity",
+    "review_status",
+    "reviewer_decision",
+    "blocked_reason",
+)
+
+REQUIRED_DELIVERY_CANDIDATE_FIELDS: tuple[str, ...] = (
+    "source_row_id",
+    "source_document_id",
+    "candidate_metric_name",
+    "candidate_period",
+    "candidate_value",
+    "candidate_unit",
+    "agreement_status",
+    "delivery_gate_status",
+    "delivery_clean_admitted",
+    "requires_reaudit_before_clean_delivery",
+    "run_id",
+    "adapter_version",
+    "input_file_hashes",
+)
+
 FORBIDDEN_KEYS: frozenset[str] = frozenset(
     {
         "source_text",
@@ -119,6 +169,21 @@ FORBIDDEN_KEYS: frozenset[str] = frozenset(
         "workbook_sheets",
         "worksheets",
         "cells",
+        "blocks",
+        "extracted_pages",
+        "extracted_text",
+        "html",
+        "markdown",
+        "mineru_output",
+        "ocr_output",
+        "page_texts",
+        "parser_output",
+        "pdf_parser_output",
+        "pdf_pages",
+        "raw_pdf_pages",
+        "table_blocks",
+        "tables",
+        "text_layer",
     }
 )
 
@@ -145,6 +210,7 @@ def build_production_boundary_review_queue_adapter_output(
     """Build in-memory adapter output only when explicitly test-enabled."""
 
     adapter_config = config or ProductionBoundaryReviewQueueAdapterConfig()
+    _validate_config(adapter_config)
     if not adapter_config.enabled:
         return _disabled_result(adapter_config)
     if adapter_config.test_only_enable_token != TEST_ONLY_ENABLE_TOKEN:
@@ -204,6 +270,9 @@ def validate_boundary_output_payload(payload: Any, *, preview_limit: int = DEFAU
     missing = [field for field in REQUIRED_BOUNDARY_OUTPUT_FIELDS if field not in payload]
     if missing:
         raise ProductionBoundaryReviewQueueAdapterError(f"boundary output missing required fields: {missing}")
+    extra = sorted(set(payload) - set(REQUIRED_BOUNDARY_OUTPUT_FIELDS))
+    if extra:
+        raise ProductionBoundaryReviewQueueAdapterError(f"boundary output has unexpected fields: {extra}")
     for field in ("review_queue_items", "discrepancy_report_rows", "delivery_clean_candidates", "blocked_delivery_rows"):
         if not isinstance(payload[field], list):
             raise ProductionBoundaryReviewQueueAdapterError(f"{field} must be a list")
@@ -222,15 +291,11 @@ def validate_boundary_output_payload(payload: Any, *, preview_limit: int = DEFAU
     for item in payload["review_queue_items"]:
         _validate_review_item(item, metadata=metadata, preview_limit=preview_limit)
     for row in payload["discrepancy_report_rows"]:
-        _validate_bounded_preview(row.get("evidence_preview", ""), preview_limit)
+        _validate_discrepancy_report_row(row, preview_limit=preview_limit)
     for row in payload["blocked_delivery_rows"]:
-        if _clean(row.get("agreement_status")) not in REVIEW_QUEUE_STATUSES:
-            raise ProductionBoundaryReviewQueueAdapterError("blocked delivery rows must be non-VERIFIED")
+        _validate_blocked_delivery_row(row)
     for row in payload["delivery_clean_candidates"]:
-        if row.get("delivery_clean_admitted") is True:
-            raise ProductionBoundaryReviewQueueAdapterError("delivery clean admission is forbidden")
-        if row.get("requires_reaudit_before_clean_delivery") is not True:
-            raise ProductionBoundaryReviewQueueAdapterError("delivery candidates must require re-audit")
+        _validate_delivery_candidate_row(row, metadata=metadata)
 
 
 def validate_no_forbidden_fields(value: Any, *, preview_limit: int = DEFAULT_PREVIEW_LIMIT, path: str = "$") -> None:
@@ -256,6 +321,11 @@ def validate_no_forbidden_fields(value: Any, *, preview_limit: int = DEFAULT_PRE
     elif isinstance(value, list):
         for index, child in enumerate(value):
             validate_no_forbidden_fields(child, preview_limit=preview_limit, path=f"{path}[{index}]")
+
+
+def _validate_config(config: ProductionBoundaryReviewQueueAdapterConfig) -> None:
+    if config.contract_version != ADAPTER_CONTRACT_VERSION:
+        raise ProductionBoundaryReviewQueueAdapterError("unexpected adapter contract_version")
 
 
 def _disabled_result(config: ProductionBoundaryReviewQueueAdapterConfig) -> dict[str, Any]:
@@ -304,6 +374,10 @@ def _validate_audit_metadata(metadata: Any) -> None:
         raise ProductionBoundaryReviewQueueAdapterError("adapter_version is required")
     if not isinstance(metadata.get("input_file_hashes"), dict) or not metadata["input_file_hashes"]:
         raise ProductionBoundaryReviewQueueAdapterError("input_file_hashes must be a non-empty object")
+    if not all(_clean(key) and _clean(value) for key, value in metadata["input_file_hashes"].items()):
+        raise ProductionBoundaryReviewQueueAdapterError("input_file_hashes must contain non-empty keys and values")
+    if not _clean(metadata.get("audit_metadata_hash")):
+        raise ProductionBoundaryReviewQueueAdapterError("audit_metadata_hash is required")
     if metadata.get("readiness_gates") != READINESS_GATES_CLOSED:
         raise ProductionBoundaryReviewQueueAdapterError("readiness gates must remain closed")
     if metadata.get("external_call_counts") != EXTERNAL_CALL_COUNTS_ZERO:
@@ -319,6 +393,10 @@ def _validate_audit_metadata(metadata: Any) -> None:
     ):
         if boundary_flags.get(key) is True:
             raise ProductionBoundaryReviewQueueAdapterError(f"{key} is forbidden")
+    if sum(metadata.get("comparison_status_counts", {}).values()) != metadata["comparison_row_count"]:
+        raise ProductionBoundaryReviewQueueAdapterError("comparison status counts do not match comparison_row_count")
+    if sum(metadata.get("review_queue_status_counts", {}).values()) != metadata["review_queue_count"]:
+        raise ProductionBoundaryReviewQueueAdapterError("review_queue status counts do not match review_queue_count")
 
 
 def _validate_review_item(item: Any, *, metadata: dict[str, Any], preview_limit: int) -> None:
@@ -342,7 +420,70 @@ def _validate_review_item(item: Any, *, metadata: dict[str, Any], preview_limit:
     reviewer_decision = _clean(item.get("reviewer_decision"))
     if reviewer_decision and reviewer_decision not in REVIEWER_ACTIONS:
         raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {reviewer_decision}")
-    _validate_bounded_preview(item.get("evidence_preview", ""), preview_limit)
+    _validate_required_bounded_preview(item.get("evidence_preview", ""), preview_limit)
+
+
+def _validate_discrepancy_report_row(row: Any, *, preview_limit: int) -> None:
+    if not isinstance(row, dict):
+        raise ProductionBoundaryReviewQueueAdapterError("discrepancy_report_rows must contain objects")
+    missing = [field for field in REQUIRED_DISCREPANCY_REPORT_FIELDS if field not in row]
+    if missing:
+        raise ProductionBoundaryReviewQueueAdapterError(f"discrepancy report row missing required fields: {missing}")
+    if row["agreement_status"] not in REVIEW_QUEUE_STATUSES:
+        raise ProductionBoundaryReviewQueueAdapterError("discrepancy report rows must be non-VERIFIED")
+    reviewer_decision = _clean(row.get("reviewer_decision"))
+    if reviewer_decision and reviewer_decision not in REVIEWER_ACTIONS:
+        raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {reviewer_decision}")
+    if not _clean(row.get("review_item_id")):
+        raise ProductionBoundaryReviewQueueAdapterError("discrepancy report review_item_id is required")
+    _validate_required_bounded_preview(row.get("evidence_preview", ""), preview_limit)
+
+
+def _validate_blocked_delivery_row(row: Any) -> None:
+    if not isinstance(row, dict):
+        raise ProductionBoundaryReviewQueueAdapterError("blocked_delivery_rows must contain objects")
+    missing = [field for field in REQUIRED_BLOCKED_DELIVERY_FIELDS if field not in row]
+    if missing:
+        raise ProductionBoundaryReviewQueueAdapterError(f"blocked delivery row missing required fields: {missing}")
+    if row["agreement_status"] not in REVIEW_QUEUE_STATUSES:
+        raise ProductionBoundaryReviewQueueAdapterError("blocked delivery rows must be non-VERIFIED")
+    if _clean(row.get("review_status")).startswith("RESOLVED_"):
+        raise ProductionBoundaryReviewQueueAdapterError("resolved rows must not be blocked delivery rows")
+    reviewer_decision = _clean(row.get("reviewer_decision"))
+    if reviewer_decision and reviewer_decision not in REVIEWER_ACTIONS:
+        raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {reviewer_decision}")
+
+
+def _validate_delivery_candidate_row(row: Any, *, metadata: dict[str, Any]) -> None:
+    if not isinstance(row, dict):
+        raise ProductionBoundaryReviewQueueAdapterError("delivery_clean_candidates must contain objects")
+    missing = [field for field in REQUIRED_DELIVERY_CANDIDATE_FIELDS if field not in row]
+    if missing:
+        raise ProductionBoundaryReviewQueueAdapterError(f"delivery candidate missing required fields: {missing}")
+    if row.get("delivery_clean_admitted") is True:
+        raise ProductionBoundaryReviewQueueAdapterError("delivery clean admission is forbidden")
+    if row.get("requires_reaudit_before_clean_delivery") is not True:
+        raise ProductionBoundaryReviewQueueAdapterError("delivery candidates must require re-audit")
+    if row.get("run_id") != metadata["run_id"]:
+        raise ProductionBoundaryReviewQueueAdapterError("delivery candidate run_id mismatch")
+    if row.get("adapter_version") != metadata["adapter_version"]:
+        raise ProductionBoundaryReviewQueueAdapterError("delivery candidate adapter_version mismatch")
+    if row.get("input_file_hashes") != metadata["input_file_hashes"]:
+        raise ProductionBoundaryReviewQueueAdapterError("delivery candidate input_file_hashes mismatch")
+    agreement_status = _clean(row.get("agreement_status"))
+    if agreement_status == "VERIFIED":
+        return
+    if agreement_status not in REVIEW_QUEUE_STATUSES:
+        raise ProductionBoundaryReviewQueueAdapterError(f"unsupported delivery candidate agreement_status: {agreement_status}")
+    if not _clean(row.get("review_item_id")):
+        raise ProductionBoundaryReviewQueueAdapterError("non-VERIFIED delivery candidates require review_item_id")
+    if not _clean(row.get("review_status")).startswith("RESOLVED_"):
+        raise ProductionBoundaryReviewQueueAdapterError("unresolved non-VERIFIED delivery candidates are forbidden")
+    reviewer_decision = _clean(row.get("reviewer_decision"))
+    if not reviewer_decision or reviewer_decision not in REVIEWER_ACTIONS:
+        raise ProductionBoundaryReviewQueueAdapterError("resolved non-VERIFIED delivery candidates require valid reviewer action")
+    if row.get("delivery_gate_status") != "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY":
+        raise ProductionBoundaryReviewQueueAdapterError("non-VERIFIED delivery candidates must be re-audit only")
 
 
 def _review_queue_candidate_item(
@@ -518,6 +659,12 @@ def _audit_contract(
 def _validate_bounded_preview(value: Any, preview_limit: int) -> None:
     if len(_clean(value)) > preview_limit:
         raise ProductionBoundaryReviewQueueAdapterError("evidence_preview exceeds preview_limit")
+
+
+def _validate_required_bounded_preview(value: Any, preview_limit: int) -> None:
+    if not _clean(value):
+        raise ProductionBoundaryReviewQueueAdapterError("evidence_preview is required")
+    _validate_bounded_preview(value, preview_limit)
 
 
 def _bounded_preview(value: Any, limit: int) -> str:

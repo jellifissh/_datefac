@@ -306,6 +306,19 @@
           "run_id": "bad"
         }
       }
+    },
+    {
+      "case_id": "invalid_parser_like_payload",
+      "payload": {
+        "parser_output": {
+          "pdf_pages": [
+            {
+              "page_number": 1,
+              "text_layer": "raw parser text must not enter this boundary"
+            }
+          ]
+        }
+      }
     }
   ]
 }

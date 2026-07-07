@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from datefac_agent.review.production_boundary_review_queue_adapter import (
+    ADAPTER_CONTRACT_VERSION,
     EXTERNAL_CALL_COUNTS_ZERO,
     READINESS_GATES_CLOSED,
     TEST_ONLY_ENABLE_TOKEN,
@@ -65,10 +66,19 @@ def test_r7aw_enabled_requires_explicit_test_token() -> None:
         )
 
 
+def test_r7ax_unexpected_contract_version_fails_closed_even_when_disabled() -> None:
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="contract_version"):
+        build_production_boundary_review_queue_adapter_output(
+            _fixture()["valid_boundary_output"],
+            ProductionBoundaryReviewQueueAdapterConfig(contract_version="unexpected-contract"),
+        )
+
+
 def test_r7aw_valid_boundary_output_is_accepted_only_under_test_enable() -> None:
     output = _enabled_output()
 
     assert output["adapter_status"] == "ENABLED_TEST_ONLY"
+    assert output["audit_contract"]["contract_version"] == ADAPTER_CONTRACT_VERSION
     assert len(output["review_queue_candidate_items"]) == 3
     assert len(output["blocked_delivery_candidate_rows"]) == 2
     assert len(output["delivery_reaudit_candidate_rows"]) == 2
@@ -85,11 +95,75 @@ def test_r7aw_invalid_inputs_are_rejected_when_enabled() -> None:
             build_production_boundary_review_queue_adapter_output(case["payload"], _enabled_config())
 
 
+def test_r7ax_boundary_output_rejects_unexpected_top_level_fields() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["comparison_result_rows"] = []
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unexpected fields"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
 def test_r7aw_full_source_text_fields_are_not_accepted() -> None:
     payload = deepcopy(_fixture()["valid_boundary_output"])
     payload["review_queue_items"][0]["source_text"] = "forbidden full source text"
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="forbidden field"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_nested_source_text_fields_are_rejected() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["review_queue_items"][0]["alternative_evidence_candidates"] = [
+        {"locator": "page:1:block:1", "metadata": {"source_text": "nested full text"}}
+    ]
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="forbidden field"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_missing_required_audit_metadata_fails_closed() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    del payload["audit_metadata"]["input_file_hashes"]
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="audit_metadata missing"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_empty_input_file_hashes_fail_closed() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["audit_metadata"]["input_file_hashes"]["datefac_excel"] = ""
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="input_file_hashes"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_status_count_mismatch_fails_closed() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["audit_metadata"]["review_queue_status_counts"]["DISAGREED"] = 99
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="status counts"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_unknown_agreement_status_fails_closed() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["review_queue_items"][0]["agreement_status"] = "AUTO_VERIFIED"
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="non-VERIFIED"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_unknown_reviewer_action_fails_closed_across_rows() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["discrepancy_report_rows"][0]["reviewer_decision"] = "AUTO_PROMOTE_TO_CLEAN"
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unsupported reviewer action"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["blocked_delivery_rows"][0]["reviewer_decision"] = "AUTO_PROMOTE_TO_CLEAN"
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unsupported reviewer action"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
 
@@ -135,6 +209,37 @@ def test_r7aw_corrected_rows_remain_reaudit_only() -> None:
     assert corrected["delivery_gate_status"] == "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY"
 
 
+def test_r7ax_unresolved_non_verified_delivery_candidate_fails_closed() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["delivery_clean_candidates"].append(
+        {
+            "review_item_id": "r7aw-review-unresolved-extra",
+            "source_row_id": "unresolved-extra:R9",
+            "source_document_id": "synthetic-r7aw-report.pdf",
+            "candidate_metric_name": "Gross margin",
+            "candidate_period": "2026E",
+            "candidate_value": "24.9",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "delivery_gate_status": "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY",
+            "delivery_clean_admitted": False,
+            "requires_reaudit_before_clean_delivery": True,
+            "run_id": "r7aw_fixture_run_001",
+            "adapter_version": "r7as_integration_boundary_test_only_v1",
+            "input_file_hashes": {
+                "datefac_excel": "sha256:r7aw-datefac-fixture",
+                "mineru_content_list_v2": "sha256:r7aw-mineru-fixture",
+            },
+        }
+    )
+    payload["audit_metadata"]["delivery_clean_candidate_count"] += 1
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unresolved non-VERIFIED"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
 def test_r7aw_audit_metadata_is_preserved_and_readiness_closed() -> None:
     output = _enabled_output()
     audit_contract = output["audit_contract"]
@@ -169,6 +274,20 @@ def test_r7aw_evidence_preview_is_bounded_and_unbounded_input_fails_closed() -> 
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
 
+def test_r7ax_missing_required_evidence_preview_fails_closed() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload["review_queue_items"][0]["evidence_preview"] = ""
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="evidence_preview is required"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    del payload["discrepancy_report_rows"][0]["evidence_preview"]
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="missing required"):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
 def test_r7aw_readiness_clean_and_strong_evidence_mutations_fail_closed() -> None:
     payload = deepcopy(_fixture()["valid_boundary_output"])
     payload["audit_metadata"]["readiness_gates"]["production_ready"] = True
@@ -184,6 +303,19 @@ def test_r7aw_readiness_clean_and_strong_evidence_mutations_fail_closed() -> Non
     payload["review_queue_items"][0]["evidence_level"] = "STRONG_EVIDENCE"
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="STRONG_EVIDENCE"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7ax_output_does_not_share_mutable_input_references() -> None:
+    payload = deepcopy(_fixture()["valid_boundary_output"])
+    output = build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+    payload["audit_metadata"]["input_file_hashes"]["datefac_excel"] = "sha256:mutated"
+    payload["review_queue_items"][0]["input_file_hashes"]["datefac_excel"] = "sha256:item-mutated"
+    payload["audit_metadata"]["readiness_gates"]["client_ready"] = True
+
+    assert output["audit_contract"]["input_file_hashes"]["datefac_excel"] == "sha256:r7aw-datefac-fixture"
+    assert output["review_queue_candidate_items"][0]["input_file_hashes"]["datefac_excel"] == "sha256:r7aw-datefac-fixture"
+    assert output["audit_contract"]["readiness_gates"] == READINESS_GATES_CLOSED
 
 
 def test_r7aw_module_has_no_io_heavy_parser_or_model_hooks() -> None:
