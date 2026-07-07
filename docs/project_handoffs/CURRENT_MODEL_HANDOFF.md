@@ -10,74 +10,81 @@ pivot/348-agent-foundation
 ## Current task
 
 ```text
-348N-R7AO test-only MinerU adapter controlled comparison runner
+348N-R7AO-QA test-only MinerU adapter controlled comparison runner review
 ```
 
 Task sizing:
 
 ```text
-task_size = medium
+task_size = small
 recommended_reasoning_level = max
-execution_mode = single-run-data-analysis + no-commit
-reason = R7AN completed the dry-run design. R7AO should execute the local controlled comparison runner with full Anjing DateFac Excel and full local MinerU content_list_v2, using the R7AM adapter shape, without committing local outputs or modifying production code.
+execution_mode = QA-review-only
+reason = R7AO completed a local no-commit controlled comparison runner. QA must review local outputs, count sanity, probe coverage, and boundary safety before any next integration decision.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AO_test_only_mineru_adapter_controlled_comparison_runner.md
+docs/codex_tasks/348N_R7AO_QA_test_only_mineru_adapter_controlled_comparison_runner_review.md
 ```
 
-Local output directory:
+Expected report:
 
 ```text
-D:\_datefac_agent\output\comparison\anjing_foods_mineru_adapter_r7ao\
-```
-
-Expected local outputs, not committed:
-
-```text
-run_r7ao_mineru_adapter_comparison.py
-r7ao_mineru_adapter_comparison_report.xlsx
-r7ao_mineru_adapter_comparison_summary.md
-r7ao_mineru_adapter_evidence_rows.csv
-r7ao_mineru_adapter_unmatched_rows.csv
-r7ao_mineru_adapter_run_metadata.json
+docs/agent/348N_R7AO_QA_TEST_ONLY_MINERU_ADAPTER_CONTROLLED_COMPARISON_RUNNER_REVIEW.md
 ```
 
 ## Latest completed result
 
 ```text
-R7AN commit = f29cc07 docs: add R7AN controlled comparison design
-Decision = PASS
-pytest tests/agent/test_mineru_artifact_adapter_348n.py -q = 21 passed
-pytest tests/agent -q = 201 passed
-files_modified = 1
-input_scope_decision = full Anjing DateFac Excel + full local MinerU content_list_v2 for R7AO, optional smoke mode only
-runner_scope_decision = local test-only runner under output/comparison/anjing_foods_mineru_adapter_r7ao/
-adapter_usage_decision = reuse tests.agent.mineru_artifact_adapter_348n directly
-output_policy_decision = write local xlsx/csv/md/json reports, do not commit outputs
-boundary_check = PASS
+R7AO local dry-run
+Decision = PASS，348N_R7AO_LOCAL_CONTROLLED_COMPARISON_COMPLETED
+build_result = PASS
+test_result = PASS，21 passed + 201 passed
+runner_result = PASS
+comparison_result = PASS，451 rows compared
+DateFac candidate rows = 451
+MinerU adapter blocks = 89
+VERIFIED = 402
+review_required = 49
+DISAGREED = 5
+AMBIGUOUS = 10
+MISSING_EVIDENCE = 1
+PARSE_SKIPPED = 18
+probe_examples_result = VERIFIED:11
+boundary_check = PASS，no production/tests/docs/dependency changes; no MinerU/OCR/LLM/VLM; no commit/push
 readiness_gates = CLOSED
+recommended_next_task = 348N-R7AO-QA test-only MinerU adapter controlled comparison runner review
 ```
 
-## R7AO input policy
-
-Required:
+Local outputs, not committed:
 
 ```text
-D:\_datefac_agent\output\datefac_raw_material_anjing_foods.xlsx
-one resolved *H3_AP202606081823352906_1*content_list_v2.json
+D:\_datefac_agent\output\comparison\anjing_foods_mineru_adapter_r7ao\run_r7ao_mineru_adapter_comparison.py
+D:\_datefac_agent\output\comparison\anjing_foods_mineru_adapter_r7ao\r7ao_mineru_adapter_comparison_report.xlsx
+D:\_datefac_agent\output\comparison\anjing_foods_mineru_adapter_r7ao\r7ao_mineru_adapter_comparison_summary.md
+D:\_datefac_agent\output\comparison\anjing_foods_mineru_adapter_r7ao\r7ao_mineru_adapter_run_metadata.json
 ```
 
-MinerU search roots:
+## QA focus
 
 ```text
-E:\mineru331\smoke_output\H3_AP202606081823352906_1\auto
-E:\mineru331\smoke_output\H3_AP202606081823352906_1
-E:\mineru331\smoke_output
-E:\mineru331
-E:\mineru_lab
+tracked files unchanged before QA report
+local outputs kept under approved output directory
+no outputs staged/committed/pushed
+runner imports and reuses tests.agent.mineru_artifact_adapter_348n
+runner avoids production pipeline side effects
+input paths resolved exactly
+metadata JSON records input paths, branch/head, row counts, block counts, status counts, readiness gates
+status counts internally consistent
+review_required aggregation explained
+all 11 probe examples reported and VERIFIED
+R7AO vs R7AL differences explained
+no uncontrolled full source_text dumping
+VERIFIED remains non-promotional
+no STRONG_EVIDENCE promotion
+no clean_data admission change
+readiness_gates CLOSED
 ```
 
 ## Current boundaries
@@ -97,4 +104,4 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Execute R7AO locally. No commit, no push. If R7AO passes, recommended next task should normally be `348N-R7AO-QA test-only MinerU adapter controlled comparison runner review`.
+Execute R7AO-QA. If QA passes, choose the safest R7AP next task: production-boundary integration design, multi-document dry-run design, or discrepancy review workflow design. Do not jump directly into production implementation.
