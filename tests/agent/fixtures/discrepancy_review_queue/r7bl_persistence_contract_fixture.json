@@ -1,0 +1,244 @@
+{
+  "schema_version": "r7bl_persistence_contract_fixture_v1",
+  "fixture_scope": "test_only_r7bl",
+  "valid_cases": {
+    "valid_schema_alignment_preview_mixed_records": {
+      "r7bi_case": "valid_mixed_review_records",
+      "expected_candidate_count": 2,
+      "expected_statuses": [
+        "DISAGREED",
+        "AMBIGUOUS"
+      ]
+    },
+    "valid_unresolved_blocked_delivery_record": {
+      "r7bi_case": "valid_unresolved_blocked_delivery",
+      "expected_candidate_count": 1,
+      "expected_statuses": [
+        "PARSE_SKIPPED"
+      ]
+    },
+    "valid_corrected_reaudit_required_record": {
+      "r7bi_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set_many",
+        "record_index": 0,
+        "values": {
+          "review_status": "CORRECTED",
+          "reviewer_action": "CORRECT_VALUE",
+          "re_audit_required": true,
+          "blocked_delivery_reason": "corrected_value_requires_reaudit_before_clean_delivery"
+        }
+      },
+      "expected_candidate_count": 2,
+      "expected_corrected_record_count": 1
+    }
+  },
+  "negative_cases": [
+    {
+      "case_id": "invalid_default_disabled",
+      "expected_error": "disabled_by_default"
+    },
+    {
+      "case_id": "invalid_missing_test_persistence_flag",
+      "expected_error": "test-only persistence enable token"
+    },
+    {
+      "case_id": "invalid_schema_alignment_bypass",
+      "payload_kind": "minimal_schema_like",
+      "expected_error": "required fields"
+    },
+    {
+      "case_id": "invalid_direct_dry_run_integration_output",
+      "payload_kind": "dry_run_integration_output",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_direct_writer_preview_output",
+      "payload_kind": "writer_preview_output",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_direct_adapter_candidate_output",
+      "payload_kind": "adapter_candidate_output",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_missing_review_item_id",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "delete",
+        "path": "future_review_queue_record_previews.0.review_item_id"
+      },
+      "expected_error": "review_item_id"
+    },
+    {
+      "case_id": "invalid_missing_run_id",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "delete",
+        "path": "future_review_queue_record_previews.0.run_id"
+      },
+      "expected_error": "run_id"
+    },
+    {
+      "case_id": "invalid_missing_audit_hash",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "delete",
+        "path": "future_review_queue_record_previews.0.audit_hash"
+      },
+      "expected_error": "audit_hash"
+    },
+    {
+      "case_id": "invalid_missing_idempotency_key",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "delete",
+        "path": "future_review_queue_record_previews.0.idempotency_key"
+      },
+      "expected_error": "idempotency_key"
+    },
+    {
+      "case_id": "invalid_malformed_idempotency_key",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.idempotency_key",
+        "value": "not-a-sha256"
+      },
+      "expected_error": "idempotency_key"
+    },
+    {
+      "case_id": "invalid_missing_hash_identity",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "delete",
+        "path": "future_review_queue_record_previews.0.record_payload_hash"
+      },
+      "expected_error": "record_payload_hash"
+    },
+    {
+      "case_id": "invalid_unresolved_without_blocked_delivery_reason",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.blocked_delivery_reason",
+        "value": ""
+      },
+      "expected_error": "blocked_delivery_reason"
+    },
+    {
+      "case_id": "invalid_corrected_without_re_audit_required",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set_many",
+        "record_index": 0,
+        "values": {
+          "review_status": "CORRECTED",
+          "reviewer_action": "CORRECT_VALUE",
+          "re_audit_required": false
+        }
+      },
+      "expected_error": "re_audit_required"
+    },
+    {
+      "case_id": "invalid_duplicate_idempotency_key",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "copy",
+        "from_path": "future_review_queue_record_previews.0.idempotency_key",
+        "to_path": "future_review_queue_record_previews.1.idempotency_key"
+      },
+      "expected_error": "duplicate idempotency_key"
+    },
+    {
+      "case_id": "invalid_full_source_text",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.source_text",
+        "value": "forbidden full source text"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_unbounded_evidence_text",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.evidence_preview",
+        "value": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+      },
+      "expected_error": "evidence_preview exceeds"
+    },
+    {
+      "case_id": "invalid_raw_mineru_output",
+      "payload_kind": "raw_mineru_output",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_raw_excel_workbook_data",
+      "payload_kind": "raw_excel_workbook_data",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_raw_parser_payload",
+      "payload_kind": "raw_parser_payload",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_raw_llm_vlm_response",
+      "payload_kind": "raw_llm_vlm_response",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_clean_data_write_intent",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.clean_data_eligible",
+        "value": true
+      },
+      "expected_error": "clean_data"
+    },
+    {
+      "case_id": "invalid_delivery_export_intent",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "delivery_export_intent",
+        "value": {
+          "enabled": true
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_production_writer_config",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "production_writer_config",
+        "value": {
+          "enabled": true
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "invalid_readiness_open",
+      "base_case": "valid_schema_alignment_preview_mixed_records",
+      "mutation": {
+        "action": "set",
+        "path": "schema_alignment_summary.readiness_gates.production_ready",
+        "value": true
+      },
+      "expected_error": "readiness gate"
+    },
+    {
+      "case_id": "invalid_user_direct_persistence_candidate",
+      "payload_kind": "user_direct_persistence_candidate",
+      "expected_error": "forbidden field"
+    }
+  ]
+}
