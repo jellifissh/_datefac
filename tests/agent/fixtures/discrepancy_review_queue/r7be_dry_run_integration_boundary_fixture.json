@@ -1,0 +1,175 @@
+{
+  "schema_version": "r7be_dry_run_integration_boundary_fixture_v1",
+  "fixture_scope": "test_only_r7be",
+  "shared": {
+    "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+    "adapter_version": "r7be_adapter_candidate_test_fixture_v1",
+    "created_from": "validated_discrepancy_boundary_output",
+    "input_file_hashes": {
+      "datefac_excel": "sha256:r7be-datefac-fixture",
+      "mineru_content_list_v2": "sha256:r7be-mineru-fixture"
+    },
+    "run_id": "r7be_fixture_run_001",
+    "source_document_id": "synthetic-r7be-report.pdf"
+  },
+  "valid_adapter_candidate_to_writer_preview": {
+    "review_rows": [
+      "disagreed",
+      "ambiguous"
+    ],
+    "reaudit_rows": [],
+    "verified_without_clean_gate_count": 0
+  },
+  "valid_mixed_verified_and_non_verified_candidate": {
+    "review_rows": [
+      "missing_evidence"
+    ],
+    "reaudit_rows": [
+      "verified_delivery"
+    ],
+    "verified_without_clean_gate_count": 1
+  },
+  "valid_unresolved_blocked_delivery_candidate": {
+    "review_rows": [
+      "parse_skipped"
+    ],
+    "reaudit_rows": [],
+    "verified_without_clean_gate_count": 0
+  },
+  "valid_corrected_reaudit_required_candidate": {
+    "review_rows": [],
+    "reaudit_rows": [
+      "corrected_disagreed"
+    ],
+    "verified_without_clean_gate_count": 0
+  },
+  "review_row_templates": {
+    "ambiguous": {
+      "agreement_status": "AMBIGUOUS",
+      "audit_hash": "sha256-r7be-audit-ambiguous",
+      "candidate_metric_name": "YoY",
+      "candidate_period": "2026E",
+      "candidate_unit": "%",
+      "candidate_value": "31.7",
+      "evidence_preview": "AMBIGUOUS bounded preview for duplicate value evidence.",
+      "evidence_preview_sha256": "sha256-r7be-preview-ambiguous",
+      "matched_locator": "mineru:v2:page:2:block:ambiguous:bbox:1,2,3,4",
+      "matched_text_sha256": "sha256-r7be-text-ambiguous",
+      "review_item_id": "r7be-review-ambiguous",
+      "risk_reason": "AMBIGUOUS evidence requires review",
+      "severity": "MEDIUM",
+      "source_row_id": "ambiguous:R1",
+      "subqueue": "evidence_review_queue"
+    },
+    "disagreed": {
+      "agreement_status": "DISAGREED",
+      "audit_hash": "sha256-r7be-audit-disagreed",
+      "candidate_metric_name": "营业收入",
+      "candidate_period": "2026E",
+      "candidate_unit": "百万元",
+      "candidate_value": "18379",
+      "evidence_preview": "DISAGREED bounded preview for conflicting table evidence.",
+      "evidence_preview_sha256": "sha256-r7be-preview-disagreed",
+      "matched_locator": "mineru:v2:page:1:block:disagreed:bbox:1,2,3,4",
+      "matched_text_sha256": "sha256-r7be-text-disagreed",
+      "review_item_id": "r7be-review-disagreed",
+      "risk_reason": "DISAGREED evidence requires review",
+      "severity": "HIGH",
+      "source_row_id": "disagreed:R1",
+      "subqueue": "evidence_conflict_queue"
+    },
+    "missing_evidence": {
+      "agreement_status": "MISSING_EVIDENCE",
+      "audit_hash": "sha256-r7be-audit-missing",
+      "candidate_metric_name": "净利润",
+      "candidate_period": "2026E",
+      "candidate_unit": "百万元",
+      "candidate_value": "1791",
+      "evidence_preview": "MISSING_EVIDENCE bounded preview for absent support.",
+      "evidence_preview_sha256": "sha256-r7be-preview-missing",
+      "matched_locator": "mineru:v2:page:3:block:missing:bbox:1,2,3,4",
+      "matched_text_sha256": "sha256-r7be-text-missing",
+      "review_item_id": "r7be-review-missing",
+      "risk_reason": "MISSING_EVIDENCE requires manual review",
+      "severity": "MEDIUM",
+      "source_row_id": "missing:R1",
+      "subqueue": "missing_evidence_queue"
+    },
+    "parse_skipped": {
+      "agreement_status": "PARSE_SKIPPED",
+      "audit_hash": "sha256-r7be-audit-parse-skipped",
+      "candidate_metric_name": "ROE",
+      "candidate_period": "2026E",
+      "candidate_unit": "%",
+      "candidate_value": "10.3",
+      "evidence_preview": "PARSE_SKIPPED bounded preview for parser skipped row.",
+      "evidence_preview_sha256": "sha256-r7be-preview-parse-skipped",
+      "matched_locator": "mineru:v2:page:4:block:parse-skipped:bbox:1,2,3,4",
+      "matched_text_sha256": "sha256-r7be-text-parse-skipped",
+      "review_item_id": "r7be-review-parse-skipped",
+      "risk_reason": "PARSE_SKIPPED requires source check",
+      "severity": "MEDIUM",
+      "source_row_id": "parse-skipped:R1",
+      "subqueue": "parse_skipped_queue"
+    }
+  },
+  "reaudit_row_templates": {
+    "corrected_disagreed": {
+      "agreement_status": "DISAGREED",
+      "delivery_gate_status": "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY",
+      "requires_reaudit_before_clean_delivery": true,
+      "source_row_id": "corrected-disagreed:R1"
+    },
+    "verified_delivery": {
+      "agreement_status": "VERIFIED",
+      "delivery_gate_status": "VERIFIED_WITHOUT_EXPLICIT_CLEAN_GATE",
+      "requires_reaudit_before_clean_delivery": true,
+      "source_row_id": "verified:R1"
+    }
+  },
+  "invalid_raw_mineru_like_payload": {
+    "content_list_v2": [
+      [
+        {
+          "text": "raw mineru block",
+          "type": "text"
+        }
+      ]
+    ]
+  },
+  "invalid_raw_excel_like_payload": {
+    "raw_excel_row": {
+      "A1": "raw workbook cell"
+    }
+  },
+  "invalid_raw_parser_like_payload": {
+    "parser_output": {
+      "rows": [
+        "raw parser row"
+      ]
+    }
+  },
+  "invalid_direct_user_payload": {
+    "user_payload": {
+      "message": "please write this to review_queue"
+    }
+  },
+  "invalid_full_source_text_payload": {
+    "source_text": "forbidden full source text"
+  },
+  "invalid_readiness_open_payload": {
+    "derive_from": "valid_adapter_candidate_to_writer_preview",
+    "set_path": "audit_contract.readiness_gates.production_ready",
+    "value": true
+  },
+  "invalid_schema_mismatch_payload": {
+    "derive_from": "valid_adapter_candidate_to_writer_preview",
+    "set_path": "adapter_status",
+    "value": "DISABLED"
+  },
+  "invalid_clean_data_intent_payload": {
+    "derive_from": "valid_adapter_candidate_to_writer_preview",
+    "set_path": "review_queue_candidate_items.0.clean_data_eligible",
+    "value": true
+  }
+}
