@@ -1,4 +1,4 @@
-"""Tests for the R7AW disabled production-boundary adapter skeleton."""
+﻿"""Tests for the R7AW disabled production-boundary adapter skeleton."""
 
 from __future__ import annotations
 
@@ -25,6 +25,12 @@ FIXTURE_PATH = (
     / "discrepancy_review_queue"
     / "r7aw_disabled_adapter_skeleton_fixture.json"
 )
+R7AY_FIXTURE_PATH = (
+    Path(__file__).parent
+    / "fixtures"
+    / "discrepancy_review_queue"
+    / "r7ay_negative_case_matrix_fixture.json"
+)
 MODULE_PATH = Path("datefac_agent/review/production_boundary_review_queue_adapter.py")
 
 
@@ -34,15 +40,45 @@ def _fixture() -> dict:
     return payload
 
 
+def _r7ay_fixture() -> dict:
+    payload = json.loads(R7AY_FIXTURE_PATH.read_text(encoding="utf-8"))
+    assert payload["fixture_scope"] == "test_only_r7ay"
+    return payload
+
+
+def _valid_boundary_payload() -> dict:
+    return deepcopy(_r7ay_fixture()["valid_boundary_output"])
+
+
 def _enabled_config() -> ProductionBoundaryReviewQueueAdapterConfig:
     return ProductionBoundaryReviewQueueAdapterConfig(enabled=True, test_only_enable_token=TEST_ONLY_ENABLE_TOKEN)
 
 
 def _enabled_output() -> dict:
     return build_production_boundary_review_queue_adapter_output(
-        deepcopy(_fixture()["valid_boundary_output"]),
+        _valid_boundary_payload(),
         _enabled_config(),
     )
+
+
+def _apply_mutation(payload: dict, mutation: dict) -> dict:
+    updated = deepcopy(payload)
+    path = mutation["path"]
+    parent = updated
+    for key in path[:-1]:
+        parent = parent[key]
+    leaf = path[-1]
+    if mutation["op"] == "delete":
+        del parent[leaf]
+    elif mutation["op"] == "set":
+        parent[leaf] = mutation["value"]
+    else:
+        raise AssertionError(f"unsupported mutation op: {mutation['op']}")
+    return updated
+
+
+def _negative_case_ids() -> list[str]:
+    return [case["case_id"] for case in _r7ay_fixture()["negative_case_matrix"]]
 
 
 def test_r7aw_default_disabled_fail_closed_behavior() -> None:
@@ -95,8 +131,35 @@ def test_r7aw_invalid_inputs_are_rejected_when_enabled() -> None:
             build_production_boundary_review_queue_adapter_output(case["payload"], _enabled_config())
 
 
+def test_r7ay_negative_case_matrix_fixture_is_curated() -> None:
+    fixture = _r7ay_fixture()
+    valid = fixture["valid_boundary_output"]
+    cases = fixture["negative_case_matrix"]
+
+    assert R7AY_FIXTURE_PATH.stat().st_size < 50000
+    assert valid["contract_version"] == ADAPTER_CONTRACT_VERSION
+    assert len(cases) >= 29
+    assert len({case["case_id"] for case in cases}) == len(cases)
+    assert {
+        "input_contract",
+        "reviewer_action",
+        "clean_delivery",
+        "evidence_preview",
+        "audit_metadata",
+    }.issubset({case["category"] for case in cases})
+
+
+@pytest.mark.parametrize("case_id", _negative_case_ids())
+def test_r7ay_negative_case_matrix_fails_closed(case_id: str) -> None:
+    case = next(record for record in _r7ay_fixture()["negative_case_matrix"] if record["case_id"] == case_id)
+    payload = deepcopy(case["payload"]) if "payload" in case else _apply_mutation(_valid_boundary_payload(), case["mutation"])
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match=case["expected_error"]):
+        build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
 def test_r7ax_boundary_output_rejects_unexpected_top_level_fields() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["comparison_result_rows"] = []
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unexpected fields"):
@@ -104,7 +167,7 @@ def test_r7ax_boundary_output_rejects_unexpected_top_level_fields() -> None:
 
 
 def test_r7aw_full_source_text_fields_are_not_accepted() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["source_text"] = "forbidden full source text"
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="forbidden field"):
@@ -112,7 +175,7 @@ def test_r7aw_full_source_text_fields_are_not_accepted() -> None:
 
 
 def test_r7ax_nested_source_text_fields_are_rejected() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["alternative_evidence_candidates"] = [
         {"locator": "page:1:block:1", "metadata": {"source_text": "nested full text"}}
     ]
@@ -122,7 +185,7 @@ def test_r7ax_nested_source_text_fields_are_rejected() -> None:
 
 
 def test_r7ax_missing_required_audit_metadata_fails_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     del payload["audit_metadata"]["input_file_hashes"]
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="audit_metadata missing"):
@@ -130,7 +193,7 @@ def test_r7ax_missing_required_audit_metadata_fails_closed() -> None:
 
 
 def test_r7ax_empty_input_file_hashes_fail_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["audit_metadata"]["input_file_hashes"]["datefac_excel"] = ""
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="input_file_hashes"):
@@ -138,7 +201,7 @@ def test_r7ax_empty_input_file_hashes_fail_closed() -> None:
 
 
 def test_r7ax_status_count_mismatch_fails_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["audit_metadata"]["review_queue_status_counts"]["DISAGREED"] = 99
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="status counts"):
@@ -146,7 +209,7 @@ def test_r7ax_status_count_mismatch_fails_closed() -> None:
 
 
 def test_r7ax_unknown_agreement_status_fails_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["agreement_status"] = "AUTO_VERIFIED"
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="non-VERIFIED"):
@@ -154,13 +217,13 @@ def test_r7ax_unknown_agreement_status_fails_closed() -> None:
 
 
 def test_r7ax_unknown_reviewer_action_fails_closed_across_rows() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["discrepancy_report_rows"][0]["reviewer_decision"] = "AUTO_PROMOTE_TO_CLEAN"
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unsupported reviewer action"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["blocked_delivery_rows"][0]["reviewer_decision"] = "AUTO_PROMOTE_TO_CLEAN"
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="unsupported reviewer action"):
@@ -210,7 +273,7 @@ def test_r7aw_corrected_rows_remain_reaudit_only() -> None:
 
 
 def test_r7ax_unresolved_non_verified_delivery_candidate_fails_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["delivery_clean_candidates"].append(
         {
             "review_item_id": "r7aw-review-unresolved-extra",
@@ -268,20 +331,20 @@ def test_r7aw_evidence_preview_is_bounded_and_unbounded_input_fails_closed() -> 
     output = _enabled_output()
     assert max(len(row["evidence_preview"]) for row in output["discrepancy_report_candidate_rows"]) <= 160
 
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["evidence_preview"] = "x" * 161
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="evidence_preview exceeds"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
 
 def test_r7ax_missing_required_evidence_preview_fails_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["evidence_preview"] = ""
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="evidence_preview is required"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     del payload["discrepancy_report_rows"][0]["evidence_preview"]
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="missing required"):
@@ -289,32 +352,34 @@ def test_r7ax_missing_required_evidence_preview_fails_closed() -> None:
 
 
 def test_r7aw_readiness_clean_and_strong_evidence_mutations_fail_closed() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["audit_metadata"]["readiness_gates"]["production_ready"] = True
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="readiness"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["clean_data_eligible"] = True
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="clean_data"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     payload["review_queue_items"][0]["evidence_level"] = "STRONG_EVIDENCE"
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="STRONG_EVIDENCE"):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
 
 def test_r7ax_output_does_not_share_mutable_input_references() -> None:
-    payload = deepcopy(_fixture()["valid_boundary_output"])
+    payload = _valid_boundary_payload()
     output = build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
 
     payload["audit_metadata"]["input_file_hashes"]["datefac_excel"] = "sha256:mutated"
     payload["review_queue_items"][0]["input_file_hashes"]["datefac_excel"] = "sha256:item-mutated"
+    payload["review_queue_items"][0]["evidence_preview"] = "mutated preview after adapter output"
     payload["audit_metadata"]["readiness_gates"]["client_ready"] = True
 
     assert output["audit_contract"]["input_file_hashes"]["datefac_excel"] == "sha256:r7aw-datefac-fixture"
     assert output["review_queue_candidate_items"][0]["input_file_hashes"]["datefac_excel"] == "sha256:r7aw-datefac-fixture"
+    assert output["review_queue_candidate_items"][0]["evidence_preview"] != "mutated preview after adapter output"
     assert output["audit_contract"]["readiness_gates"] == READINESS_GATES_CLOSED
 
 

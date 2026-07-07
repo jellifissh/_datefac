@@ -55,6 +55,7 @@ REVIEWER_ACTIONS: tuple[str, ...] = (
 )
 
 REQUIRED_BOUNDARY_OUTPUT_FIELDS: tuple[str, ...] = (
+    "contract_version",
     "review_queue_items",
     "discrepancy_report_rows",
     "delivery_clean_candidates",
@@ -273,6 +274,8 @@ def validate_boundary_output_payload(payload: Any, *, preview_limit: int = DEFAU
     extra = sorted(set(payload) - set(REQUIRED_BOUNDARY_OUTPUT_FIELDS))
     if extra:
         raise ProductionBoundaryReviewQueueAdapterError(f"boundary output has unexpected fields: {extra}")
+    if payload["contract_version"] != ADAPTER_CONTRACT_VERSION:
+        raise ProductionBoundaryReviewQueueAdapterError("unexpected boundary output contract_version")
     for field in ("review_queue_items", "discrepancy_report_rows", "delivery_clean_candidates", "blocked_delivery_rows"):
         if not isinstance(payload[field], list):
             raise ProductionBoundaryReviewQueueAdapterError(f"{field} must be a list")
@@ -374,8 +377,11 @@ def _validate_audit_metadata(metadata: Any) -> None:
         raise ProductionBoundaryReviewQueueAdapterError("adapter_version is required")
     if not isinstance(metadata.get("input_file_hashes"), dict) or not metadata["input_file_hashes"]:
         raise ProductionBoundaryReviewQueueAdapterError("input_file_hashes must be a non-empty object")
-    if not all(_clean(key) and _clean(value) for key, value in metadata["input_file_hashes"].items()):
-        raise ProductionBoundaryReviewQueueAdapterError("input_file_hashes must contain non-empty keys and values")
+    if not all(
+        isinstance(key, str) and isinstance(value, str) and _clean(key) and _clean(value)
+        for key, value in metadata["input_file_hashes"].items()
+    ):
+        raise ProductionBoundaryReviewQueueAdapterError("input_file_hashes must contain non-empty string keys and values")
     if not _clean(metadata.get("audit_metadata_hash")):
         raise ProductionBoundaryReviewQueueAdapterError("audit_metadata_hash is required")
     if metadata.get("readiness_gates") != READINESS_GATES_CLOSED:
@@ -405,7 +411,12 @@ def _validate_review_item(item: Any, *, metadata: dict[str, Any], preview_limit:
     missing = [field for field in REQUIRED_REVIEW_ITEM_FIELDS if field not in item]
     if missing:
         raise ProductionBoundaryReviewQueueAdapterError(f"review item missing required fields: {missing}")
-    if item["agreement_status"] not in REVIEW_QUEUE_STATUSES:
+    _validate_required_identity_fields(
+        item,
+        fields=("review_item_id", "source_row_id", "candidate_metric_name", "candidate_period", "candidate_value", "audit_hash"),
+        row_label="review item",
+    )
+    if not isinstance(item["agreement_status"], str) or item["agreement_status"] not in REVIEW_QUEUE_STATUSES:
         raise ProductionBoundaryReviewQueueAdapterError(f"review item status must be non-VERIFIED: {item['agreement_status']}")
     if item.get("run_id") != metadata["run_id"]:
         raise ProductionBoundaryReviewQueueAdapterError("review item run_id mismatch")
@@ -415,8 +426,11 @@ def _validate_review_item(item: Any, *, metadata: dict[str, Any], preview_limit:
         raise ProductionBoundaryReviewQueueAdapterError("review item input_file_hashes mismatch")
     if item.get("clean_data_eligible") is True:
         raise ProductionBoundaryReviewQueueAdapterError("review item clean_data_eligible must remain false")
-    if not _clean(item.get("review_item_id")) or not _clean(item.get("audit_hash")):
-        raise ProductionBoundaryReviewQueueAdapterError("review item id and audit_hash are required")
+    _validate_review_status_action_alignment(
+        _clean(item.get("review_status")),
+        item.get("reviewer_decision"),
+        row_label="review item",
+    )
     reviewer_decision = _clean(item.get("reviewer_decision"))
     if reviewer_decision and reviewer_decision not in REVIEWER_ACTIONS:
         raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {reviewer_decision}")
@@ -429,13 +443,21 @@ def _validate_discrepancy_report_row(row: Any, *, preview_limit: int) -> None:
     missing = [field for field in REQUIRED_DISCREPANCY_REPORT_FIELDS if field not in row]
     if missing:
         raise ProductionBoundaryReviewQueueAdapterError(f"discrepancy report row missing required fields: {missing}")
-    if row["agreement_status"] not in REVIEW_QUEUE_STATUSES:
+    _validate_required_identity_fields(
+        row,
+        fields=("review_item_id", "source_row_id", "candidate_metric_name", "candidate_period", "candidate_value"),
+        row_label="discrepancy report row",
+    )
+    if not isinstance(row["agreement_status"], str) or row["agreement_status"] not in REVIEW_QUEUE_STATUSES:
         raise ProductionBoundaryReviewQueueAdapterError("discrepancy report rows must be non-VERIFIED")
+    _validate_review_status_action_alignment(
+        _clean(row.get("review_status")),
+        row.get("reviewer_decision"),
+        row_label="discrepancy report row",
+    )
     reviewer_decision = _clean(row.get("reviewer_decision"))
     if reviewer_decision and reviewer_decision not in REVIEWER_ACTIONS:
         raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {reviewer_decision}")
-    if not _clean(row.get("review_item_id")):
-        raise ProductionBoundaryReviewQueueAdapterError("discrepancy report review_item_id is required")
     _validate_required_bounded_preview(row.get("evidence_preview", ""), preview_limit)
 
 
@@ -445,10 +467,22 @@ def _validate_blocked_delivery_row(row: Any) -> None:
     missing = [field for field in REQUIRED_BLOCKED_DELIVERY_FIELDS if field not in row]
     if missing:
         raise ProductionBoundaryReviewQueueAdapterError(f"blocked delivery row missing required fields: {missing}")
-    if row["agreement_status"] not in REVIEW_QUEUE_STATUSES:
+    _validate_required_identity_fields(
+        row,
+        fields=("review_item_id", "source_row_id"),
+        row_label="blocked delivery row",
+    )
+    if not isinstance(row["agreement_status"], str) or row["agreement_status"] not in REVIEW_QUEUE_STATUSES:
         raise ProductionBoundaryReviewQueueAdapterError("blocked delivery rows must be non-VERIFIED")
     if _clean(row.get("review_status")).startswith("RESOLVED_"):
         raise ProductionBoundaryReviewQueueAdapterError("resolved rows must not be blocked delivery rows")
+    if "delivery_blocked" in row and row["delivery_blocked"] is not True:
+        raise ProductionBoundaryReviewQueueAdapterError("blocked delivery rows must stay delivery_blocked")
+    _validate_review_status_action_alignment(
+        _clean(row.get("review_status")),
+        row.get("reviewer_decision"),
+        row_label="blocked delivery row",
+    )
     reviewer_decision = _clean(row.get("reviewer_decision"))
     if reviewer_decision and reviewer_decision not in REVIEWER_ACTIONS:
         raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {reviewer_decision}")
@@ -460,6 +494,11 @@ def _validate_delivery_candidate_row(row: Any, *, metadata: dict[str, Any]) -> N
     missing = [field for field in REQUIRED_DELIVERY_CANDIDATE_FIELDS if field not in row]
     if missing:
         raise ProductionBoundaryReviewQueueAdapterError(f"delivery candidate missing required fields: {missing}")
+    _validate_required_identity_fields(
+        row,
+        fields=("source_row_id", "candidate_metric_name", "candidate_period", "candidate_value"),
+        row_label="delivery candidate",
+    )
     if row.get("delivery_clean_admitted") is True:
         raise ProductionBoundaryReviewQueueAdapterError("delivery clean admission is forbidden")
     if row.get("requires_reaudit_before_clean_delivery") is not True:
@@ -479,11 +518,42 @@ def _validate_delivery_candidate_row(row: Any, *, metadata: dict[str, Any]) -> N
         raise ProductionBoundaryReviewQueueAdapterError("non-VERIFIED delivery candidates require review_item_id")
     if not _clean(row.get("review_status")).startswith("RESOLVED_"):
         raise ProductionBoundaryReviewQueueAdapterError("unresolved non-VERIFIED delivery candidates are forbidden")
+    _validate_review_status_action_alignment(
+        _clean(row.get("review_status")),
+        row.get("reviewer_decision"),
+        row_label="delivery candidate",
+    )
     reviewer_decision = _clean(row.get("reviewer_decision"))
     if not reviewer_decision or reviewer_decision not in REVIEWER_ACTIONS:
         raise ProductionBoundaryReviewQueueAdapterError("resolved non-VERIFIED delivery candidates require valid reviewer action")
     if row.get("delivery_gate_status") != "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY":
         raise ProductionBoundaryReviewQueueAdapterError("non-VERIFIED delivery candidates must be re-audit only")
+
+
+def _validate_required_identity_fields(row: dict[str, Any], *, fields: tuple[str, ...], row_label: str) -> None:
+    for field in fields:
+        if not _clean(row.get(field)):
+            raise ProductionBoundaryReviewQueueAdapterError(f"{row_label} {field} is required")
+
+
+def _validate_review_status_action_alignment(review_status: str, reviewer_decision: Any, *, row_label: str) -> None:
+    action = _clean(reviewer_decision)
+    if action and action not in REVIEWER_ACTIONS:
+        raise ProductionBoundaryReviewQueueAdapterError(f"unsupported reviewer action: {action}")
+    if review_status == "OPEN" and action:
+        raise ProductionBoundaryReviewQueueAdapterError(f"{row_label} OPEN review_status must not include reviewer_action")
+    if review_status == "RESOLVED_CORRECTED" and not action.startswith("CORRECT_"):
+        raise ProductionBoundaryReviewQueueAdapterError(f"{row_label} corrected review_status requires CORRECT_* action")
+    if review_status == "RESOLVED_REJECTED" and action not in {"REJECT_CANDIDATE", "MARK_NOT_IN_REPORT"}:
+        raise ProductionBoundaryReviewQueueAdapterError(f"{row_label} rejected review_status requires reject action")
+    if review_status == "RESOLVED_ACCEPTED" and action not in {"ACCEPT_CANDIDATE", "SELECT_EVIDENCE"}:
+        raise ProductionBoundaryReviewQueueAdapterError(f"{row_label} accepted review_status requires accept action")
+    if review_status == "UNRESOLVED_NEEDS_SOURCE_CHECK" and action not in {
+        "MARK_EVIDENCE_INSUFFICIENT",
+        "REQUEST_REEXTRACTION",
+        "REQUEST_MANUAL_SOURCE_CHECK",
+    }:
+        raise ProductionBoundaryReviewQueueAdapterError(f"{row_label} unresolved source check requires source-check action")
 
 
 def _review_queue_candidate_item(
