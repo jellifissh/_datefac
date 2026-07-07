@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "fixture_scope": "test_only_r7au",
+  "valid_comparison_boundary_payload": {
+    "fixture_scope": "test_only_r7as",
+    "run_id": "r7au_fixture_run_001",
+    "adapter_version": "r7as_integration_boundary_test_only_v1",
+    "input_file_hashes": {
+      "datefac_excel": "sha256:r7au-datefac-fixture",
+      "mineru_content_list_v2": "sha256:r7au-mineru-fixture"
+    },
+    "readiness_gates": {
+      "client_ready": false,
+      "production_ready": false,
+      "formal_client_export_allowed": false,
+      "demo_export_only": true
+    },
+    "comparison_result_rows": [
+      {
+        "row_id": "verified:R1",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "Revenue",
+        "period": "2026Q1",
+        "value": "47.10",
+        "unit": "CNY bn",
+        "page_number": 1,
+        "agreement_status": "VERIFIED",
+        "source_text_status": "AVAILABLE_USED",
+        "evidence_type": "mineru_text_block",
+        "matched_page": 1,
+        "matched_locator": "mineru:v2:page:1:block:0:bbox:100,100,500,130",
+        "matched_block_index": 0,
+        "matched_text_sha256": "sha256-r7au-verified-revenue",
+        "matched_char_count": 73,
+        "evidence_preview": "2026Q1 Revenue was 47.10 CNY bn with period and metric anchors.",
+        "raw_text": "2026Q1 Revenue 47.10 CNY bn",
+        "match_reason": "value + metric + period matched",
+        "risk_reason": "",
+        "suggested_action": "retain as comparison-verified only; no clean promotion",
+        "core_metric": true
+      },
+      {
+        "row_id": "disagreed:R2",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "YoY",
+        "period": "2026E",
+        "value": "31.7",
+        "unit": "%",
+        "page_number": 2,
+        "agreement_status": "DISAGREED",
+        "source_text_status": "AVAILABLE_CONFLICT",
+        "evidence_type": "mineru_table_html",
+        "matched_page": 2,
+        "matched_locator": "mineru:v2:page:2:block:4:bbox:80,210,720,420",
+        "matched_block_index": 4,
+        "matched_text_sha256": "sha256-r7au-disagreed-yoy",
+        "matched_char_count": 380,
+        "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+        "raw_text": "YoY | 2026E 31.7 | unit %",
+        "match_reason": "metric + period present but value conflicts",
+        "risk_reason": "value conflict",
+        "suggested_action": "manual review required"
+      },
+      {
+        "row_id": "ambiguous:R3",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "Finance cost",
+        "period": "2026E",
+        "value": "-62",
+        "unit": "CNY mn",
+        "page_number": 3,
+        "agreement_status": "AMBIGUOUS",
+        "source_text_status": "AMBIGUOUS_MATCH",
+        "evidence_type": "mineru_table_html",
+        "matched_page": 3,
+        "matched_locator": "mineru:v2:page:3:block:2:bbox:90,240,760,510",
+        "matched_block_index": 2,
+        "matched_text_sha256": "sha256-r7au-ambiguous-a",
+        "matched_char_count": 512,
+        "evidence_preview": "Two forecast tables both contain Finance cost 2026E -62.",
+        "raw_text": "Finance cost | 2026E -62 | CNY mn",
+        "match_reason": "multiple blocks matched value + metric + period",
+        "risk_reason": "ambiguous duplicate evidence",
+        "suggested_action": "manual review required / select evidence",
+        "alternative_evidence_candidates": [
+          {
+            "source_text_id": "st-r7au-finance-cost-a",
+            "page_number": 3,
+            "locator": "mineru:v2:page:3:block:2",
+            "text_sha256": "sha256-r7au-ambiguous-a",
+            "evidence_type": "mineru_table_html",
+            "preview": "Forecast table A: Finance cost 2026E -62."
+          },
+          {
+            "source_text_id": "st-r7au-finance-cost-b",
+            "page_number": 3,
+            "locator": "mineru:v2:page:3:block:5",
+            "text_sha256": "sha256-r7au-ambiguous-b",
+            "evidence_type": "mineru_table_html",
+            "preview": "Forecast table B: Finance cost 2026E -62."
+          }
+        ]
+      },
+      {
+        "row_id": "missing:R4",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "52-week low",
+        "period": "2026-06-05",
+        "value": "69.51",
+        "unit": "CNY/share",
+        "page_number": 1,
+        "agreement_status": "MISSING_EVIDENCE",
+        "source_text_status": "MISSING_EVIDENCE",
+        "evidence_type": "none",
+        "matched_page": null,
+        "matched_locator": "",
+        "matched_block_index": null,
+        "matched_text_sha256": "",
+        "matched_char_count": 0,
+        "evidence_preview": "",
+        "raw_text": "52-week low 69.51 CNY/share source page P1",
+        "match_reason": "no usable MinerU evidence block",
+        "risk_reason": "missing source evidence",
+        "suggested_action": "manual review required / evidence not found"
+      },
+      {
+        "row_id": "parse:R5",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "Ticker name",
+        "period": "",
+        "value": "Synthetic Foods",
+        "unit": "",
+        "page_number": 1,
+        "agreement_status": "PARSE_SKIPPED",
+        "source_text_status": "UNSUPPORTED_ROW",
+        "evidence_type": "none",
+        "matched_page": null,
+        "matched_locator": "",
+        "matched_block_index": null,
+        "matched_text_sha256": "",
+        "matched_char_count": 0,
+        "evidence_preview": "",
+        "raw_text": "Ticker name Synthetic Foods is not metric + period + numeric value shaped.",
+        "match_reason": "missing metric, period, or numeric value",
+        "risk_reason": "trusted matching requires value + metric + period",
+        "suggested_action": "manual review / normalize candidate row"
+      },
+      {
+        "row_id": "unverified:R6",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "Close price",
+        "period": "2026-06-05",
+        "value": "86.68",
+        "unit": "CNY/share",
+        "page_number": 1,
+        "agreement_status": "UNVERIFIED",
+        "source_text_status": "AVAILABLE_NOT_USED",
+        "evidence_type": "mineru_table_html",
+        "matched_page": 1,
+        "matched_locator": "mineru:v2:page:1:block:3:bbox:110,500,730,640",
+        "matched_block_index": 3,
+        "matched_text_sha256": "sha256-r7au-unverified-close",
+        "matched_char_count": 260,
+        "evidence_preview": "Market table contains 86.68, but metric or period anchors are incomplete.",
+        "raw_text": "Close price 86.68 CNY/share on 2026-06-05",
+        "match_reason": "partial value/metric/period evidence only",
+        "risk_reason": "not enough anchors for VERIFIED",
+        "suggested_action": "manual review required / anchors incomplete"
+      },
+      {
+        "row_id": "resolved-correction:R7",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "Net margin",
+        "period": "2026E",
+        "value": "9.8",
+        "unit": "%",
+        "page_number": 2,
+        "agreement_status": "DISAGREED",
+        "source_text_status": "AVAILABLE_CONFLICT",
+        "evidence_type": "mineru_table_html_vs_paragraph",
+        "matched_page": 2,
+        "matched_locator": "mineru:v2:page:2:block:6:bbox:70,430,750,610",
+        "matched_block_index": 6,
+        "matched_text_sha256": "sha256-r7au-table-paragraph-conflict",
+        "matched_char_count": 430,
+        "evidence_preview": "Table shows Net margin 2026E 9.4%, while paragraph mentions around 9.8%.",
+        "raw_text": "Net margin | 2026E 9.8 | unit %",
+        "match_reason": "table evidence and paragraph evidence disagree",
+        "risk_reason": "table-vs-paragraph evidence conflict",
+        "suggested_action": "manual review required / compare evidence priority",
+        "reviewer_action": "CORRECT_VALUE",
+        "reviewer_corrected_value": "9.4",
+        "reviewer_note": "Reviewer selected table evidence and corrected value for re-audit.",
+        "explicit_policy_gate": true
+      },
+      {
+        "row_id": "unresolved-action:R8",
+        "source_document_id": "synthetic-report.pdf",
+        "metric_name": "52-week low",
+        "period": "2026-06-05",
+        "value": "69.51",
+        "unit": "CNY/share",
+        "page_number": 1,
+        "agreement_status": "MISSING_EVIDENCE",
+        "source_text_status": "MISSING_EVIDENCE",
+        "evidence_type": "none",
+        "matched_page": null,
+        "matched_locator": "",
+        "matched_block_index": null,
+        "matched_text_sha256": "",
+        "matched_char_count": 0,
+        "evidence_preview": "",
+        "raw_text": "52-week low 69.51 CNY/share needs manual source check.",
+        "match_reason": "no usable MinerU evidence block",
+        "risk_reason": "missing source evidence",
+        "suggested_action": "manual review required / evidence not found",
+        "reviewer_action": "REQUEST_MANUAL_SOURCE_CHECK",
+        "reviewer_note": "Need manual source check; keep out of delivery clean output."
+      }
+    ]
+  },
+  "invalid_inputs": [
+    {
+      "case_id": "invalid_raw_mineru_like_input",
+      "payload": {
+        "content_list_v2": [
+          [
+            {
+              "type": "text",
+              "text": "raw MinerU block must not enter production boundary contract directly"
+            }
+          ]
+        ],
+        "raw_mineru_block": {
+          "type": "table",
+          "content": {
+            "html": "<table><tr><td>raw</td></tr></table>"
+          }
+        }
+      }
+    },
+    {
+      "case_id": "invalid_raw_excel_like_input",
+      "payload": {
+        "raw_excel_row": {
+          "sheet": "Sheet1",
+          "row": 12,
+          "cells": [
+            "Revenue",
+            "2026Q1",
+            "47.10"
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "invalid_full_source_text_input",
+      "payload": {
+        "review_queue_items": [
+          {
+            "source_text": "full source text must not be accepted by the production-boundary contract"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "bad"
+        }
+      }
+    }
+  ]
+}
