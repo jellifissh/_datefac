@@ -79,6 +79,7 @@ def build_review_queue_writer_dry_run_integration_preview(
         raise ReviewQueueWriterDryRunIntegrationBoundaryError(
             f"writer dry-run contract rejected adapter candidate output: {exc}"
         ) from exc
+    _validate_writer_preview_boundary(writer_preview, preview_limit=preview_limit)
 
     output = _enabled_result(
         integration_config=integration_config,
@@ -103,6 +104,52 @@ def _validate_config(config: ReviewQueueWriterDryRunIntegrationBoundaryConfig) -
         raise ReviewQueueWriterDryRunIntegrationBoundaryError("unexpected integration boundary contract_version")
 
 
+def _validate_writer_preview_boundary(value: Any, *, preview_limit: int) -> None:
+    if not isinstance(value, dict):
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview must be an object")
+    try:
+        validate_no_forbidden_fields(value, preview_limit=preview_limit)
+    except ReviewQueueWriterContractError as exc:
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError(
+            f"writer preview violates integration boundary: {exc}"
+        ) from exc
+    if value.get("writer_status") != "ENABLED_TEST_ONLY_DRY_RUN":
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview must be test-only dry-run output")
+    if value.get("dry_run_only") is not True:
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview must remain dry-run only")
+    records = value.get("review_queue_dry_run_records")
+    if not isinstance(records, list):
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview records must be a list")
+    summary = value.get("dry_run_summary")
+    if not isinstance(summary, dict):
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview summary must be an object")
+    if summary.get("writer_status") != "ENABLED_TEST_ONLY_DRY_RUN":
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview summary must be test-only dry-run output")
+    if summary.get("dry_run_only") is not True:
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview summary must remain dry-run only")
+    if summary.get("readiness_gates") != _closed_readiness_gates():
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview readiness gates must remain closed")
+    if summary.get("external_call_counts") != _zero_external_call_counts():
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview external call counts must stay zero")
+    if summary.get("dry_run_record_count") != len(records):
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview record count mismatch")
+    for key in ("clean_data_write_count", "delivery_write_count", "filesystem_write_count", "database_write_count"):
+        if summary.get(key) != 0:
+            raise ReviewQueueWriterDryRunIntegrationBoundaryError(f"writer preview {key} must remain zero")
+    if not _writer_boundary_flags_are_closed(summary.get("boundary_flags")):
+        raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview boundary flags must remain closed")
+    for record in records:
+        if not isinstance(record, dict):
+            raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview records must be objects")
+        if record.get("dry_run_only") is not True:
+            raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview records must remain dry-run only")
+        if record.get("agreement_status") == "VERIFIED":
+            raise ReviewQueueWriterDryRunIntegrationBoundaryError("writer preview records must remain review-bound")
+        for key in ("clean_data_write_count", "delivery_write_count"):
+            if record.get(key) != 0:
+                raise ReviewQueueWriterDryRunIntegrationBoundaryError(f"writer preview record {key} must remain zero")
+
+
 def _disabled_result(config: ReviewQueueWriterDryRunIntegrationBoundaryConfig) -> dict[str, Any]:
     return {
         "integration_status": "DISABLED",
@@ -122,18 +169,8 @@ def _disabled_result(config: ReviewQueueWriterDryRunIntegrationBoundaryConfig) -
             "filesystem_write_count": 0,
             "database_write_count": 0,
             "export_write_count": 0,
-            "readiness_gates": {
-                "client_ready": False,
-                "production_ready": False,
-                "formal_client_export_allowed": False,
-                "demo_export_only": True,
-            },
-            "external_call_counts": {
-                "mineru_run_count": 0,
-                "ocr_run_count": 0,
-                "llm_api_call_count": 0,
-                "vlm_api_call_count": 0,
-            },
+            "readiness_gates": _closed_readiness_gates(),
+            "external_call_counts": _zero_external_call_counts(),
             "boundary_flags": _closed_boundary_flags(),
         },
     }
@@ -197,12 +234,7 @@ def _validate_enabled_output(value: dict[str, Any], *, preview_limit: int) -> No
     summary = value["integration_summary"]
     if value["dry_run_only"] is not True or summary["dry_run_only"] is not True:
         raise ReviewQueueWriterDryRunIntegrationBoundaryError("integration output must remain dry-run only")
-    if summary["readiness_gates"] != {
-        "client_ready": False,
-        "production_ready": False,
-        "formal_client_export_allowed": False,
-        "demo_export_only": True,
-    }:
+    if summary["readiness_gates"] != _closed_readiness_gates():
         raise ReviewQueueWriterDryRunIntegrationBoundaryError("readiness gates must remain closed")
     for key in ("clean_data_write_count", "delivery_write_count", "filesystem_write_count", "database_write_count", "export_write_count"):
         if summary[key] != 0:
@@ -224,6 +256,43 @@ def _closed_boundary_flags() -> dict[str, bool]:
         "verified_auto_clean": False,
         "verified_promotes_to_strong_evidence": False,
         "full_source_text_serialized": False,
+    }
+
+
+def _writer_boundary_flags_are_closed(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    expected_false = (
+        "production_hook",
+        "writes_review_queue",
+        "writes_clean_data",
+        "writes_delivery",
+        "writes_filesystem",
+        "writes_database",
+        "verified_auto_clean",
+        "verified_promotes_to_strong_evidence",
+        "full_source_text_serialized",
+    )
+    if any(value.get(key) is not False for key in expected_false):
+        return False
+    return value.get("dry_run_preview_only") is True
+
+
+def _closed_readiness_gates() -> dict[str, bool]:
+    return {
+        "client_ready": False,
+        "production_ready": False,
+        "formal_client_export_allowed": False,
+        "demo_export_only": True,
+    }
+
+
+def _zero_external_call_counts() -> dict[str, int]:
+    return {
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "llm_api_call_count": 0,
+        "vlm_api_call_count": 0,
     }
 
 

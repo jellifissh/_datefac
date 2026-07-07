@@ -171,5 +171,19 @@
     "derive_from": "valid_adapter_candidate_to_writer_preview",
     "set_path": "review_queue_candidate_items.0.clean_data_eligible",
     "value": true
+  },
+  "invalid_empty_payload": {},
+  "invalid_minimal_adapter_like_payload": {
+    "adapter_status": "ENABLED_TEST_ONLY"
+  },
+  "invalid_direct_writer_preview_payload": {
+    "dry_run_only": true,
+    "dry_run_summary": {
+      "database_write_count": 0,
+      "dry_run_only": true,
+      "writer_status": "ENABLED_TEST_ONLY_DRY_RUN"
+    },
+    "review_queue_dry_run_records": [],
+    "writer_status": "ENABLED_TEST_ONLY_DRY_RUN"
   }
 }

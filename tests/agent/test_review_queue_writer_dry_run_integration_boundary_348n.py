@@ -9,6 +9,7 @@ import pytest
 from tests.agent import review_queue_writer_dry_run_integration_boundary_348n as boundary
 from tests.agent.review_queue_writer_contract_348n import (
     TEST_ONLY_WRITER_ENABLE_TOKEN,
+    WRITER_CONTRACT_VERSION,
     ReviewQueueWriterContractConfig,
     build_review_queue_writer_dry_run_preview,
 )
@@ -208,6 +209,9 @@ def test_r7be_fixture_is_small_curated_and_complete() -> None:
         "invalid_readiness_open_payload",
         "invalid_schema_mismatch_payload",
         "invalid_clean_data_intent_payload",
+        "invalid_empty_payload",
+        "invalid_minimal_adapter_like_payload",
+        "invalid_direct_writer_preview_payload",
     }
 
     assert set(fixture) == expected_keys
@@ -216,6 +220,8 @@ def test_r7be_fixture_is_small_curated_and_complete() -> None:
     assert "raw_excel_row" in fixture["invalid_raw_excel_like_payload"]
     assert "parser_output" in fixture["invalid_raw_parser_like_payload"]
     assert "source_text" in fixture["invalid_full_source_text_payload"]
+    assert fixture["invalid_empty_payload"] == {}
+    assert fixture["invalid_minimal_adapter_like_payload"] == {"adapter_status": "ENABLED_TEST_ONLY"}
 
 
 def test_r7be_default_disabled_integration_fails_closed_without_writer_call(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -239,6 +245,76 @@ def test_r7be_explicit_test_only_enable_required() -> None:
             _candidate_payload(),
             ReviewQueueWriterDryRunIntegrationBoundaryConfig(enabled=True),
         )
+
+
+def test_r7bf_missing_explicit_token_rejects_before_writer_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("writer dry-run must not be called without explicit integration token")
+
+    monkeypatch.setattr(boundary, "build_review_queue_writer_dry_run_preview", fail_if_called)
+    with pytest.raises(ReviewQueueWriterDryRunIntegrationBoundaryError, match="test-only integration enable token"):
+        build_review_queue_writer_dry_run_integration_preview(
+            _candidate_payload(),
+            ReviewQueueWriterDryRunIntegrationBoundaryConfig(enabled=True),
+        )
+
+
+def test_r7bf_invalid_explicit_token_rejects_before_writer_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("writer dry-run must not be called with invalid integration token")
+
+    monkeypatch.setattr(boundary, "build_review_queue_writer_dry_run_preview", fail_if_called)
+    with pytest.raises(ReviewQueueWriterDryRunIntegrationBoundaryError, match="test-only integration enable token"):
+        build_review_queue_writer_dry_run_integration_preview(
+            _candidate_payload(),
+            ReviewQueueWriterDryRunIntegrationBoundaryConfig(
+                enabled=True,
+                test_only_enable_token="R7BE_INVALID_OR_PRODUCTION_TOKEN",
+            ),
+        )
+
+
+def test_r7bf_disabled_path_does_not_validate_or_call_writer_for_malformed_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("writer dry-run must not be called when integration boundary is disabled")
+
+    monkeypatch.setattr(boundary, "build_review_queue_writer_dry_run_preview", fail_if_called)
+    result = build_review_queue_writer_dry_run_integration_preview(_invalid_payload("invalid_raw_mineru_like_payload"))
+
+    assert result["integration_status"] == "DISABLED"
+    assert result["dry_run_only"] is True
+    assert result["writer_dry_run_preview"] is None
+    assert result["integration_summary"]["writer_called"] is False
+    assert result["integration_summary"]["clean_data_write_count"] == 0
+    assert result["integration_summary"]["database_write_count"] == 0
+
+
+def test_r7bf_valid_path_constructs_only_test_writer_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _candidate_payload()
+    expected_writer_preview = build_review_queue_writer_dry_run_preview(payload, _writer_config())
+    observed_configs: list[ReviewQueueWriterContractConfig] = []
+
+    def fake_writer(
+        adapter_candidate_output: dict,
+        config: ReviewQueueWriterContractConfig,
+        **kwargs: object,
+    ) -> dict:
+        observed_configs.append(config)
+        assert adapter_candidate_output == payload
+        assert kwargs["existing_record_hashes"] is None
+        assert config.enabled is True
+        assert config.contract_version == WRITER_CONTRACT_VERSION
+        assert config.test_only_enable_token == TEST_ONLY_WRITER_ENABLE_TOKEN
+        return deepcopy(expected_writer_preview)
+
+    monkeypatch.setattr(boundary, "build_review_queue_writer_dry_run_preview", fake_writer)
+    result = build_review_queue_writer_dry_run_integration_preview(payload, _enabled_config())
+
+    assert len(observed_configs) == 1
+    assert result["writer_dry_run_preview"] == expected_writer_preview
+    assert result["integration_summary"]["writer_called"] is True
 
 
 def test_r7be_valid_adapter_candidate_reaches_test_only_writer_preview() -> None:
@@ -336,6 +412,9 @@ def test_r7be_retry_same_input_can_pass_duplicate_skip_plan_without_writes() -> 
         ("invalid_readiness_open_payload", "readiness gate"),
         ("invalid_schema_mismatch_payload", "enabled test-only"),
         ("invalid_clean_data_intent_payload", "clean_data"),
+        ("invalid_empty_payload", "missing required"),
+        ("invalid_minimal_adapter_like_payload", "missing required"),
+        ("invalid_direct_writer_preview_payload", "missing required"),
     ],
 )
 def test_r7be_invalid_inputs_rejected_before_writer_call(
@@ -352,6 +431,35 @@ def test_r7be_invalid_inputs_rejected_before_writer_call(
             _invalid_payload(fixture_key),
             _enabled_config(),
         )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "match"),
+    [
+        (lambda preview: preview.update({"writer_status": "ENABLED_PRODUCTION"}), "test-only dry-run"),
+        (lambda preview: preview.update({"dry_run_only": False}), "dry-run only"),
+        (lambda preview: preview["dry_run_summary"].update({"writer_status": "ENABLED_PRODUCTION"}), "test-only dry-run"),
+        (lambda preview: preview["dry_run_summary"].update({"database_write_count": 1}), "database_write_count"),
+        (lambda preview: preview["dry_run_summary"]["boundary_flags"].update({"production_hook": True}), "forbidden"),
+        (lambda preview: preview["review_queue_dry_run_records"][0].update({"dry_run_only": False}), "dry-run only"),
+        (lambda preview: preview["review_queue_dry_run_records"][0].update({"agreement_status": "VERIFIED"}), "review-bound"),
+    ],
+)
+def test_r7bf_unsafe_or_production_like_writer_preview_is_blocked(
+    mutation: object,
+    match: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = _candidate_payload()
+    unsafe_preview = build_review_queue_writer_dry_run_preview(payload, _writer_config())
+    mutation(unsafe_preview)
+
+    def fake_writer(*args: object, **kwargs: object) -> dict:
+        return deepcopy(unsafe_preview)
+
+    monkeypatch.setattr(boundary, "build_review_queue_writer_dry_run_preview", fake_writer)
+    with pytest.raises(ReviewQueueWriterDryRunIntegrationBoundaryError, match=match):
+        build_review_queue_writer_dry_run_integration_preview(payload, _enabled_config())
 
 
 def test_r7be_verified_rows_do_not_become_clean_data() -> None:
