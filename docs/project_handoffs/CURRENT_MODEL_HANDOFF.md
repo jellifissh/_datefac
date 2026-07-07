@@ -10,7 +10,7 @@ pivot/348-agent-foundation
 ## Current task
 
 ```text
-348N-R7AM-QA test-only MinerU artifact adapter prototype review
+348N-R7AN test-only MinerU adapter controlled comparison dry-run design
 ```
 
 Task sizing:
@@ -18,66 +18,52 @@ Task sizing:
 ```text
 task_size = small
 recommended_reasoning_level = max
-execution_mode = QA-review-only
-reason = R7AM added a test-only MinerU artifact adapter prototype. QA must verify boundary, fixture size, conservative matching, and no production/readiness promotion.
+execution_mode = design-review-only
+reason = R7AM-QA confirmed the test-only MinerU adapter prototype is valid. R7AN should design the next controlled dry-run without implementing a runner or production integration.
 ```
 
 Task document:
 
 ```text
-docs/codex_tasks/348N_R7AM_QA_test_only_mineru_artifact_adapter_prototype_review.md
+docs/codex_tasks/348N_R7AN_test_only_mineru_adapter_controlled_comparison_dry_run_design.md
 ```
 
 Expected report:
 
 ```text
-docs/agent/348N_R7AM_QA_TEST_ONLY_MINERU_ARTIFACT_ADAPTER_PROTOTYPE_REVIEW.md
+docs/agent/348N_R7AN_TEST_ONLY_MINERU_ADAPTER_CONTROLLED_COMPARISON_DRY_RUN_DESIGN.md
 ```
 
 ## Latest completed result
 
 ```text
-R7AM commit = 0de3a4a test: add MinerU artifact adapter prototype
-Decision = PASS，348N_R7AM_TEST_ONLY_MINERU_ARTIFACT_ADAPTER_PROTOTYPE_VALID
+R7AM-QA commit = 4daa3bf docs: add R7AM QA review
+Decision = PASS，348N_R7AM_QA_CONFIRMED_TEST_ONLY_MINERU_ARTIFACT_ADAPTER_PROTOTYPE_VALID
 pytest tests/agent/test_mineru_artifact_adapter_348n.py -q = 21 passed
 pytest tests/agent -q = 201 passed
-files_modified = 4
-fixture_result = PASS，小型 curated fixture，未提交完整 MinerU output
-adapter_result = PASS，test-only content_list_v2 adapter
-matching_helper_result = PASS，覆盖 VERIFIED / UNVERIFIED / DISAGREED / AMBIGUOUS / MISSING_EVIDENCE
+files_modified = 1
+fixture_review_result = PASS，小型 curated fixture，2599 bytes / 7 blocks
+adapter_review_result = PASS，adapter 仅在 tests/agent/，无 production hook
+matching_helper_review_result = PASS，保守区分 VERIFIED / UNVERIFIED / DISAGREED / AMBIGUOUS / MISSING_EVIDENCE
 boundary_check = PASS
 readiness_gates = CLOSED
 ```
 
-R7AM created:
+## R7AN focus
 
 ```text
-tests/agent/mineru_artifact_adapter_348n.py
-tests/agent/test_mineru_artifact_adapter_348n.py
-tests/agent/fixtures/mineru_artifacts/anjing_minimal_content_list_v2__r7am.json
-docs/agent/348N_R7AM_TEST_ONLY_MINERU_ARTIFACT_ADAPTER_PROTOTYPE_REPORT.md
-```
-
-## QA focus
-
-```text
-allowed files only
-adapter is truly test-only
-fixture is small curated and not full MinerU dump
-content_list_v2 page-grouped structure supported
-page_number / locator / bbox deterministic
-text_sha256 / char_count deterministic
-text block evidence extracted
-table HTML evidence extracted
-value + metric + period required for VERIFIED
-value-only and metric-only rejected
-ambiguous duplicate numeric evidence conservative
-DISAGREED and MISSING_EVIDENCE distinct
-no full source_text serialization into production outputs
-no STRONG_EVIDENCE promotion
-no clean_data admission changes
-no readiness gate changes
-no MinerU/OCR/LLM/VLM/PDF parser dependency
+input_scope
+local_output_policy
+committed_fixture_policy
+runner_location
+whether to reuse R7AM adapter directly
+candidate_row_normalization_strategy
+evidence_block_indexing_strategy
+matching_status_semantics
+report_sheet_design
+validation_commands
+pass_fail_blocked_criteria
+next_task_name
 ```
 
 ## Current boundaries
@@ -97,4 +83,4 @@ agent tasks should stage only explicit allowed paths
 
 ## Next-step guidance
 
-Execute R7AM-QA. If QA passes, choose the next R7AN task based on findings: controlled adapter integration design, test-only MinerU adapter comparison dry-run, or source_text sidecar bridge integration design. Do not jump directly to production integration.
+Execute R7AN as design-review-only. It should normally recommend `348N-R7AO test-only MinerU adapter controlled comparison runner` if no blocker is found. Do not implement the runner in R7AN.
