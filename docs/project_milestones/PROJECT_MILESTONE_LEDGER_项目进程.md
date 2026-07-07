@@ -16,3 +16,11 @@ AGENTS.md
 ```
 
 This archive file should not be used as the default task-routing ledger for current 348 Agent work.
+
+## R7BJ compatibility note
+
+```text
+R7BI-QA closed the review_queue dry-run schema alignment milestone.
+The active progress and handoff docs were synced in R7BJ.
+Use docs/agent/项目进程.md and docs/project_handoffs/CURRENT_MODEL_HANDOFF.md for current status.
+```
