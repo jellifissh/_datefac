@@ -1,0 +1,1093 @@
+{
+  "candidate_payload_with_corrected_reaudit_required_row": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 0,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 1,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": false
+      },
+      "review_queue_candidate_count": 0,
+      "review_queue_candidate_status_counts": {},
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 0
+    },
+    "blocked_delivery_candidate_rows": [],
+    "delivery_reaudit_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_clean_admitted": false,
+        "delivery_gate_status": "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY",
+        "requires_reaudit_before_clean_delivery": true,
+        "review_item_id": "r7bc-review-corrected-001",
+        "review_status": "RESOLVED_CORRECTED",
+        "reviewer_action": "CORRECT_VALUE",
+        "run_id": "r7bc_fixture_run_001",
+        "source_row_id": "corrected:R9"
+      }
+    ],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": []
+  },
+  "candidate_payload_with_non_verified_review_bound_rows": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 2,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 0,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": false
+      },
+      "review_queue_candidate_count": 2,
+      "review_queue_candidate_status_counts": {
+        "MISSING_EVIDENCE": 1,
+        "UNVERIFIED": 1
+      },
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 0
+    },
+    "blocked_delivery_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "MISSING_EVIDENCE",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-missing",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "missing:R1",
+        "subqueue": "evidence_review_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "UNVERIFIED",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-unverified",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "unverified:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ],
+    "delivery_reaudit_candidate_rows": [],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-missing",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "MISSING_EVIDENCE",
+        "audit_hash": "r7bc-audit-hash-missing",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "MISSING_EVIDENCE evidence preview for missing remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-missing",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:missing:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-missing",
+        "review_item_id": "r7bc-review-missing",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "MISSING_EVIDENCE requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "missing:R1",
+        "subqueue": "evidence_review_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-unverified",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "UNVERIFIED",
+        "audit_hash": "r7bc-audit-hash-unverified",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "UNVERIFIED evidence preview for unverified remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-unverified",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:unverified:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-unverified",
+        "review_item_id": "r7bc-review-unverified",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "UNVERIFIED requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "unverified:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ]
+  },
+  "candidate_payload_with_unresolved_blocked_delivery_rows": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 1,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 0,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": false
+      },
+      "review_queue_candidate_count": 1,
+      "review_queue_candidate_status_counts": {
+        "PARSE_SKIPPED": 1
+      },
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 0
+    },
+    "blocked_delivery_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "PARSE_SKIPPED",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-parse",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "parse:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ],
+    "delivery_reaudit_candidate_rows": [],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-parse",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "PARSE_SKIPPED",
+        "audit_hash": "r7bc-audit-hash-parse",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "PARSE_SKIPPED evidence preview for parse remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-parse",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:parse:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-parse",
+        "review_item_id": "r7bc-review-parse",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "PARSE_SKIPPED requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "parse:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ]
+  },
+  "candidate_payload_with_verified_only": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 0,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 1,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": false
+      },
+      "review_queue_candidate_count": 0,
+      "review_queue_candidate_status_counts": {},
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 1
+    },
+    "blocked_delivery_candidate_rows": [],
+    "delivery_reaudit_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "VERIFIED",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_clean_admitted": false,
+        "delivery_gate_status": "EXPLICIT_CLEAN_GATE_REQUIRED",
+        "requires_reaudit_before_clean_delivery": true,
+        "review_item_id": "",
+        "review_status": "",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "source_row_id": "verified:R1"
+      }
+    ],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": []
+  },
+  "fixture_scope": "test_only_r7bc",
+  "invalid_clean_data_write_payload": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 2,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 0,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": false
+      },
+      "review_queue_candidate_count": 2,
+      "review_queue_candidate_status_counts": {
+        "AMBIGUOUS": 1,
+        "DISAGREED": 1
+      },
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 0
+    },
+    "blocked_delivery_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ],
+    "delivery_reaudit_candidate_rows": [],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-disagreed",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "audit_hash": "r7bc-audit-hash-disagreed",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": true,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "DISAGREED evidence preview for disagreed remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-disagreed",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:disagreed:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-disagreed",
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "DISAGREED requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-ambiguous",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "audit_hash": "r7bc-audit-hash-ambiguous",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "AMBIGUOUS evidence preview for ambiguous remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-ambiguous",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:ambiguous:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-ambiguous",
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "AMBIGUOUS requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ]
+  },
+  "invalid_duplicate_idempotency_collision_payload": {
+    "adapter_candidate_output": {
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "audit_contract": {
+        "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+        "adapter_status": "ENABLED_TEST_ONLY",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "blocked_delivery_candidate_count": 2,
+        "boundary_flags": {
+          "full_source_text_serialized": false,
+          "production_hook": false,
+          "verified_auto_clean": false,
+          "verified_promotes_to_strong_evidence": false,
+          "writes_clean_data": false,
+          "writes_delivery": false,
+          "writes_review_queue": false
+        },
+        "clean_data_admitted_count": 0,
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_reaudit_candidate_count": 0,
+        "discrepancy_report_candidate_count": 0,
+        "enabled": true,
+        "external_call_counts": {
+          "llm_api_call_count": 0,
+          "mineru_run_count": 0,
+          "ocr_run_count": 0,
+          "vlm_api_call_count": 0
+        },
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "readiness_gates": {
+          "client_ready": false,
+          "demo_export_only": true,
+          "formal_client_export_allowed": false,
+          "production_ready": false
+        },
+        "review_queue_candidate_count": 2,
+        "review_queue_candidate_status_counts": {
+          "AMBIGUOUS": 1,
+          "DISAGREED": 1
+        },
+        "run_id": "r7bc_fixture_run_001",
+        "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+        "source_run_id": "r7bc_fixture_run_001",
+        "verified_without_clean_gate_count": 0
+      },
+      "blocked_delivery_candidate_rows": [
+        {
+          "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+          "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+          "agreement_status": "DISAGREED",
+          "blocked_reason": "unresolved_or_not_clean_data_eligible",
+          "created_from": "validated_discrepancy_boundary_output",
+          "delivery_blocked": true,
+          "review_item_id": "r7bc-review-disagreed",
+          "review_status": "OPEN",
+          "reviewer_action": "",
+          "run_id": "r7bc_fixture_run_001",
+          "severity": "HIGH",
+          "source_row_id": "disagreed:R1",
+          "subqueue": "evidence_conflict_queue"
+        },
+        {
+          "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+          "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+          "agreement_status": "AMBIGUOUS",
+          "blocked_reason": "unresolved_or_not_clean_data_eligible",
+          "created_from": "validated_discrepancy_boundary_output",
+          "delivery_blocked": true,
+          "review_item_id": "r7bc-review-ambiguous",
+          "review_status": "OPEN",
+          "reviewer_action": "",
+          "run_id": "r7bc_fixture_run_001",
+          "severity": "MEDIUM",
+          "source_row_id": "ambiguous:R1",
+          "subqueue": "evidence_review_queue"
+        }
+      ],
+      "delivery_reaudit_candidate_rows": [],
+      "discrepancy_report_candidate_rows": [],
+      "review_queue_candidate_items": [
+        {
+          "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+          "adapter_item_id": "r7bc-adapter-disagreed",
+          "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+          "agreement_status": "DISAGREED",
+          "audit_hash": "r7bc-audit-hash-disagreed",
+          "candidate_metric_name": "YoY",
+          "candidate_period": "2026E",
+          "candidate_unit": "%",
+          "candidate_value": "31.7",
+          "clean_data_eligible": false,
+          "created_from": "validated_discrepancy_boundary_output",
+          "delivery_blocked": true,
+          "evidence_preview": "DISAGREED evidence preview for disagreed remains bounded.",
+          "evidence_preview_sha256": "sha256-r7bc-preview-disagreed",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7bc-datefac-fixture",
+            "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+          },
+          "matched_locator": "mineru:v2:page:1:block:disagreed:bbox:1,2,3,4",
+          "matched_text_sha256": "sha256-r7bc-text-disagreed",
+          "review_item_id": "r7bc-review-disagreed",
+          "review_status": "OPEN",
+          "reviewer_action": "",
+          "risk_reason": "DISAGREED requires review",
+          "run_id": "r7bc_fixture_run_001",
+          "severity": "HIGH",
+          "source_document_id": "synthetic-r7bc-report.pdf",
+          "source_row_id": "disagreed:R1",
+          "subqueue": "evidence_conflict_queue"
+        },
+        {
+          "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+          "adapter_item_id": "r7bc-adapter-ambiguous",
+          "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+          "agreement_status": "AMBIGUOUS",
+          "audit_hash": "r7bc-audit-hash-ambiguous",
+          "candidate_metric_name": "YoY",
+          "candidate_period": "2026E",
+          "candidate_unit": "%",
+          "candidate_value": "31.7",
+          "clean_data_eligible": false,
+          "created_from": "validated_discrepancy_boundary_output",
+          "delivery_blocked": true,
+          "evidence_preview": "AMBIGUOUS evidence preview for ambiguous remains bounded.",
+          "evidence_preview_sha256": "sha256-r7bc-preview-ambiguous",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7bc-datefac-fixture",
+            "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+          },
+          "matched_locator": "mineru:v2:page:1:block:ambiguous:bbox:1,2,3,4",
+          "matched_text_sha256": "sha256-r7bc-text-ambiguous",
+          "review_item_id": "r7bc-review-ambiguous",
+          "review_status": "OPEN",
+          "reviewer_action": "",
+          "risk_reason": "AMBIGUOUS requires review",
+          "run_id": "r7bc_fixture_run_001",
+          "severity": "MEDIUM",
+          "source_document_id": "synthetic-r7bc-report.pdf",
+          "source_row_id": "ambiguous:R1",
+          "subqueue": "evidence_review_queue"
+        }
+      ]
+    },
+    "existing_record_hashes": {
+      "100024dee89e0e5146c87c235a574bddcab963136a387e46e1bf8baf6bd08e75": "sha256:conflicting-existing-record-hash"
+    }
+  },
+  "invalid_full_source_text_payload": {
+    "source_text": "forbidden full source text"
+  },
+  "invalid_missing_audit_metadata_payload": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "blocked_delivery_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ],
+    "delivery_reaudit_candidate_rows": [],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-disagreed",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "audit_hash": "r7bc-audit-hash-disagreed",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "DISAGREED evidence preview for disagreed remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-disagreed",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:disagreed:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-disagreed",
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "DISAGREED requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-ambiguous",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "audit_hash": "r7bc-audit-hash-ambiguous",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "AMBIGUOUS evidence preview for ambiguous remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-ambiguous",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:ambiguous:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-ambiguous",
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "AMBIGUOUS requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ]
+  },
+  "invalid_raw_excel_like_payload": {
+    "raw_excel_row": {
+      "A1": "raw workbook cell"
+    }
+  },
+  "invalid_raw_mineru_like_payload": {
+    "content_list_v2": [
+      [
+        {
+          "text": "raw mineru block",
+          "type": "text"
+        }
+      ]
+    ]
+  },
+  "invalid_readiness_open_payload": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 2,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 0,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": true
+      },
+      "review_queue_candidate_count": 2,
+      "review_queue_candidate_status_counts": {
+        "AMBIGUOUS": 1,
+        "DISAGREED": 1
+      },
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 0
+    },
+    "blocked_delivery_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ],
+    "delivery_reaudit_candidate_rows": [],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-disagreed",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "audit_hash": "r7bc-audit-hash-disagreed",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "DISAGREED evidence preview for disagreed remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-disagreed",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:disagreed:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-disagreed",
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "DISAGREED requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-ambiguous",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "audit_hash": "r7bc-audit-hash-ambiguous",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "AMBIGUOUS evidence preview for ambiguous remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-ambiguous",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:ambiguous:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-ambiguous",
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "AMBIGUOUS requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ]
+  },
+  "schema_version": "r7bc_review_queue_writer_contract_fixture_v1",
+  "valid_adapter_candidate_payload": {
+    "adapter_status": "ENABLED_TEST_ONLY",
+    "audit_contract": {
+      "adapter_audit_hash": "sha256-r7bc-adapter-audit-contract",
+      "adapter_status": "ENABLED_TEST_ONLY",
+      "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+      "blocked_delivery_candidate_count": 2,
+      "boundary_flags": {
+        "full_source_text_serialized": false,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "writes_clean_data": false,
+        "writes_delivery": false,
+        "writes_review_queue": false
+      },
+      "clean_data_admitted_count": 0,
+      "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+      "created_from": "validated_discrepancy_boundary_output",
+      "delivery_reaudit_candidate_count": 0,
+      "discrepancy_report_candidate_count": 0,
+      "enabled": true,
+      "external_call_counts": {
+        "llm_api_call_count": 0,
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7bc-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+      },
+      "readiness_gates": {
+        "client_ready": false,
+        "demo_export_only": true,
+        "formal_client_export_allowed": false,
+        "production_ready": false
+      },
+      "review_queue_candidate_count": 2,
+      "review_queue_candidate_status_counts": {
+        "AMBIGUOUS": 1,
+        "DISAGREED": 1
+      },
+      "run_id": "r7bc_fixture_run_001",
+      "source_audit_metadata_hash": "sha256-r7bc-audit-metadata-fixture",
+      "source_run_id": "r7bc_fixture_run_001",
+      "verified_without_clean_gate_count": 0
+    },
+    "blocked_delivery_candidate_rows": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible",
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ],
+    "delivery_reaudit_candidate_rows": [],
+    "discrepancy_report_candidate_rows": [],
+    "review_queue_candidate_items": [
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-disagreed",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "DISAGREED",
+        "audit_hash": "r7bc-audit-hash-disagreed",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "DISAGREED evidence preview for disagreed remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-disagreed",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:disagreed:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-disagreed",
+        "review_item_id": "r7bc-review-disagreed",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "DISAGREED requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "HIGH",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "disagreed:R1",
+        "subqueue": "evidence_conflict_queue"
+      },
+      {
+        "adapter_contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "adapter_item_id": "r7bc-adapter-ambiguous",
+        "adapter_version": "r7bc_adapter_candidate_test_fixture_v1",
+        "agreement_status": "AMBIGUOUS",
+        "audit_hash": "r7bc-audit-hash-ambiguous",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_unit": "%",
+        "candidate_value": "31.7",
+        "clean_data_eligible": false,
+        "created_from": "validated_discrepancy_boundary_output",
+        "delivery_blocked": true,
+        "evidence_preview": "AMBIGUOUS evidence preview for ambiguous remains bounded.",
+        "evidence_preview_sha256": "sha256-r7bc-preview-ambiguous",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7bc-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7bc-mineru-fixture"
+        },
+        "matched_locator": "mineru:v2:page:1:block:ambiguous:bbox:1,2,3,4",
+        "matched_text_sha256": "sha256-r7bc-text-ambiguous",
+        "review_item_id": "r7bc-review-ambiguous",
+        "review_status": "OPEN",
+        "reviewer_action": "",
+        "risk_reason": "AMBIGUOUS requires review",
+        "run_id": "r7bc_fixture_run_001",
+        "severity": "MEDIUM",
+        "source_document_id": "synthetic-r7bc-report.pdf",
+        "source_row_id": "ambiguous:R1",
+        "subqueue": "evidence_review_queue"
+      }
+    ]
+  }
+}
