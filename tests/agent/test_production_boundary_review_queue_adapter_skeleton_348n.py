@@ -31,6 +31,12 @@ R7AY_FIXTURE_PATH = (
     / "discrepancy_review_queue"
     / "r7ay_negative_case_matrix_fixture.json"
 )
+R7AZ_FIXTURE_PATH = (
+    Path(__file__).parent
+    / "fixtures"
+    / "discrepancy_review_queue"
+    / "r7az_positive_path_minimal_contract_fixture.json"
+)
 MODULE_PATH = Path("datefac_agent/review/production_boundary_review_queue_adapter.py")
 
 
@@ -44,6 +50,17 @@ def _r7ay_fixture() -> dict:
     payload = json.loads(R7AY_FIXTURE_PATH.read_text(encoding="utf-8"))
     assert payload["fixture_scope"] == "test_only_r7ay"
     return payload
+
+
+def _r7az_fixture() -> dict:
+    payload = json.loads(R7AZ_FIXTURE_PATH.read_text(encoding="utf-8"))
+    assert payload["fixture_scope"] == "test_only_r7az"
+    return payload
+
+
+def _r7az_payload(case_id: str) -> dict:
+    record = next(case for case in _r7az_fixture()["positive_payloads"] if case["case_id"] == case_id)
+    return deepcopy(record["payload"])
 
 
 def _valid_boundary_payload() -> dict:
@@ -79,6 +96,10 @@ def _apply_mutation(payload: dict, mutation: dict) -> dict:
 
 def _negative_case_ids() -> list[str]:
     return [case["case_id"] for case in _r7ay_fixture()["negative_case_matrix"]]
+
+
+def _positive_case_ids() -> list[str]:
+    return [case["case_id"] for case in _r7az_fixture()["positive_payloads"]]
 
 
 def test_r7aw_default_disabled_fail_closed_behavior() -> None:
@@ -156,6 +177,283 @@ def test_r7ay_negative_case_matrix_fails_closed(case_id: str) -> None:
 
     with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match=case["expected_error"]):
         build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+
+def test_r7az_positive_path_fixture_is_curated_and_complete() -> None:
+    fixture = _r7az_fixture()
+    cases = fixture["positive_payloads"]
+    case_ids = {case["case_id"] for case in cases}
+
+    assert R7AZ_FIXTURE_PATH.stat().st_size < 50000
+    assert len(cases) == 8
+    assert len(case_ids) == len(cases)
+    assert {
+        "verified_only_minimal",
+        "disagreed_only_minimal",
+        "ambiguous_only_minimal",
+        "missing_evidence_only_minimal",
+        "unverified_only_minimal",
+        "corrected_reaudit_only_minimal",
+        "mixed_verified_and_non_verified_minimal",
+        "bounded_preview_required_metadata_only",
+    } == case_ids
+    for case in cases:
+        payload = case["payload"]
+        assert set(payload) == {
+            "contract_version",
+            "review_queue_items",
+            "discrepancy_report_rows",
+            "delivery_clean_candidates",
+            "blocked_delivery_rows",
+            "audit_metadata",
+        }
+        assert payload["contract_version"] == ADAPTER_CONTRACT_VERSION
+        assert set(payload["audit_metadata"]) == {
+            "run_id",
+            "adapter_version",
+            "input_file_hashes",
+            "comparison_row_count",
+            "comparison_status_counts",
+            "review_queue_count",
+            "review_queue_status_counts",
+            "discrepancy_report_count",
+            "delivery_clean_candidate_count",
+            "blocked_delivery_row_count",
+            "verified_without_clean_gate_count",
+            "readiness_gates",
+            "external_call_counts",
+            "boundary_flags",
+            "audit_metadata_hash",
+        }
+
+
+@pytest.mark.parametrize("case_id", _positive_case_ids())
+def test_r7az_minimal_positive_payloads_pass_only_when_explicitly_enabled(case_id: str) -> None:
+    disabled = build_production_boundary_review_queue_adapter_output(_r7az_payload(case_id))
+
+    assert disabled["adapter_status"] == "DISABLED"
+    assert disabled["review_queue_candidate_items"] == []
+    assert disabled["delivery_reaudit_candidate_rows"] == []
+    assert disabled["audit_contract"]["readiness_gates"] == READINESS_GATES_CLOSED
+
+    with pytest.raises(ProductionBoundaryReviewQueueAdapterError, match="test-only enable token"):
+        build_production_boundary_review_queue_adapter_output(
+            _r7az_payload(case_id),
+            ProductionBoundaryReviewQueueAdapterConfig(enabled=True),
+        )
+
+    output = build_production_boundary_review_queue_adapter_output(_r7az_payload(case_id), _enabled_config())
+    metadata = _r7az_payload(case_id)["audit_metadata"]
+
+    assert output["adapter_status"] == "ENABLED_TEST_ONLY"
+    assert output["audit_contract"]["contract_version"] == ADAPTER_CONTRACT_VERSION
+    assert output["audit_contract"]["source_run_id"] == metadata["run_id"]
+    assert output["audit_contract"]["adapter_version"] == metadata["adapter_version"]
+    assert output["audit_contract"]["input_file_hashes"] == metadata["input_file_hashes"]
+    assert output["audit_contract"]["readiness_gates"] == READINESS_GATES_CLOSED
+    assert output["audit_contract"]["external_call_counts"] == EXTERNAL_CALL_COUNTS_ZERO
+    assert output["audit_contract"]["clean_data_admitted_count"] == 0
+    assert output["audit_contract"]["boundary_flags"]["writes_review_queue"] is False
+    assert output["audit_contract"]["boundary_flags"]["writes_clean_data"] is False
+    assert output["audit_contract"]["boundary_flags"]["writes_delivery"] is False
+
+
+def test_r7az_candidate_output_schema_is_stable_for_review_bound_rows() -> None:
+    output = build_production_boundary_review_queue_adapter_output(
+        _r7az_payload("disagreed_only_minimal"),
+        _enabled_config(),
+    )
+    item = output["review_queue_candidate_items"][0]
+    discrepancy_row = output["discrepancy_report_candidate_rows"][0]
+    blocked_row = output["blocked_delivery_candidate_rows"][0]
+
+    assert set(item) == {
+        "adapter_item_id",
+        "review_item_id",
+        "source_document_id",
+        "source_row_id",
+        "candidate_metric_name",
+        "candidate_period",
+        "candidate_value",
+        "candidate_unit",
+        "agreement_status",
+        "subqueue",
+        "risk_reason",
+        "severity",
+        "review_status",
+        "reviewer_action",
+        "clean_data_eligible",
+        "delivery_blocked",
+        "evidence_preview",
+        "evidence_preview_sha256",
+        "matched_locator",
+        "matched_text_sha256",
+        "run_id",
+        "adapter_version",
+        "input_file_hashes",
+        "audit_hash",
+        "adapter_contract_version",
+        "created_from",
+    }
+    assert set(discrepancy_row) == {
+        "review_item_id",
+        "source_row_id",
+        "candidate_metric_name",
+        "candidate_period",
+        "candidate_value",
+        "candidate_unit",
+        "agreement_status",
+        "subqueue",
+        "severity",
+        "review_status",
+        "reviewer_action",
+        "source_text_status",
+        "evidence_type",
+        "matched_locator",
+        "matched_text_sha256",
+        "evidence_preview",
+        "evidence_preview_sha256",
+        "risk_reason",
+        "suggested_action",
+        "clean_data_eligible",
+        "run_id",
+        "adapter_version",
+        "adapter_contract_version",
+        "created_from",
+    }
+    assert set(blocked_row) == {
+        "review_item_id",
+        "source_row_id",
+        "agreement_status",
+        "subqueue",
+        "severity",
+        "review_status",
+        "reviewer_action",
+        "blocked_reason",
+        "delivery_blocked",
+        "run_id",
+        "adapter_version",
+        "adapter_contract_version",
+        "created_from",
+    }
+
+
+@pytest.mark.parametrize(
+    ("case_id", "status"),
+    [
+        ("disagreed_only_minimal", "DISAGREED"),
+        ("ambiguous_only_minimal", "AMBIGUOUS"),
+        ("missing_evidence_only_minimal", "MISSING_EVIDENCE"),
+        ("unverified_only_minimal", "UNVERIFIED"),
+    ],
+)
+def test_r7az_unresolved_non_verified_rows_are_review_bound(case_id: str, status: str) -> None:
+    output = build_production_boundary_review_queue_adapter_output(_r7az_payload(case_id), _enabled_config())
+
+    assert output["audit_contract"]["review_queue_candidate_status_counts"] == {status: 1}
+    assert len(output["review_queue_candidate_items"]) == 1
+    assert len(output["discrepancy_report_candidate_rows"]) == 1
+    assert len(output["blocked_delivery_candidate_rows"]) == 1
+    assert output["delivery_reaudit_candidate_rows"] == []
+    assert output["review_queue_candidate_items"][0]["agreement_status"] == status
+    assert output["review_queue_candidate_items"][0]["clean_data_eligible"] is False
+    assert output["review_queue_candidate_items"][0]["delivery_blocked"] is True
+    assert output["blocked_delivery_candidate_rows"][0]["delivery_blocked"] is True
+    assert output["audit_contract"]["clean_data_admitted_count"] == 0
+
+
+def test_r7az_verified_row_is_safe_delivery_reaudit_only() -> None:
+    output = build_production_boundary_review_queue_adapter_output(
+        _r7az_payload("verified_only_minimal"),
+        _enabled_config(),
+    )
+
+    assert output["review_queue_candidate_items"] == []
+    assert output["discrepancy_report_candidate_rows"] == []
+    assert output["blocked_delivery_candidate_rows"] == []
+    assert len(output["delivery_reaudit_candidate_rows"]) == 1
+    delivery_row = output["delivery_reaudit_candidate_rows"][0]
+    assert delivery_row["agreement_status"] == "VERIFIED"
+    assert delivery_row["delivery_gate_status"] == "EXPLICIT_CLEAN_GATE_REQUIRED"
+    assert delivery_row["delivery_clean_admitted"] is False
+    assert delivery_row["requires_reaudit_before_clean_delivery"] is True
+    assert output["audit_contract"]["verified_without_clean_gate_count"] == 1
+    assert output["audit_contract"]["boundary_flags"]["verified_auto_clean"] is False
+    assert output["audit_contract"]["boundary_flags"]["verified_promotes_to_strong_evidence"] is False
+
+
+def test_r7az_corrected_row_remains_reaudit_only() -> None:
+    output = build_production_boundary_review_queue_adapter_output(
+        _r7az_payload("corrected_reaudit_only_minimal"),
+        _enabled_config(),
+    )
+
+    assert output["review_queue_candidate_items"] == []
+    assert output["blocked_delivery_candidate_rows"] == []
+    assert len(output["delivery_reaudit_candidate_rows"]) == 1
+    row = output["delivery_reaudit_candidate_rows"][0]
+    assert row["agreement_status"] == "DISAGREED"
+    assert row["review_status"] == "RESOLVED_CORRECTED"
+    assert row["reviewer_action"] == "CORRECT_VALUE"
+    assert row["delivery_gate_status"] == "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY"
+    assert row["delivery_clean_admitted"] is False
+    assert row["requires_reaudit_before_clean_delivery"] is True
+
+
+def test_r7az_mixed_payload_preserves_deterministic_ordering_and_counts() -> None:
+    first = build_production_boundary_review_queue_adapter_output(
+        _r7az_payload("mixed_verified_and_non_verified_minimal"),
+        _enabled_config(),
+    )
+    second = build_production_boundary_review_queue_adapter_output(
+        _r7az_payload("mixed_verified_and_non_verified_minimal"),
+        _enabled_config(),
+    )
+
+    assert [item["agreement_status"] for item in first["review_queue_candidate_items"]] == [
+        "DISAGREED",
+        "AMBIGUOUS",
+        "MISSING_EVIDENCE",
+        "UNVERIFIED",
+    ]
+    assert [item["adapter_item_id"] for item in first["review_queue_candidate_items"]] == [
+        item["adapter_item_id"] for item in second["review_queue_candidate_items"]
+    ]
+    assert first["audit_contract"]["adapter_audit_hash"] == second["audit_contract"]["adapter_audit_hash"]
+    assert first["audit_contract"]["review_queue_candidate_count"] == 4
+    assert first["audit_contract"]["delivery_reaudit_candidate_count"] == 1
+    assert first["audit_contract"]["verified_without_clean_gate_count"] == 1
+
+
+def test_r7az_bounded_evidence_preview_and_metadata_are_retained() -> None:
+    payload = _r7az_payload("bounded_preview_required_metadata_only")
+    output = build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+    item = output["review_queue_candidate_items"][0]
+
+    assert len(payload["review_queue_items"][0]["evidence_preview"]) == 160
+    assert item["evidence_preview"] == payload["review_queue_items"][0]["evidence_preview"]
+    assert len(item["evidence_preview"]) == 160
+    assert output["audit_contract"]["run_id"] == payload["audit_metadata"]["run_id"]
+    assert output["audit_contract"]["adapter_version"] == payload["audit_metadata"]["adapter_version"]
+    assert output["audit_contract"]["input_file_hashes"] == payload["audit_metadata"]["input_file_hashes"]
+    assert output["audit_contract"]["source_audit_metadata_hash"] == payload["audit_metadata"]["audit_metadata_hash"]
+
+
+def test_r7az_output_does_not_share_mutable_input_references() -> None:
+    payload = _r7az_payload("disagreed_only_minimal")
+    output = build_production_boundary_review_queue_adapter_output(payload, _enabled_config())
+
+    payload["audit_metadata"]["input_file_hashes"]["datefac_excel"] = "sha256:mutated"
+    payload["review_queue_items"][0]["input_file_hashes"]["datefac_excel"] = "sha256:item-mutated"
+    payload["review_queue_items"][0]["evidence_preview"] = "mutated preview after output"
+    payload["audit_metadata"]["readiness_gates"]["client_ready"] = True
+
+    assert output["audit_contract"]["input_file_hashes"]["datefac_excel"] == "sha256:r7az-datefac-minimal-fixture"
+    assert output["review_queue_candidate_items"][0]["input_file_hashes"]["datefac_excel"] == (
+        "sha256:r7az-datefac-minimal-fixture"
+    )
+    assert output["review_queue_candidate_items"][0]["evidence_preview"] != "mutated preview after output"
+    assert output["audit_contract"]["readiness_gates"] == READINESS_GATES_CLOSED
 
 
 def test_r7ax_boundary_output_rejects_unexpected_top_level_fields() -> None:

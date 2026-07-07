@@ -1,0 +1,1018 @@
+{
+  "schema_version": "r7az_positive_path_minimal_contract_fixture_v1",
+  "fixture_scope": "test_only_r7az",
+  "positive_payloads": [
+    {
+      "case_id": "verified_only_minimal",
+      "description": "One VERIFIED row represented only as a delivery re-audit candidate; no clean admission.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [],
+        "discrepancy_report_rows": [],
+        "delivery_clean_candidates": [
+          {
+            "source_row_id": "verified_only_minimal:verified:R1",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "candidate_metric_name": "Revenue",
+            "candidate_period": "2026Q1",
+            "candidate_value": "47.10",
+            "candidate_unit": "CNY bn",
+            "agreement_status": "VERIFIED",
+            "delivery_gate_status": "EXPLICIT_CLEAN_GATE_REQUIRED",
+            "delivery_clean_admitted": false,
+            "requires_reaudit_before_clean_delivery": true,
+            "run_id": "r7az_verified_only_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            }
+          }
+        ],
+        "blocked_delivery_rows": [],
+        "audit_metadata": {
+          "run_id": "r7az_verified_only_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "VERIFIED": 1
+          },
+          "review_queue_count": 0,
+          "review_queue_status_counts": {},
+          "discrepancy_report_count": 0,
+          "delivery_clean_candidate_count": 1,
+          "blocked_delivery_row_count": 0,
+          "verified_without_clean_gate_count": 1,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-verified_only_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "disagreed_only_minimal",
+      "description": "One unresolved DISAGREED row maps to review/discrepancy/blocked candidates.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [
+          {
+            "review_item_id": "r7az-review-disagreed_only_minimal-disagreed",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "disagreed_only_minimal:R1",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "31.7",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "risk_reason": "value conflict",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+            "matched_locator": "fixture:r7az:page:2:block:disagreed",
+            "matched_text_sha256": "sha256-r7az-disagreed-yoy",
+            "source_text_status": "AVAILABLE_CONFLICT",
+            "evidence_type": "mineru_table_html",
+            "suggested_action": "manual review required",
+            "run_id": "r7az_disagreed_only_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-disagreed_only_minimal-disagreed-audit",
+            "review_subqueue": "evidence_conflict_queue"
+          }
+        ],
+        "discrepancy_report_rows": [
+          {
+            "review_item_id": "r7az-review-disagreed_only_minimal-disagreed",
+            "source_row_id": "disagreed_only_minimal:R1",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "31.7",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "review_subqueue": "evidence_conflict_queue",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "AVAILABLE_CONFLICT",
+            "evidence_type": "mineru_table_html",
+            "matched_locator": "fixture:r7az:page:2:block:disagreed",
+            "matched_text_sha256": "sha256-r7az-disagreed-yoy",
+            "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+            "risk_reason": "value conflict",
+            "suggested_action": "manual review required"
+          }
+        ],
+        "delivery_clean_candidates": [],
+        "blocked_delivery_rows": [
+          {
+            "review_item_id": "r7az-review-disagreed_only_minimal-disagreed",
+            "source_row_id": "disagreed_only_minimal:R1",
+            "agreement_status": "DISAGREED",
+            "review_subqueue": "evidence_conflict_queue",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "r7az_disagreed_only_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "DISAGREED": 1
+          },
+          "review_queue_count": 1,
+          "review_queue_status_counts": {
+            "DISAGREED": 1
+          },
+          "discrepancy_report_count": 1,
+          "delivery_clean_candidate_count": 0,
+          "blocked_delivery_row_count": 1,
+          "verified_without_clean_gate_count": 0,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-disagreed_only_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "ambiguous_only_minimal",
+      "description": "One unresolved AMBIGUOUS row maps to review/discrepancy/blocked candidates.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [
+          {
+            "review_item_id": "r7az-review-ambiguous_only_minimal-ambiguous",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "ambiguous_only_minimal:R1",
+            "candidate_metric_name": "Revenue",
+            "candidate_period": "2026E",
+            "candidate_value": "18379",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "AMBIGUOUS",
+            "risk_reason": "multiple matching evidence blocks",
+            "severity": "MEDIUM_HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "Two forecast table blocks contain 2026E revenue 18,379, so reviewer must select evidence.",
+            "matched_locator": "fixture:r7az:page:3:block:ambiguous",
+            "matched_text_sha256": "sha256-r7az-ambiguous-revenue",
+            "source_text_status": "AVAILABLE_AMBIGUOUS",
+            "evidence_type": "mineru_table_html",
+            "suggested_action": "select correct evidence",
+            "run_id": "r7az_ambiguous_only_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-ambiguous_only_minimal-ambiguous-audit",
+            "review_subqueue": "evidence_ambiguity_queue"
+          }
+        ],
+        "discrepancy_report_rows": [
+          {
+            "review_item_id": "r7az-review-ambiguous_only_minimal-ambiguous",
+            "source_row_id": "ambiguous_only_minimal:R1",
+            "candidate_metric_name": "Revenue",
+            "candidate_period": "2026E",
+            "candidate_value": "18379",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "AMBIGUOUS",
+            "review_subqueue": "evidence_ambiguity_queue",
+            "severity": "MEDIUM_HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "AVAILABLE_AMBIGUOUS",
+            "evidence_type": "mineru_table_html",
+            "matched_locator": "fixture:r7az:page:3:block:ambiguous",
+            "matched_text_sha256": "sha256-r7az-ambiguous-revenue",
+            "evidence_preview": "Two forecast table blocks contain 2026E revenue 18,379, so reviewer must select evidence.",
+            "risk_reason": "multiple matching evidence blocks",
+            "suggested_action": "select correct evidence"
+          }
+        ],
+        "delivery_clean_candidates": [],
+        "blocked_delivery_rows": [
+          {
+            "review_item_id": "r7az-review-ambiguous_only_minimal-ambiguous",
+            "source_row_id": "ambiguous_only_minimal:R1",
+            "agreement_status": "AMBIGUOUS",
+            "review_subqueue": "evidence_ambiguity_queue",
+            "severity": "MEDIUM_HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "r7az_ambiguous_only_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "AMBIGUOUS": 1
+          },
+          "review_queue_count": 1,
+          "review_queue_status_counts": {
+            "AMBIGUOUS": 1
+          },
+          "discrepancy_report_count": 1,
+          "delivery_clean_candidate_count": 0,
+          "blocked_delivery_row_count": 1,
+          "verified_without_clean_gate_count": 0,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-ambiguous_only_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "missing_evidence_only_minimal",
+      "description": "One unresolved MISSING_EVIDENCE row maps to review/discrepancy/blocked candidates.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [
+          {
+            "review_item_id": "r7az-review-missing_evidence_only_minimal-missing-evidence",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "missing_evidence_only_minimal:R1",
+            "candidate_metric_name": "Net profit",
+            "candidate_period": "2026E",
+            "candidate_value": "1791",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "MISSING_EVIDENCE",
+            "risk_reason": "no trusted evidence found",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "No trusted evidence block matched Net profit 2026E 1,791.",
+            "matched_locator": "fixture:r7az:missing:evidence",
+            "matched_text_sha256": "",
+            "source_text_status": "MISSING_EVIDENCE",
+            "evidence_type": "none",
+            "suggested_action": "manual source check required",
+            "run_id": "r7az_missing_evidence_only_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-missing_evidence_only_minimal-missing-evidence-audit",
+            "review_subqueue": "missing_evidence_queue"
+          }
+        ],
+        "discrepancy_report_rows": [
+          {
+            "review_item_id": "r7az-review-missing_evidence_only_minimal-missing-evidence",
+            "source_row_id": "missing_evidence_only_minimal:R1",
+            "candidate_metric_name": "Net profit",
+            "candidate_period": "2026E",
+            "candidate_value": "1791",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "MISSING_EVIDENCE",
+            "review_subqueue": "missing_evidence_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "MISSING_EVIDENCE",
+            "evidence_type": "none",
+            "matched_locator": "fixture:r7az:missing:evidence",
+            "matched_text_sha256": "",
+            "evidence_preview": "No trusted evidence block matched Net profit 2026E 1,791.",
+            "risk_reason": "no trusted evidence found",
+            "suggested_action": "manual source check required"
+          }
+        ],
+        "delivery_clean_candidates": [],
+        "blocked_delivery_rows": [
+          {
+            "review_item_id": "r7az-review-missing_evidence_only_minimal-missing-evidence",
+            "source_row_id": "missing_evidence_only_minimal:R1",
+            "agreement_status": "MISSING_EVIDENCE",
+            "review_subqueue": "missing_evidence_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "r7az_missing_evidence_only_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "MISSING_EVIDENCE": 1
+          },
+          "review_queue_count": 1,
+          "review_queue_status_counts": {
+            "MISSING_EVIDENCE": 1
+          },
+          "discrepancy_report_count": 1,
+          "delivery_clean_candidate_count": 0,
+          "blocked_delivery_row_count": 1,
+          "verified_without_clean_gate_count": 0,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-missing_evidence_only_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "unverified_only_minimal",
+      "description": "One unresolved UNVERIFIED row maps to review/discrepancy/blocked candidates.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [
+          {
+            "review_item_id": "r7az-review-unverified_only_minimal-unverified",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "unverified_only_minimal:R1",
+            "candidate_metric_name": "Gross margin",
+            "candidate_period": "2026Q1",
+            "candidate_value": "24.99",
+            "candidate_unit": "%",
+            "agreement_status": "UNVERIFIED",
+            "risk_reason": "source text is untrusted",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "Candidate gross margin 24.99% has only untrusted source text metadata.",
+            "matched_locator": "fixture:r7az:page:1:block:unverified",
+            "matched_text_sha256": "sha256-r7az-unverified-margin",
+            "source_text_status": "UNTRUSTED_SOURCE_TEXT",
+            "evidence_type": "source_text_sidecar",
+            "suggested_action": "request manual source check",
+            "run_id": "r7az_unverified_only_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-unverified_only_minimal-unverified-audit",
+            "review_subqueue": "source_check_queue"
+          }
+        ],
+        "discrepancy_report_rows": [
+          {
+            "review_item_id": "r7az-review-unverified_only_minimal-unverified",
+            "source_row_id": "unverified_only_minimal:R1",
+            "candidate_metric_name": "Gross margin",
+            "candidate_period": "2026Q1",
+            "candidate_value": "24.99",
+            "candidate_unit": "%",
+            "agreement_status": "UNVERIFIED",
+            "review_subqueue": "source_check_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "UNTRUSTED_SOURCE_TEXT",
+            "evidence_type": "source_text_sidecar",
+            "matched_locator": "fixture:r7az:page:1:block:unverified",
+            "matched_text_sha256": "sha256-r7az-unverified-margin",
+            "evidence_preview": "Candidate gross margin 24.99% has only untrusted source text metadata.",
+            "risk_reason": "source text is untrusted",
+            "suggested_action": "request manual source check"
+          }
+        ],
+        "delivery_clean_candidates": [],
+        "blocked_delivery_rows": [
+          {
+            "review_item_id": "r7az-review-unverified_only_minimal-unverified",
+            "source_row_id": "unverified_only_minimal:R1",
+            "agreement_status": "UNVERIFIED",
+            "review_subqueue": "source_check_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "r7az_unverified_only_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "UNVERIFIED": 1
+          },
+          "review_queue_count": 1,
+          "review_queue_status_counts": {
+            "UNVERIFIED": 1
+          },
+          "discrepancy_report_count": 1,
+          "delivery_clean_candidate_count": 0,
+          "blocked_delivery_row_count": 1,
+          "verified_without_clean_gate_count": 0,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-unverified_only_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "corrected_reaudit_only_minimal",
+      "description": "One corrected non-VERIFIED row remains a delivery re-audit candidate only.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [],
+        "discrepancy_report_rows": [],
+        "delivery_clean_candidates": [
+          {
+            "review_item_id": "r7az-review-corrected_reaudit_only_minimal-corrected",
+            "source_row_id": "corrected_reaudit_only_minimal:corrected:R1",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "13.5",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "review_status": "RESOLVED_CORRECTED",
+            "reviewer_decision": "CORRECT_VALUE",
+            "delivery_gate_status": "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY",
+            "delivery_clean_admitted": false,
+            "requires_reaudit_before_clean_delivery": true,
+            "run_id": "r7az_corrected_reaudit_only_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            }
+          }
+        ],
+        "blocked_delivery_rows": [],
+        "audit_metadata": {
+          "run_id": "r7az_corrected_reaudit_only_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "DISAGREED": 1
+          },
+          "review_queue_count": 0,
+          "review_queue_status_counts": {},
+          "discrepancy_report_count": 0,
+          "delivery_clean_candidate_count": 1,
+          "blocked_delivery_row_count": 0,
+          "verified_without_clean_gate_count": 0,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-corrected_reaudit_only_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "mixed_verified_and_non_verified_minimal",
+      "description": "VERIFIED plus all unresolved non-VERIFIED statuses; ordering stays deterministic.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-disagreed",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "31.7",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "risk_reason": "value conflict",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+            "matched_locator": "fixture:r7az:page:2:block:disagreed",
+            "matched_text_sha256": "sha256-r7az-disagreed-yoy",
+            "source_text_status": "AVAILABLE_CONFLICT",
+            "evidence_type": "mineru_table_html",
+            "suggested_action": "manual review required",
+            "run_id": "r7az_mixed_verified_and_non_verified_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-mixed_verified_and_non_verified_minimal-disagreed-audit",
+            "review_subqueue": "evidence_conflict_queue"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-ambiguous",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "Revenue",
+            "candidate_period": "2026E",
+            "candidate_value": "18379",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "AMBIGUOUS",
+            "risk_reason": "multiple matching evidence blocks",
+            "severity": "MEDIUM_HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "Two forecast table blocks contain 2026E revenue 18,379, so reviewer must select evidence.",
+            "matched_locator": "fixture:r7az:page:3:block:ambiguous",
+            "matched_text_sha256": "sha256-r7az-ambiguous-revenue",
+            "source_text_status": "AVAILABLE_AMBIGUOUS",
+            "evidence_type": "mineru_table_html",
+            "suggested_action": "select correct evidence",
+            "run_id": "r7az_mixed_verified_and_non_verified_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-mixed_verified_and_non_verified_minimal-ambiguous-audit",
+            "review_subqueue": "evidence_ambiguity_queue"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-missing-evidence",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "Net profit",
+            "candidate_period": "2026E",
+            "candidate_value": "1791",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "MISSING_EVIDENCE",
+            "risk_reason": "no trusted evidence found",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "No trusted evidence block matched Net profit 2026E 1,791.",
+            "matched_locator": "fixture:r7az:missing:evidence",
+            "matched_text_sha256": "",
+            "source_text_status": "MISSING_EVIDENCE",
+            "evidence_type": "none",
+            "suggested_action": "manual source check required",
+            "run_id": "r7az_mixed_verified_and_non_verified_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-mixed_verified_and_non_verified_minimal-missing-evidence-audit",
+            "review_subqueue": "missing_evidence_queue"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-unverified",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "Gross margin",
+            "candidate_period": "2026Q1",
+            "candidate_value": "24.99",
+            "candidate_unit": "%",
+            "agreement_status": "UNVERIFIED",
+            "risk_reason": "source text is untrusted",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "Candidate gross margin 24.99% has only untrusted source text metadata.",
+            "matched_locator": "fixture:r7az:page:1:block:unverified",
+            "matched_text_sha256": "sha256-r7az-unverified-margin",
+            "source_text_status": "UNTRUSTED_SOURCE_TEXT",
+            "evidence_type": "source_text_sidecar",
+            "suggested_action": "request manual source check",
+            "run_id": "r7az_mixed_verified_and_non_verified_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-mixed_verified_and_non_verified_minimal-unverified-audit",
+            "review_subqueue": "source_check_queue"
+          }
+        ],
+        "discrepancy_report_rows": [
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-disagreed",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "31.7",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "review_subqueue": "evidence_conflict_queue",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "AVAILABLE_CONFLICT",
+            "evidence_type": "mineru_table_html",
+            "matched_locator": "fixture:r7az:page:2:block:disagreed",
+            "matched_text_sha256": "sha256-r7az-disagreed-yoy",
+            "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+            "risk_reason": "value conflict",
+            "suggested_action": "manual review required"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-ambiguous",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "Revenue",
+            "candidate_period": "2026E",
+            "candidate_value": "18379",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "AMBIGUOUS",
+            "review_subqueue": "evidence_ambiguity_queue",
+            "severity": "MEDIUM_HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "AVAILABLE_AMBIGUOUS",
+            "evidence_type": "mineru_table_html",
+            "matched_locator": "fixture:r7az:page:3:block:ambiguous",
+            "matched_text_sha256": "sha256-r7az-ambiguous-revenue",
+            "evidence_preview": "Two forecast table blocks contain 2026E revenue 18,379, so reviewer must select evidence.",
+            "risk_reason": "multiple matching evidence blocks",
+            "suggested_action": "select correct evidence"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-missing-evidence",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "Net profit",
+            "candidate_period": "2026E",
+            "candidate_value": "1791",
+            "candidate_unit": "CNY mn",
+            "agreement_status": "MISSING_EVIDENCE",
+            "review_subqueue": "missing_evidence_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "MISSING_EVIDENCE",
+            "evidence_type": "none",
+            "matched_locator": "fixture:r7az:missing:evidence",
+            "matched_text_sha256": "",
+            "evidence_preview": "No trusted evidence block matched Net profit 2026E 1,791.",
+            "risk_reason": "no trusted evidence found",
+            "suggested_action": "manual source check required"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-unverified",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "candidate_metric_name": "Gross margin",
+            "candidate_period": "2026Q1",
+            "candidate_value": "24.99",
+            "candidate_unit": "%",
+            "agreement_status": "UNVERIFIED",
+            "review_subqueue": "source_check_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "UNTRUSTED_SOURCE_TEXT",
+            "evidence_type": "source_text_sidecar",
+            "matched_locator": "fixture:r7az:page:1:block:unverified",
+            "matched_text_sha256": "sha256-r7az-unverified-margin",
+            "evidence_preview": "Candidate gross margin 24.99% has only untrusted source text metadata.",
+            "risk_reason": "source text is untrusted",
+            "suggested_action": "request manual source check"
+          }
+        ],
+        "delivery_clean_candidates": [
+          {
+            "source_row_id": "mixed_verified_and_non_verified_minimal:verified:R1",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "candidate_metric_name": "Revenue",
+            "candidate_period": "2026Q1",
+            "candidate_value": "47.10",
+            "candidate_unit": "CNY bn",
+            "agreement_status": "VERIFIED",
+            "delivery_gate_status": "EXPLICIT_CLEAN_GATE_REQUIRED",
+            "delivery_clean_admitted": false,
+            "requires_reaudit_before_clean_delivery": true,
+            "run_id": "r7az_mixed_verified_and_non_verified_minimal_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            }
+          }
+        ],
+        "blocked_delivery_rows": [
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-disagreed",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "agreement_status": "DISAGREED",
+            "review_subqueue": "evidence_conflict_queue",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-ambiguous",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "agreement_status": "AMBIGUOUS",
+            "review_subqueue": "evidence_ambiguity_queue",
+            "severity": "MEDIUM_HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-missing-evidence",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "agreement_status": "MISSING_EVIDENCE",
+            "review_subqueue": "missing_evidence_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          },
+          {
+            "review_item_id": "r7az-review-mixed_verified_and_non_verified_minimal-unverified",
+            "source_row_id": "mixed_verified_and_non_verified_minimal:R1",
+            "agreement_status": "UNVERIFIED",
+            "review_subqueue": "source_check_queue",
+            "severity": "MEDIUM",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "r7az_mixed_verified_and_non_verified_minimal_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 5,
+          "comparison_status_counts": {
+            "VERIFIED": 1,
+            "DISAGREED": 1,
+            "AMBIGUOUS": 1,
+            "MISSING_EVIDENCE": 1,
+            "UNVERIFIED": 1
+          },
+          "review_queue_count": 4,
+          "review_queue_status_counts": {
+            "DISAGREED": 1,
+            "AMBIGUOUS": 1,
+            "MISSING_EVIDENCE": 1,
+            "UNVERIFIED": 1
+          },
+          "discrepancy_report_count": 4,
+          "delivery_clean_candidate_count": 1,
+          "blocked_delivery_row_count": 4,
+          "verified_without_clean_gate_count": 1,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-mixed_verified_and_non_verified_minimal-audit-metadata"
+        }
+      }
+    },
+    {
+      "case_id": "bounded_preview_required_metadata_only",
+      "description": "One review-bound row with exactly bounded evidence_preview and only required audit metadata fields.",
+      "payload": {
+        "contract_version": "r7aw_disabled_production_boundary_adapter_skeleton_v1",
+        "review_queue_items": [
+          {
+            "review_item_id": "r7az-review-bounded_preview_required_metadata_only-disagreed",
+            "source_document_id": "synthetic-r7az-boundary-report.pdf",
+            "source_row_id": "bounded_preview_required_metadata_only:R1",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "31.7",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "risk_reason": "value conflict",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "clean_data_eligible": false,
+            "evidence_preview": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            "matched_locator": "fixture:r7az:page:2:block:disagreed",
+            "matched_text_sha256": "sha256-r7az-disagreed-yoy",
+            "source_text_status": "AVAILABLE_CONFLICT",
+            "evidence_type": "mineru_table_html",
+            "suggested_action": "manual review required",
+            "run_id": "r7az_bounded_preview_required_metadata_only_run_001",
+            "adapter_version": "r7az_positive_contract_test_only_v1",
+            "input_file_hashes": {
+              "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+              "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+            },
+            "audit_hash": "sha256-r7az-bounded_preview_required_metadata_only-disagreed-audit",
+            "review_subqueue": "evidence_conflict_queue"
+          }
+        ],
+        "discrepancy_report_rows": [
+          {
+            "review_item_id": "r7az-review-bounded_preview_required_metadata_only-disagreed",
+            "source_row_id": "bounded_preview_required_metadata_only:R1",
+            "candidate_metric_name": "YoY",
+            "candidate_period": "2026E",
+            "candidate_value": "31.7",
+            "candidate_unit": "%",
+            "agreement_status": "DISAGREED",
+            "review_subqueue": "evidence_conflict_queue",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "source_text_status": "AVAILABLE_CONFLICT",
+            "evidence_type": "mineru_table_html",
+            "matched_locator": "fixture:r7az:page:2:block:disagreed",
+            "matched_text_sha256": "sha256-r7az-disagreed-yoy",
+            "evidence_preview": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            "risk_reason": "value conflict",
+            "suggested_action": "manual review required"
+          }
+        ],
+        "delivery_clean_candidates": [],
+        "blocked_delivery_rows": [
+          {
+            "review_item_id": "r7az-review-bounded_preview_required_metadata_only-disagreed",
+            "source_row_id": "bounded_preview_required_metadata_only:R1",
+            "agreement_status": "DISAGREED",
+            "review_subqueue": "evidence_conflict_queue",
+            "severity": "HIGH",
+            "review_status": "OPEN",
+            "reviewer_decision": "",
+            "blocked_reason": "unresolved_or_not_clean_data_eligible"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "r7az_bounded_preview_required_metadata_only_run_001",
+          "adapter_version": "r7az_positive_contract_test_only_v1",
+          "input_file_hashes": {
+            "datefac_excel": "sha256:r7az-datefac-minimal-fixture",
+            "mineru_content_list_v2": "sha256:r7az-mineru-minimal-fixture"
+          },
+          "comparison_row_count": 1,
+          "comparison_status_counts": {
+            "DISAGREED": 1
+          },
+          "review_queue_count": 1,
+          "review_queue_status_counts": {
+            "DISAGREED": 1
+          },
+          "discrepancy_report_count": 1,
+          "delivery_clean_candidate_count": 0,
+          "blocked_delivery_row_count": 1,
+          "verified_without_clean_gate_count": 0,
+          "readiness_gates": {
+            "client_ready": false,
+            "production_ready": false,
+            "formal_client_export_allowed": false,
+            "demo_export_only": true
+          },
+          "external_call_counts": {
+            "mineru_run_count": 0,
+            "ocr_run_count": 0,
+            "llm_api_call_count": 0,
+            "vlm_api_call_count": 0
+          },
+          "boundary_flags": {
+            "production_hook": false,
+            "verified_auto_clean": false,
+            "verified_promotes_to_strong_evidence": false,
+            "full_source_text_serialized": false
+          },
+          "audit_metadata_hash": "sha256-r7az-bounded_preview_required_metadata_only-audit-metadata"
+        }
+      }
+    }
+  ]
+}
