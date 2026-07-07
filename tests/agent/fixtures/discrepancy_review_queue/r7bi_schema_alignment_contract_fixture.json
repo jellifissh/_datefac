@@ -1,0 +1,162 @@
+{
+  "schema_version": "r7bi_schema_alignment_contract_fixture_v1",
+  "fixture_scope": "test_only_r7bi",
+  "valid_cases": {
+    "valid_mixed_review_records": {
+      "r7bc_fixture_key": "valid_adapter_candidate_payload",
+      "expected_review_record_count": 2,
+      "expected_statuses": [
+        "DISAGREED",
+        "AMBIGUOUS"
+      ]
+    },
+    "valid_unresolved_blocked_delivery": {
+      "r7bc_fixture_key": "candidate_payload_with_unresolved_blocked_delivery_rows",
+      "expected_review_record_count": 1,
+      "expected_statuses": [
+        "PARSE_SKIPPED"
+      ]
+    },
+    "valid_corrected_reaudit_required": {
+      "r7bc_fixture_key": "candidate_payload_with_corrected_reaudit_required_row",
+      "expected_review_record_count": 0,
+      "expected_reaudit_required_count": 1
+    },
+    "valid_verified_without_clean_gate": {
+      "r7bc_fixture_key": "candidate_payload_with_verified_only",
+      "expected_review_record_count": 0,
+      "expected_verified_without_clean_gate_count": 1
+    }
+  },
+  "negative_cases": [
+    {
+      "case_id": "missing_required_audit_fields",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "delete",
+        "path": "adapter_audit_contract.run_id"
+      },
+      "expected_error": "run_id"
+    },
+    {
+      "case_id": "missing_idempotency_key",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "delete",
+        "path": "writer_dry_run_preview.review_queue_dry_run_records.0.idempotency_key"
+      },
+      "expected_error": "idempotency_key"
+    },
+    {
+      "case_id": "malformed_idempotency_key",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "writer_dry_run_preview.review_queue_dry_run_records.0.idempotency_key",
+        "value": "not-a-deterministic-sha256"
+      },
+      "expected_error": "idempotency_key"
+    },
+    {
+      "case_id": "non_deterministic_timestamp_field",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "writer_dry_run_preview.review_queue_dry_run_records.0.created_at",
+        "value": "2026-07-07T12:00:00Z"
+      },
+      "expected_error": "non-deterministic"
+    },
+    {
+      "case_id": "full_source_text",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "writer_dry_run_preview.review_queue_dry_run_records.0.source_text",
+        "value": "forbidden full source text"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "raw_extraction_payload",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "raw_extraction_payload",
+        "value": {
+          "rows": [
+            "raw parser output"
+          ]
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "clean_data_intent",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "writer_dry_run_preview.review_queue_dry_run_records.0.clean_data_eligible",
+        "value": true
+      },
+      "expected_error": "clean_data"
+    },
+    {
+      "case_id": "delivery_export_intent",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "formal_delivery_payload",
+        "value": {
+          "export": true
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "production_config",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "production_writer_config",
+        "value": {
+          "enabled": true
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "readiness_open",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "integration_summary.readiness_gates.production_ready",
+        "value": true
+      },
+      "expected_error": "readiness gate"
+    },
+    {
+      "case_id": "writer_preview_missing_dry_run_only",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "delete",
+        "path": "writer_dry_run_preview.dry_run_only"
+      },
+      "expected_error": "dry_run_only"
+    },
+    {
+      "case_id": "test_only_config_leak",
+      "base_case": "valid_mixed_review_records",
+      "mutation": {
+        "action": "set",
+        "path": "writer_dry_run_preview.review_queue_dry_run_records.0.test_only_enable_token",
+        "value": "R7BC_TEST_ONLY_WRITER_ENABLE"
+      },
+      "expected_error": "forbidden field"
+    }
+  ],
+  "wrong_layer_payloads": {
+    "adapter_only_payload_key": "valid_adapter_candidate_payload",
+    "direct_writer_preview_from_case": "valid_mixed_review_records"
+  }
+}
