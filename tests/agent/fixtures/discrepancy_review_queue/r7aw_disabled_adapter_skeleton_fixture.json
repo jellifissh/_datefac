@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "fixture_scope": "test_only_r7aw",
+  "disabled_default_case": {
+    "case_id": "disabled_default_valid_boundary_payload"
+  },
+  "valid_boundary_output": {
+    "review_queue_items": [
+      {
+        "review_item_id": "r7aw-review-disagreed-001",
+        "source_document_id": "synthetic-r7aw-report.pdf",
+        "source_row_id": "disagreed:R2",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_value": "31.7",
+        "candidate_unit": "%",
+        "agreement_status": "DISAGREED",
+        "risk_reason": "value conflict",
+        "severity": "HIGH",
+        "review_status": "OPEN",
+        "reviewer_decision": "",
+        "clean_data_eligible": false,
+        "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+        "matched_locator": "mineru:v2:page:2:block:4:bbox:80,210,720,420",
+        "matched_text_sha256": "sha256-r7aw-disagreed-yoy",
+        "source_text_status": "AVAILABLE_CONFLICT",
+        "evidence_type": "mineru_table_html",
+        "suggested_action": "manual review required",
+        "run_id": "r7aw_fixture_run_001",
+        "adapter_version": "r7as_integration_boundary_test_only_v1",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7aw-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7aw-mineru-fixture"
+        },
+        "audit_hash": "r7aw-audit-hash-disagreed",
+        "review_subqueue": "evidence_conflict_queue"
+      },
+      {
+        "review_item_id": "r7aw-review-ambiguous-001",
+        "source_document_id": "synthetic-r7aw-report.pdf",
+        "source_row_id": "ambiguous:R3",
+        "candidate_metric_name": "Finance cost",
+        "candidate_period": "2026E",
+        "candidate_value": "-62",
+        "candidate_unit": "CNY mn",
+        "agreement_status": "AMBIGUOUS",
+        "risk_reason": "ambiguous duplicate evidence",
+        "severity": "MEDIUM_HIGH",
+        "review_status": "OPEN",
+        "reviewer_decision": "",
+        "clean_data_eligible": false,
+        "evidence_preview": "Two forecast tables both contain Finance cost 2026E -62.",
+        "matched_locator": "mineru:v2:page:3:block:2:bbox:90,240,760,510",
+        "matched_text_sha256": "sha256-r7aw-ambiguous-finance-cost",
+        "source_text_status": "AMBIGUOUS_MATCH",
+        "evidence_type": "mineru_table_html",
+        "suggested_action": "manual review required / select evidence",
+        "run_id": "r7aw_fixture_run_001",
+        "adapter_version": "r7as_integration_boundary_test_only_v1",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7aw-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7aw-mineru-fixture"
+        },
+        "audit_hash": "r7aw-audit-hash-ambiguous",
+        "review_subqueue": "evidence_ambiguity_queue"
+      },
+      {
+        "review_item_id": "r7aw-review-corrected-001",
+        "source_document_id": "synthetic-r7aw-report.pdf",
+        "source_row_id": "corrected:R4",
+        "candidate_metric_name": "Net margin",
+        "candidate_period": "2026E",
+        "candidate_value": "9.8",
+        "candidate_unit": "%",
+        "agreement_status": "DISAGREED",
+        "risk_reason": "table-vs-paragraph evidence conflict",
+        "severity": "HIGH",
+        "review_status": "RESOLVED_CORRECTED",
+        "reviewer_decision": "CORRECT_VALUE",
+        "clean_data_eligible": false,
+        "evidence_preview": "Table shows Net margin 2026E 9.4%, while paragraph mentions around 9.8%.",
+        "matched_locator": "mineru:v2:page:2:block:6:bbox:70,430,750,610",
+        "matched_text_sha256": "sha256-r7aw-table-paragraph-conflict",
+        "source_text_status": "AVAILABLE_CONFLICT",
+        "evidence_type": "mineru_table_html_vs_paragraph",
+        "suggested_action": "re-audit corrected value before clean delivery",
+        "run_id": "r7aw_fixture_run_001",
+        "adapter_version": "r7as_integration_boundary_test_only_v1",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7aw-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7aw-mineru-fixture"
+        },
+        "audit_hash": "r7aw-audit-hash-corrected",
+        "review_subqueue": "evidence_conflict_queue"
+      }
+    ],
+    "discrepancy_report_rows": [
+      {
+        "review_item_id": "r7aw-review-disagreed-001",
+        "source_row_id": "disagreed:R2",
+        "candidate_metric_name": "YoY",
+        "candidate_period": "2026E",
+        "candidate_value": "31.7",
+        "candidate_unit": "%",
+        "agreement_status": "DISAGREED",
+        "review_subqueue": "evidence_conflict_queue",
+        "severity": "HIGH",
+        "review_status": "OPEN",
+        "reviewer_decision": "",
+        "source_text_status": "AVAILABLE_CONFLICT",
+        "evidence_type": "mineru_table_html",
+        "matched_locator": "mineru:v2:page:2:block:4:bbox:80,210,720,420",
+        "matched_text_sha256": "sha256-r7aw-disagreed-yoy",
+        "evidence_preview": "Forecast table shows YoY 13.5% for 2026E, conflicting with candidate 31.7%.",
+        "risk_reason": "value conflict",
+        "suggested_action": "manual review required"
+      },
+      {
+        "review_item_id": "r7aw-review-ambiguous-001",
+        "source_row_id": "ambiguous:R3",
+        "candidate_metric_name": "Finance cost",
+        "candidate_period": "2026E",
+        "candidate_value": "-62",
+        "candidate_unit": "CNY mn",
+        "agreement_status": "AMBIGUOUS",
+        "review_subqueue": "evidence_ambiguity_queue",
+        "severity": "MEDIUM_HIGH",
+        "review_status": "OPEN",
+        "reviewer_decision": "",
+        "source_text_status": "AMBIGUOUS_MATCH",
+        "evidence_type": "mineru_table_html",
+        "matched_locator": "mineru:v2:page:3:block:2:bbox:90,240,760,510",
+        "matched_text_sha256": "sha256-r7aw-ambiguous-finance-cost",
+        "evidence_preview": "Two forecast tables both contain Finance cost 2026E -62.",
+        "risk_reason": "ambiguous duplicate evidence",
+        "suggested_action": "manual review required / select evidence"
+      },
+      {
+        "review_item_id": "r7aw-review-corrected-001",
+        "source_row_id": "corrected:R4",
+        "candidate_metric_name": "Net margin",
+        "candidate_period": "2026E",
+        "candidate_value": "9.8",
+        "candidate_unit": "%",
+        "agreement_status": "DISAGREED",
+        "review_subqueue": "evidence_conflict_queue",
+        "severity": "HIGH",
+        "review_status": "RESOLVED_CORRECTED",
+        "reviewer_decision": "CORRECT_VALUE",
+        "source_text_status": "AVAILABLE_CONFLICT",
+        "evidence_type": "mineru_table_html_vs_paragraph",
+        "matched_locator": "mineru:v2:page:2:block:6:bbox:70,430,750,610",
+        "matched_text_sha256": "sha256-r7aw-table-paragraph-conflict",
+        "evidence_preview": "Table shows Net margin 2026E 9.4%, while paragraph mentions around 9.8%.",
+        "risk_reason": "table-vs-paragraph evidence conflict",
+        "suggested_action": "re-audit corrected value before clean delivery"
+      }
+    ],
+    "delivery_clean_candidates": [
+      {
+        "source_row_id": "verified:R1",
+        "source_document_id": "synthetic-r7aw-report.pdf",
+        "candidate_metric_name": "Revenue",
+        "candidate_period": "2026Q1",
+        "candidate_value": "47.10",
+        "candidate_unit": "CNY bn",
+        "agreement_status": "VERIFIED",
+        "delivery_gate_status": "EXPLICIT_CLEAN_GATE_REQUIRED",
+        "delivery_clean_admitted": false,
+        "requires_reaudit_before_clean_delivery": true,
+        "run_id": "r7aw_fixture_run_001",
+        "adapter_version": "r7as_integration_boundary_test_only_v1",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7aw-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7aw-mineru-fixture"
+        }
+      },
+      {
+        "review_item_id": "r7aw-review-corrected-001",
+        "source_row_id": "corrected:R4",
+        "source_document_id": "synthetic-r7aw-report.pdf",
+        "candidate_metric_name": "Net margin",
+        "candidate_period": "2026E",
+        "candidate_value": "9.4",
+        "candidate_unit": "%",
+        "agreement_status": "DISAGREED",
+        "review_status": "RESOLVED_CORRECTED",
+        "reviewer_decision": "CORRECT_VALUE",
+        "delivery_gate_status": "REQUIRES_REAUDIT_BEFORE_CLEAN_DELIVERY",
+        "delivery_clean_admitted": false,
+        "requires_reaudit_before_clean_delivery": true,
+        "run_id": "r7aw_fixture_run_001",
+        "adapter_version": "r7as_integration_boundary_test_only_v1",
+        "input_file_hashes": {
+          "datefac_excel": "sha256:r7aw-datefac-fixture",
+          "mineru_content_list_v2": "sha256:r7aw-mineru-fixture"
+        }
+      }
+    ],
+    "blocked_delivery_rows": [
+      {
+        "review_item_id": "r7aw-review-disagreed-001",
+        "source_row_id": "disagreed:R2",
+        "agreement_status": "DISAGREED",
+        "review_subqueue": "evidence_conflict_queue",
+        "severity": "HIGH",
+        "review_status": "OPEN",
+        "reviewer_decision": "",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible"
+      },
+      {
+        "review_item_id": "r7aw-review-ambiguous-001",
+        "source_row_id": "ambiguous:R3",
+        "agreement_status": "AMBIGUOUS",
+        "review_subqueue": "evidence_ambiguity_queue",
+        "severity": "MEDIUM_HIGH",
+        "review_status": "OPEN",
+        "reviewer_decision": "",
+        "blocked_reason": "unresolved_or_not_clean_data_eligible"
+      }
+    ],
+    "audit_metadata": {
+      "run_id": "r7aw_fixture_run_001",
+      "adapter_version": "r7as_integration_boundary_test_only_v1",
+      "input_file_hashes": {
+        "datefac_excel": "sha256:r7aw-datefac-fixture",
+        "mineru_content_list_v2": "sha256:r7aw-mineru-fixture"
+      },
+      "comparison_row_count": 4,
+      "comparison_status_counts": {
+        "VERIFIED": 1,
+        "DISAGREED": 2,
+        "AMBIGUOUS": 1
+      },
+      "review_queue_count": 3,
+      "review_queue_status_counts": {
+        "DISAGREED": 2,
+        "AMBIGUOUS": 1
+      },
+      "discrepancy_report_count": 3,
+      "delivery_clean_candidate_count": 2,
+      "blocked_delivery_row_count": 2,
+      "verified_without_clean_gate_count": 1,
+      "readiness_gates": {
+        "client_ready": false,
+        "production_ready": false,
+        "formal_client_export_allowed": false,
+        "demo_export_only": true
+      },
+      "external_call_counts": {
+        "mineru_run_count": 0,
+        "ocr_run_count": 0,
+        "llm_api_call_count": 0,
+        "vlm_api_call_count": 0
+      },
+      "boundary_flags": {
+        "test_only": true,
+        "production_hook": false,
+        "verified_auto_clean": false,
+        "verified_promotes_to_strong_evidence": false,
+        "full_source_text_serialized": false
+      },
+      "audit_metadata_hash": "sha256-r7aw-audit-metadata-fixture"
+    }
+  },
+  "invalid_inputs": [
+    {
+      "case_id": "invalid_raw_mineru_like_input",
+      "payload": {
+        "content_list_v2": [
+          [
+            {
+              "type": "text",
+              "text": "raw MinerU block must not enter the disabled production-boundary skeleton"
+            }
+          ]
+        ],
+        "raw_mineru_block": {
+          "type": "table"
+        }
+      }
+    },
+    {
+      "case_id": "invalid_raw_excel_like_input",
+      "payload": {
+        "raw_excel_row": {
+          "sheet": "Sheet1",
+          "row": 12,
+          "cells": [
+            "Revenue",
+            "2026Q1",
+            "47.10"
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "invalid_full_source_text_input",
+      "payload": {
+        "review_queue_items": [
+          {
+            "source_text": "full source text must not be accepted by the skeleton"
+          }
+        ],
+        "audit_metadata": {
+          "run_id": "bad"
+        }
+      }
+    }
+  ]
+}
