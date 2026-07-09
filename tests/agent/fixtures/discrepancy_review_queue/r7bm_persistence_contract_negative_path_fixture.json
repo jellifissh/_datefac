@@ -1,0 +1,351 @@
+{
+  "schema_version": "r7bm_persistence_contract_negative_path_fixture_v1",
+  "fixture_scope": "test_only_r7bm",
+  "base_case": "valid_schema_alignment_preview_mixed_records",
+  "negative_cases": [
+    {
+      "case_id": "missing_trusted_schema_alignment_marker",
+      "mutation": {
+        "action": "delete",
+        "path": "schema_alignment_summary.schema_alignment_preview_hash"
+      },
+      "expected_error": "schema_alignment_preview_hash"
+    },
+    {
+      "case_id": "wrong_schema_alignment_contract_version",
+      "mutation": {
+        "action": "set",
+        "path": "schema_alignment_contract_version",
+        "value": "wrong_contract_version"
+      },
+      "expected_error": "contract version"
+    },
+    {
+      "case_id": "wrong_future_review_queue_schema_version",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_schema_version",
+        "value": "wrong_schema_version"
+      },
+      "expected_error": "schema version"
+    },
+    {
+      "case_id": "mixed_trusted_untrusted_rows",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.1.agreement_status",
+        "value": "VERIFIED"
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "non-VERIFIED"
+    },
+    {
+      "case_id": "one_valid_one_invalid_row_fails_batch",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.1.source_file_hash",
+        "value": ""
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "source_file_hash"
+    },
+    {
+      "case_id": "nested_full_source_text_under_evidence_preview",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.evidence_preview",
+        "value": {
+          "preview": "bounded",
+          "source_text": "forbidden full source text"
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "nested_raw_mineru_under_source_trace",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.source_trace.raw_mineru",
+        "value": {
+          "block": "raw"
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "nested_raw_excel_under_metadata",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.raw_excel",
+        "value": {
+          "sheet": "raw"
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "nested_raw_parser_payload_under_audit",
+      "mutation": {
+        "action": "set",
+        "path": "schema_alignment_summary.audit.raw_parser_payload",
+        "value": {
+          "pages": []
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "nested_raw_llm_response",
+      "mutation": {
+        "action": "set",
+        "path": "schema_alignment_summary.audit.raw_llm_response",
+        "value": "raw llm"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "nested_raw_vlm_response",
+      "mutation": {
+        "action": "set",
+        "path": "schema_alignment_summary.audit.raw_vlm_response",
+        "value": "raw vlm"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "hidden_clean_data_intent",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.intent.clean_data_write_intent",
+        "value": true
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "hidden_delivery_export_intent",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.intent.delivery_export_intent",
+        "value": true
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "hidden_production_writer_config",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.production_writer_config",
+        "value": {
+          "enabled": true
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "hidden_readiness_override",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.readiness.production_ready",
+        "value": true
+      },
+      "expected_error": "readiness gate"
+    },
+    {
+      "case_id": "test_only_token_leaks_into_candidate_row",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.test_only_enable_token",
+        "value": "R7BL_TEST_ONLY_PERSISTENCE_ENABLE"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "direct_persistence_candidate_missing_upstream_proof",
+      "payload_kind": "direct_persistence_candidate_shape",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "idempotency_key_inconsistent_with_row_payload",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.idempotency_key",
+        "value": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "idempotency_key inconsistent"
+    },
+    {
+      "case_id": "record_payload_hash_user_supplied_direct_candidate",
+      "payload_kind": "direct_persistence_candidate_with_record_hash",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "duplicate_review_item_id_different_idempotency_key",
+      "mutation": {
+        "action": "duplicate_review_item_with_recomputed_idempotency",
+        "source_index": 0,
+        "target_index": 1
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "duplicate review_item_id"
+    },
+    {
+      "case_id": "duplicate_idempotency_key_different_review_item_id",
+      "mutation": {
+        "action": "copy",
+        "from_path": "future_review_queue_record_previews.0.idempotency_key",
+        "to_path": "future_review_queue_record_previews.1.idempotency_key"
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "duplicate idempotency_key"
+    },
+    {
+      "case_id": "empty_evidence_preview",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.evidence_preview",
+        "value": ""
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "evidence_preview"
+    },
+    {
+      "case_id": "oversized_evidence_preview",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.evidence_preview",
+        "value": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+      },
+      "expected_error": "evidence_preview exceeds"
+    },
+    {
+      "case_id": "non_list_input_file_hashes",
+      "mutation": {
+        "action": "set",
+        "path": "input_file_hashes",
+        "value": [
+          "sha256:not-an-object"
+        ]
+      },
+      "expected_error": "input_file_hashes"
+    },
+    {
+      "case_id": "empty_input_hashes_and_missing_source_file_hash",
+      "mutation": {
+        "action": "set_many_paths",
+        "values": {
+          "input_file_hashes": {},
+          "future_review_queue_record_previews.0.source_file_hash": ""
+        }
+      },
+      "expected_error": "input_file_hashes"
+    },
+    {
+      "case_id": "non_string_metric_name",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.metric_name",
+        "value": [
+          "YoY"
+        ]
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "metric_name must be a string"
+    },
+    {
+      "case_id": "non_string_period",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.period",
+        "value": 2026
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "period must be a string"
+    },
+    {
+      "case_id": "nan_candidate_value",
+      "mutation": {
+        "action": "set_many",
+        "record_index": 0,
+        "values": {
+          "candidate_value": "NaN",
+          "normalized_candidate_value": "NaN"
+        }
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "NaN or Infinity"
+    },
+    {
+      "case_id": "infinity_candidate_value",
+      "mutation": {
+        "action": "set_many",
+        "record_index": 0,
+        "values": {
+          "candidate_value": "Infinity",
+          "normalized_candidate_value": "Infinity"
+        }
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "NaN or Infinity"
+    },
+    {
+      "case_id": "unexpected_persistence_destination",
+      "mutation": {
+        "action": "set",
+        "path": "persistence_destination",
+        "value": "database"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "unexpected_table_name",
+      "mutation": {
+        "action": "set",
+        "path": "table_name",
+        "value": "review_queue"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "database_dsn_path_output_path",
+      "mutation": {
+        "action": "set_many_paths",
+        "values": {
+          "metadata.dsn": "postgres://example",
+          "metadata.output_path": "D:/unsafe/output.csv",
+          "metadata.file_path": "D:/unsafe/db.sqlite"
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "created_at_production_timestamp_policy",
+      "mutation": {
+        "action": "set",
+        "path": "created_at_policy",
+        "value": "production_wall_clock"
+      },
+      "expected_error": "non-deterministic"
+    },
+    {
+      "case_id": "reviewer_action_auto_approve_clean_data",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.reviewer_action",
+        "value": "ACCEPT_CANDIDATE"
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "reviewer_action"
+    },
+    {
+      "case_id": "review_status_delivery_unblock",
+      "mutation": {
+        "action": "set",
+        "path": "future_review_queue_record_previews.0.review_status",
+        "value": "READY_FOR_DELIVERY"
+      },
+      "refresh_schema_hash": true,
+      "expected_error": "review_status"
+    }
+  ]
+}

@@ -27,6 +27,7 @@ from tests.agent.review_queue_writer_schema_alignment_contract_348n import (
 )
 
 R7BL_FIXTURE_PATH = Path("tests/agent/fixtures/discrepancy_review_queue/r7bl_persistence_contract_fixture.json")
+R7BM_FIXTURE_PATH = Path("tests/agent/fixtures/discrepancy_review_queue/r7bm_persistence_contract_negative_path_fixture.json")
 R7BI_FIXTURE_PATH = Path("tests/agent/fixtures/discrepancy_review_queue/r7bi_schema_alignment_contract_fixture.json")
 R7BC_FIXTURE_PATH = Path("tests/agent/fixtures/discrepancy_review_queue/r7bc_review_queue_writer_contract_fixture.json")
 MODULE_PATH = Path("tests/agent/review_queue_persistence_contract_348n.py")
@@ -35,6 +36,12 @@ MODULE_PATH = Path("tests/agent/review_queue_persistence_contract_348n.py")
 def _fixture() -> dict:
     payload = json.loads(R7BL_FIXTURE_PATH.read_text(encoding="utf-8"))
     assert payload["fixture_scope"] == "test_only_r7bl"
+    return payload
+
+
+def _r7bm_fixture() -> dict:
+    payload = json.loads(R7BM_FIXTURE_PATH.read_text(encoding="utf-8"))
+    assert payload["fixture_scope"] == "test_only_r7bm"
     return payload
 
 
@@ -86,6 +93,7 @@ def _schema_alignment_preview(case_id: str = "valid_schema_alignment_preview_mix
     mutation = valid_case.get("mutation")
     if mutation:
         _apply_mutation(preview, mutation)
+        _refresh_schema_alignment_preview_hash(preview)
     return preview
 
 
@@ -120,16 +128,54 @@ def _payload_for_negative_case(case_id: str) -> dict:
     return payload
 
 
+def _payload_for_r7bm_case(case_id: str) -> dict:
+    case = _r7bm_negative_case(case_id)
+    payload_kind = case.get("payload_kind")
+    if payload_kind == "direct_persistence_candidate_shape":
+        return {"review_queue_persistence_candidate_batch": [{"review_item_id": "direct-r7bm"}]}
+    if payload_kind == "direct_persistence_candidate_with_record_hash":
+        return {
+            "review_queue_persistence_candidate_batch": [
+                {
+                    "review_item_id": "direct-r7bm",
+                    "record_payload_hash": "0" * 64,
+                }
+            ]
+        }
+    payload = _schema_alignment_preview(_r7bm_fixture()["base_case"])
+    _apply_mutation(payload, case["mutation"])
+    if case.get("refresh_schema_hash"):
+        _refresh_schema_alignment_preview_hash(payload)
+    return payload
+
+
 def _negative_case(case_id: str) -> dict:
     cases = {case["case_id"]: case for case in _fixture()["negative_cases"]}
     return deepcopy(cases[case_id])
 
 
+def _r7bm_negative_case(case_id: str) -> dict:
+    cases = {case["case_id"]: case for case in _r7bm_fixture()["negative_cases"]}
+    return deepcopy(cases[case_id])
+
+
 def _apply_mutation(payload: dict, mutation: dict) -> None:
     action = mutation["action"]
+    if action == "set_many_paths":
+        for path, value in mutation["values"].items():
+            _set_path(payload, path, value)
+        return
     if action == "set_many":
         record = payload["future_review_queue_record_previews"][mutation["record_index"]]
         record.update(mutation["values"])
+        return
+    if action == "duplicate_review_item_with_recomputed_idempotency":
+        source = payload["future_review_queue_record_previews"][mutation["source_index"]]
+        target = payload["future_review_queue_record_previews"][mutation["target_index"]]
+        target["review_item_id"] = source["review_item_id"]
+        target["source_row_id"] = f'{target["source_row_id"]}:r7bm-duplicate-review-item'
+        target["source_trace"]["source_row_id"] = target["source_row_id"]
+        target["idempotency_key"] = _expected_record_idempotency_key(target)
         return
     if action == "copy":
         _set_path(payload, mutation["to_path"], deepcopy(_get_path(payload, mutation["from_path"])))
@@ -141,6 +187,26 @@ def _apply_mutation(payload: dict, mutation: dict) -> None:
         _set_path(payload, mutation["path"], mutation["value"])
         return
     raise AssertionError(f"unsupported mutation action: {action}")
+
+
+def _refresh_schema_alignment_preview_hash(payload: dict) -> None:
+    records = payload["future_review_queue_record_previews"]
+    status_counts: dict[str, int] = {}
+    for record in records:
+        status_counts[record["agreement_status"]] = status_counts.get(record["agreement_status"], 0) + 1
+    summary = payload["schema_alignment_summary"]
+    summary["future_preview_record_count"] = len(records)
+    summary["review_bound_record_count"] = len(records)
+    summary["status_counts"] = status_counts
+    summary["schema_alignment_preview_hash"] = _hash_json(
+        {
+            "schema_alignment_contract_version": summary["schema_alignment_contract_version"],
+            "future_review_queue_schema_version": summary["future_review_queue_schema_version"],
+            "run_id": summary["run_id"],
+            "records": records,
+            "status_counts": status_counts,
+        }
+    )
 
 
 def _get_path(payload: dict, path: str) -> object:
@@ -186,6 +252,20 @@ def _delete_path(payload: dict, path: str) -> None:
 def _hash_json(value: object) -> str:
     payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _expected_record_idempotency_key(record: dict) -> str:
+    return _hash_json(
+        {
+            "contract_version": record["writer_contract_version"],
+            "run_id": record["run_id"],
+            "review_item_id": record["review_item_id"],
+            "source_row_id": record["source_row_id"],
+            "agreement_status": record["agreement_status"],
+            "audit_hash": record["audit_hash"],
+            "input_file_hashes": dict(sorted(record["input_file_hashes"].items())),
+        }
+    )
 
 
 def _walk_keys(value: object) -> set[str]:
@@ -239,6 +319,52 @@ def test_r7bl_fixture_is_small_curated_and_complete() -> None:
         "invalid_user_direct_persistence_candidate",
     }
     assert R7BL_FIXTURE_PATH.stat().st_size < 25000
+
+
+def test_r7bm_fixture_is_small_curated_and_complete() -> None:
+    fixture = _r7bm_fixture()
+
+    assert set(fixture) == {"schema_version", "fixture_scope", "base_case", "negative_cases"}
+    assert fixture["schema_version"] == "r7bm_persistence_contract_negative_path_fixture_v1"
+    assert fixture["base_case"] == "valid_schema_alignment_preview_mixed_records"
+    assert {case["case_id"] for case in fixture["negative_cases"]} == {
+        "missing_trusted_schema_alignment_marker",
+        "wrong_schema_alignment_contract_version",
+        "wrong_future_review_queue_schema_version",
+        "mixed_trusted_untrusted_rows",
+        "one_valid_one_invalid_row_fails_batch",
+        "nested_full_source_text_under_evidence_preview",
+        "nested_raw_mineru_under_source_trace",
+        "nested_raw_excel_under_metadata",
+        "nested_raw_parser_payload_under_audit",
+        "nested_raw_llm_response",
+        "nested_raw_vlm_response",
+        "hidden_clean_data_intent",
+        "hidden_delivery_export_intent",
+        "hidden_production_writer_config",
+        "hidden_readiness_override",
+        "test_only_token_leaks_into_candidate_row",
+        "direct_persistence_candidate_missing_upstream_proof",
+        "idempotency_key_inconsistent_with_row_payload",
+        "record_payload_hash_user_supplied_direct_candidate",
+        "duplicate_review_item_id_different_idempotency_key",
+        "duplicate_idempotency_key_different_review_item_id",
+        "empty_evidence_preview",
+        "oversized_evidence_preview",
+        "non_list_input_file_hashes",
+        "empty_input_hashes_and_missing_source_file_hash",
+        "non_string_metric_name",
+        "non_string_period",
+        "nan_candidate_value",
+        "infinity_candidate_value",
+        "unexpected_persistence_destination",
+        "unexpected_table_name",
+        "database_dsn_path_output_path",
+        "created_at_production_timestamp_policy",
+        "reviewer_action_auto_approve_clean_data",
+        "review_status_delivery_unblock",
+    }
+    assert R7BM_FIXTURE_PATH.stat().st_size < 35000
 
 
 def test_r7bl_default_disabled_fails_closed() -> None:
@@ -374,6 +500,88 @@ def test_r7bl_negative_cases_fail_closed(case_id: str) -> None:
         build_review_queue_persistence_candidate_batch(_payload_for_negative_case(case_id), _persistence_config())
 
 
+@pytest.mark.parametrize(
+    "case_id",
+    [
+        "missing_trusted_schema_alignment_marker",
+        "wrong_schema_alignment_contract_version",
+        "wrong_future_review_queue_schema_version",
+        "mixed_trusted_untrusted_rows",
+        "one_valid_one_invalid_row_fails_batch",
+        "nested_full_source_text_under_evidence_preview",
+        "nested_raw_mineru_under_source_trace",
+        "nested_raw_excel_under_metadata",
+        "nested_raw_parser_payload_under_audit",
+        "nested_raw_llm_response",
+        "nested_raw_vlm_response",
+        "hidden_clean_data_intent",
+        "hidden_delivery_export_intent",
+        "hidden_production_writer_config",
+        "hidden_readiness_override",
+        "test_only_token_leaks_into_candidate_row",
+        "direct_persistence_candidate_missing_upstream_proof",
+        "idempotency_key_inconsistent_with_row_payload",
+        "record_payload_hash_user_supplied_direct_candidate",
+        "duplicate_review_item_id_different_idempotency_key",
+        "duplicate_idempotency_key_different_review_item_id",
+        "empty_evidence_preview",
+        "oversized_evidence_preview",
+        "non_list_input_file_hashes",
+        "empty_input_hashes_and_missing_source_file_hash",
+        "non_string_metric_name",
+        "non_string_period",
+        "nan_candidate_value",
+        "infinity_candidate_value",
+        "unexpected_persistence_destination",
+        "unexpected_table_name",
+        "database_dsn_path_output_path",
+        "created_at_production_timestamp_policy",
+        "reviewer_action_auto_approve_clean_data",
+        "review_status_delivery_unblock",
+    ],
+)
+def test_r7bm_expanded_negative_paths_fail_closed(case_id: str) -> None:
+    case = _r7bm_negative_case(case_id)
+
+    with pytest.raises(ReviewQueuePersistenceContractError, match=case["expected_error"]):
+        build_review_queue_persistence_candidate_batch(_payload_for_r7bm_case(case_id), _persistence_config())
+
+
+def test_r7bm_mixed_valid_invalid_batch_returns_no_partial_candidates() -> None:
+    with pytest.raises(ReviewQueuePersistenceContractError, match="source_file_hash") as error:
+        build_review_queue_persistence_candidate_batch(
+            _payload_for_r7bm_case("one_valid_one_invalid_row_fails_batch"),
+            _persistence_config(),
+        )
+
+    assert "review_queue_persistence_candidate_batch" not in str(error.value)
+
+
+def test_r7bm_record_payload_hash_remains_derived_not_user_supplied() -> None:
+    payload = _schema_alignment_preview()
+    result = build_review_queue_persistence_candidate_batch(payload, _persistence_config())
+    record = result["review_queue_persistence_candidate_batch"][0]
+
+    expected_hash = _hash_json({key: value for key, value in record.items() if key != "record_payload_hash"})
+    assert record["record_payload_hash"] == expected_hash
+
+    direct_payload = _payload_for_r7bm_case("record_payload_hash_user_supplied_direct_candidate")
+    with pytest.raises(ReviewQueuePersistenceContractError, match="forbidden field"):
+        build_review_queue_persistence_candidate_batch(direct_payload, _persistence_config())
+
+
+def test_r7bm_input_mutation_cannot_mutate_returned_nested_candidates() -> None:
+    payload = _schema_alignment_preview()
+    result = build_review_queue_persistence_candidate_batch(payload, _persistence_config())
+
+    payload["future_review_queue_record_previews"][0]["source_trace"]["matched_locator"] = "mutated-locator"
+    payload["future_review_queue_record_previews"][0]["input_file_hashes"]["datefac_excel"] = "mutated-hash"
+
+    record = result["review_queue_persistence_candidate_batch"][0]
+    assert record["source_trace"]["matched_locator"] != "mutated-locator"
+    assert record["input_file_hashes"]["datefac_excel"] == "sha256:r7bc-datefac-fixture"
+
+
 def test_r7bl_batch_failure_returns_no_partial_candidate_batch() -> None:
     with pytest.raises(ReviewQueuePersistenceContractError, match="duplicate idempotency_key") as error:
         build_review_queue_persistence_candidate_batch(
@@ -389,6 +597,7 @@ def test_r7bl_record_payload_hash_idempotency_and_ordering_are_deterministic() -
     second = build_review_queue_persistence_candidate_batch(_schema_alignment_preview(), _persistence_config())
     reversed_preview = _schema_alignment_preview()
     reversed_preview["future_review_queue_record_previews"] = list(reversed(reversed_preview["future_review_queue_record_previews"]))
+    _refresh_schema_alignment_preview_hash(reversed_preview)
     reversed_output = build_review_queue_persistence_candidate_batch(reversed_preview, _persistence_config())
 
     assert first == second

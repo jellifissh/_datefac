@@ -97,6 +97,16 @@ REQUIRED_SCHEMA_RECORD_FIELDS: tuple[str, ...] = (
     "delivery_blocked",
 )
 
+REQUIRED_SOURCE_TRACE_FIELDS: tuple[str, ...] = (
+    "source_document_id",
+    "source_row_id",
+    "adapter_item_id",
+    "matched_locator",
+    "matched_text_sha256",
+    "subqueue",
+    "evidence_preview_sha256",
+)
+
 REQUIRED_PERSISTENCE_CANDIDATE_FIELDS: tuple[str, ...] = (
     "review_item_id",
     "run_id",
@@ -131,11 +141,13 @@ FORBIDDEN_INPUT_KEYS: frozenset[str] = frozenset(
         "source_text_full",
         "full_text",
         "raw_source_text",
+        "raw_mineru",
         "raw_mineru_block",
         "raw_mineru_artifact",
         "content_list_v2",
         "full_table_html",
         "raw_pdf_text",
+        "raw_excel",
         "raw_excel_row",
         "raw_datefac_excel_row",
         "datefac_excel_rows",
@@ -165,11 +177,26 @@ FORBIDDEN_INPUT_KEYS: frozenset[str] = frozenset(
         "clean_data_records",
         "clean_data_payload",
         "clean_data_intent",
+        "clean_data_write_intent",
         "delivery_payload",
         "delivery_export_intent",
+        "delivery_write_intent",
         "export_payload",
+        "export_intent",
         "formal_delivery_payload",
         "formal_export_payload",
+        "formal_export_intent",
+        "persistence_destination",
+        "persistence_target",
+        "storage_destination",
+        "output_path",
+        "export_path",
+        "file_path",
+        "filesystem_path",
+        "storage_path",
+        "database_url",
+        "db_url",
+        "dsn",
         "production_writer_config",
         "production_config",
         "writer_config",
@@ -191,6 +218,7 @@ FORBIDDEN_INPUT_KEYS: frozenset[str] = frozenset(
         "migration_id",
         "connection_string",
         "table_name",
+        "database_table",
         "repository_class",
     }
 )
@@ -229,6 +257,8 @@ NON_DETERMINISTIC_KEYS: frozenset[str] = frozenset(
         "run_finished_at",
         "utcnow",
         "now",
+        "created_at_policy",
+        "timestamp_policy",
     }
 )
 
@@ -320,8 +350,22 @@ def validate_schema_alignment_preview(value: Any, *, preview_limit: int = DEFAUL
     _validate_schema_alignment_summary(summary, value=value)
     if summary["future_preview_record_count"] != len(records):
         raise ReviewQueuePersistenceContractError("schema alignment record count mismatch")
+    seen_review_item_ids: set[str] = set()
+    seen_idempotency_keys: set[str] = set()
     for record in records:
+        if isinstance(record, dict):
+            idempotency_key = record.get("idempotency_key")
+            if isinstance(idempotency_key, str) and idempotency_key in seen_idempotency_keys:
+                raise ReviewQueuePersistenceContractError("duplicate idempotency_key rejected")
+            if isinstance(idempotency_key, str):
+                seen_idempotency_keys.add(idempotency_key)
         _validate_schema_record(record, parent=value, preview_limit=preview_limit)
+        review_item_id = record["review_item_id"]
+        if review_item_id in seen_review_item_ids:
+            raise ReviewQueuePersistenceContractError("duplicate review_item_id rejected")
+        seen_review_item_ids.add(review_item_id)
+    _validate_summary_record_counts(summary, records=records)
+    _validate_schema_alignment_preview_hash(summary, records=records)
 
 
 def validate_no_forbidden_input_fields(
@@ -422,6 +466,7 @@ def _validate_schema_alignment_summary(summary: Any, *, value: dict[str, Any]) -
         "external_call_counts",
         "boundary_flags",
         "validation_errors",
+        "schema_alignment_preview_hash",
     ):
         if field not in summary:
             raise ReviewQueuePersistenceContractError(f"schema_alignment_summary {field} is required")
@@ -471,6 +516,18 @@ def _validate_schema_record(record: Any, *, parent: dict[str, Any], preview_limi
         "record_payload_hash",
     ):
         _validate_non_empty_string(record, field, "future review_queue record preview")
+    for field in (
+        "review_item_id",
+        "run_id",
+        "source_file_hash",
+        "adapter_version",
+        "writer_contract_version",
+        "metric_name",
+        "period",
+        "candidate_value",
+        "normalized_candidate_value",
+    ):
+        _validate_string_field(record, field, "future review_queue record preview")
     if record["schema_version"] != parent["future_review_queue_schema_version"]:
         raise ReviewQueuePersistenceContractError("record schema_version mismatch")
     if record["run_id"] != parent["run_id"]:
@@ -490,15 +547,20 @@ def _validate_schema_record(record: Any, *, parent: dict[str, Any], preview_limi
         raise ReviewQueuePersistenceContractError("record input_file_hashes mismatch")
     if not SHA256_HEX_RE.match(record["idempotency_key"]):
         raise ReviewQueuePersistenceContractError("malformed idempotency_key")
+    if record["idempotency_key"] != _expected_idempotency_key(record):
+        raise ReviewQueuePersistenceContractError("idempotency_key inconsistent with row payload")
     if not SHA256_HEX_RE.match(record["record_payload_hash"]):
         raise ReviewQueuePersistenceContractError("record_payload_hash is required hash identity")
     if not _clean(record["blocked_delivery_reason"]):
         raise ReviewQueuePersistenceContractError("unresolved records require blocked_delivery_reason")
     if _is_corrected(record) and record["re_audit_required"] is not True:
         raise ReviewQueuePersistenceContractError("corrected records require re_audit_required")
-    if not isinstance(record["source_trace"], dict) or not record["source_trace"]:
-        raise ReviewQueuePersistenceContractError("source_trace is required")
+    _validate_source_trace(record["source_trace"], record=record)
+    if not _clean(record["evidence_preview"]):
+        raise ReviewQueuePersistenceContractError("evidence_preview is required")
     _validate_bounded_preview(record["evidence_preview"], preview_limit)
+    _validate_candidate_value(record["candidate_value"], record["normalized_candidate_value"])
+    _validate_no_auto_clean_or_delivery_status(record)
 
 
 def _persistence_candidate(
@@ -570,7 +632,11 @@ def _validate_persistence_candidate(candidate: dict[str, Any], *, preview_limit:
     if candidate["reviewer_action"] in CORRECTIVE_REVIEWER_ACTIONS and candidate["re_audit_required"] is not True:
         raise ReviewQueuePersistenceContractError("corrected candidate requires re_audit_required")
     _validate_hash_identity(candidate.get("input_file_hashes"), "candidate input_file_hashes")
+    if not _clean(candidate["evidence_preview"]):
+        raise ReviewQueuePersistenceContractError("evidence_preview is required")
     _validate_bounded_preview(candidate["evidence_preview"], preview_limit)
+    _validate_candidate_value(candidate["candidate_value"], candidate["normalized_candidate_value"])
+    _validate_no_auto_clean_or_delivery_status(candidate)
 
 
 def _persistence_summary(
@@ -619,6 +685,92 @@ def _validate_no_duplicate_idempotency(candidates: list[dict[str, Any]]) -> None
         seen.add(key)
 
 
+def _validate_schema_alignment_preview_hash(summary: dict[str, Any], *, records: list[dict[str, Any]]) -> None:
+    expected_hash = _hash_json(
+        {
+            "schema_alignment_contract_version": summary["schema_alignment_contract_version"],
+            "future_review_queue_schema_version": summary["future_review_queue_schema_version"],
+            "run_id": summary["run_id"],
+            "records": records,
+            "status_counts": summary["status_counts"],
+        }
+    )
+    if summary["schema_alignment_preview_hash"] != expected_hash:
+        raise ReviewQueuePersistenceContractError("schema_alignment_preview_hash mismatch")
+
+
+def _validate_summary_record_counts(summary: dict[str, Any], *, records: list[dict[str, Any]]) -> None:
+    status_counts = dict(Counter(record["agreement_status"] for record in records))
+    if summary.get("status_counts") != status_counts:
+        raise ReviewQueuePersistenceContractError("schema alignment status_counts mismatch")
+    if summary.get("review_bound_record_count") != len(records):
+        raise ReviewQueuePersistenceContractError("schema alignment review_bound_record_count mismatch")
+
+
+def _validate_source_trace(value: Any, *, record: dict[str, Any]) -> None:
+    if not isinstance(value, dict) or not value:
+        raise ReviewQueuePersistenceContractError("source_trace is required")
+    _require_exact_fields(value, REQUIRED_SOURCE_TRACE_FIELDS, "source_trace")
+    for field in REQUIRED_SOURCE_TRACE_FIELDS:
+        _validate_string_field(value, field, "source_trace")
+    for field in (
+        "source_document_id",
+        "source_row_id",
+        "matched_locator",
+        "matched_text_sha256",
+        "evidence_preview_sha256",
+    ):
+        _validate_non_empty_string(value, field, "source_trace")
+    if value["source_document_id"] != record["source_document_id"]:
+        raise ReviewQueuePersistenceContractError("source_trace source_document_id mismatch")
+    if value["source_row_id"] != record["source_row_id"]:
+        raise ReviewQueuePersistenceContractError("source_trace source_row_id mismatch")
+
+
+def _expected_idempotency_key(record: dict[str, Any]) -> str:
+    payload = {
+        "contract_version": record["writer_contract_version"],
+        "run_id": record["run_id"],
+        "review_item_id": record["review_item_id"],
+        "source_row_id": record["source_row_id"],
+        "agreement_status": record["agreement_status"],
+        "audit_hash": record["audit_hash"],
+        "input_file_hashes": dict(sorted(record["input_file_hashes"].items())),
+    }
+    return _hash_json(payload)
+
+
+def _validate_candidate_value(candidate_value: Any, normalized_candidate_value: Any) -> None:
+    raw = _clean(candidate_value).lower()
+    normalized = _clean(normalized_candidate_value).lower()
+    if raw in {"nan", "inf", "+inf", "-inf", "infinity", "+infinity", "-infinity"}:
+        raise ReviewQueuePersistenceContractError("candidate_value must not be NaN or Infinity")
+    if normalized in {"nan", "inf", "+inf", "-inf", "infinity", "+infinity", "-infinity"}:
+        raise ReviewQueuePersistenceContractError("candidate_value must not be NaN or Infinity")
+
+
+def _validate_no_auto_clean_or_delivery_status(record: dict[str, Any]) -> None:
+    reviewer_action = _clean(record.get("reviewer_action")).upper()
+    review_status = _clean(record.get("review_status")).upper()
+    if reviewer_action in {
+        "ACCEPT_CANDIDATE",
+        "AUTO_APPROVE_CLEAN_DATA",
+        "APPROVE_CLEAN_DATA",
+        "MARK_CLEAN_DATA_ELIGIBLE",
+        "UNBLOCK_DELIVERY",
+        "APPROVE_DELIVERY",
+    }:
+        raise ReviewQueuePersistenceContractError("reviewer_action cannot imply clean_data or delivery unblock")
+    if review_status in {
+        "CLEAN_DATA_APPROVED",
+        "AUTO_CLEAN_APPROVED",
+        "DELIVERY_UNBLOCKED",
+        "READY_FOR_DELIVERY",
+        "APPROVED_FOR_EXPORT",
+    }:
+        raise ReviewQueuePersistenceContractError("review_status cannot imply clean_data or delivery unblock")
+
+
 def _require_exact_fields(value: dict[str, Any], required_fields: tuple[str, ...], label: str) -> None:
     missing = [field for field in required_fields if field not in value]
     if missing:
@@ -634,6 +786,11 @@ def _validate_hash_identity(value: Any, label: str) -> None:
     for key, child in value.items():
         if not _clean(key) or not _clean(child):
             raise ReviewQueuePersistenceContractError(f"{label} must contain non-empty hash identity")
+
+
+def _validate_string_field(value: dict[str, Any], field: str, label: str) -> None:
+    if not isinstance(value.get(field), str):
+        raise ReviewQueuePersistenceContractError(f"{label} {field} must be a string")
 
 
 def _validate_non_empty_string(value: dict[str, Any], field: str, label: str) -> None:
