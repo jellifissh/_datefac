@@ -1,0 +1,197 @@
+{
+  "schema_version": "r7br_fake_repository_negative_path_idempotency_fixture_v1",
+  "fixture_scope": "test_only_r7br",
+  "base_case": "valid_schema_alignment_preview_mixed_records",
+  "negative_path_cases": [
+    {
+      "case_id": "attempted_production_mode",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.production_mode",
+        "value": true
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_production_writer_config",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.production_writer_config",
+        "value": {
+          "enabled": true
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_connection_string",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.connection_string",
+        "value": "Server=forbidden;Database=review_queue"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_table_name",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.table_name",
+        "value": "review_queue"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_file_path",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.file_path",
+        "value": "D:/unsafe/review_queue.sqlite"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_network_dependency_marker",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.network_dependency",
+        "value": "http-client"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_storage_dependency_marker",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.storage_dependency",
+        "value": "object-store"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_caller_supplied_receipt",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.fake_repository_write_receipt",
+        "value": {
+          "status": "forged"
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "attempted_caller_supplied_internal_state",
+      "mutation": {
+        "action": "set",
+        "path": "metadata.repository_internal_state",
+        "value": {
+          "records": []
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "raw_persistence_candidate_rows_direct",
+      "payload_kind": "raw_candidate_rows",
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "single_row_missing_review_item_id",
+      "mutation": {
+        "action": "single_row_delete",
+        "path": "review_queue_persistence_candidate_batch.0.review_item_id"
+      },
+      "expected_error": "review_item_id"
+    },
+    {
+      "case_id": "single_row_missing_run_id",
+      "mutation": {
+        "action": "single_row_delete",
+        "path": "review_queue_persistence_candidate_batch.0.run_id"
+      },
+      "expected_error": "run_id"
+    },
+    {
+      "case_id": "single_row_missing_idempotency_key",
+      "mutation": {
+        "action": "single_row_delete",
+        "path": "review_queue_persistence_candidate_batch.0.idempotency_key"
+      },
+      "expected_error": "idempotency_key"
+    },
+    {
+      "case_id": "single_row_missing_record_payload_hash",
+      "mutation": {
+        "action": "single_row_delete",
+        "path": "review_queue_persistence_candidate_batch.0.record_payload_hash"
+      },
+      "expected_error": "record_payload_hash"
+    },
+    {
+      "case_id": "single_row_malformed_idempotency_key",
+      "mutation": {
+        "action": "single_row_set",
+        "path": "review_queue_persistence_candidate_batch.0.idempotency_key",
+        "value": "not-a-sha256"
+      },
+      "expected_error": "idempotency_key"
+    },
+    {
+      "case_id": "single_row_malformed_record_payload_hash",
+      "mutation": {
+        "action": "single_row_set",
+        "path": "review_queue_persistence_candidate_batch.0.record_payload_hash",
+        "value": "not-a-sha256"
+      },
+      "expected_error": "record_payload_hash"
+    },
+    {
+      "case_id": "nested_raw_vlm_payload",
+      "mutation": {
+        "action": "set",
+        "path": "review_queue_persistence_candidate_batch.0.source_trace.raw_vlm_response",
+        "value": "raw vlm"
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "nested_raw_ocr_payload",
+      "mutation": {
+        "action": "set",
+        "path": "review_queue_persistence_candidate_batch.0.source_trace.ocr_output",
+        "value": {
+          "text": "raw ocr"
+        }
+      },
+      "expected_error": "forbidden field"
+    },
+    {
+      "case_id": "production_timestamp_policy",
+      "mutation": {
+        "action": "set",
+        "path": "review_queue_persistence_candidate_batch.0.created_at",
+        "value": "2026-07-09T00:00:00Z"
+      },
+      "expected_error": "non-deterministic"
+    },
+    {
+      "case_id": "same_record_payload_hash_different_idempotency",
+      "mutation": {
+        "action": "same_record_hash_different_idempotency"
+      },
+      "expected_error": "record_payload_hash"
+    }
+  ],
+  "idempotency_cases": [
+    "same_batch_retry_noop",
+    "same_key_same_hash_receipt_stable",
+    "same_key_different_payload_hash_fail_closed",
+    "same_review_item_different_key_fail_closed",
+    "same_review_item_same_key_changed_payload_fail_closed",
+    "same_batch_duplicate_idempotency_fail_closed",
+    "same_batch_duplicate_review_item_fail_closed",
+    "invalid_second_row_atomic_rollback",
+    "repository_instances_are_isolated",
+    "receipt_and_snapshot_mutation_isolated"
+  ]
+}

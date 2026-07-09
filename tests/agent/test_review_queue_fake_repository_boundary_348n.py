@@ -35,6 +35,9 @@ from tests.agent.review_queue_writer_schema_alignment_contract_348n import (
 
 
 R7BQ_FIXTURE_PATH = Path("tests/agent/fixtures/discrepancy_review_queue/r7bq_fake_repository_boundary_fixture.json")
+R7BR_FIXTURE_PATH = Path(
+    "tests/agent/fixtures/discrepancy_review_queue/r7br_fake_repository_negative_path_idempotency_fixture.json"
+)
 R7BC_FIXTURE_PATH = Path("tests/agent/fixtures/discrepancy_review_queue/r7bc_review_queue_writer_contract_fixture.json")
 MODULE_PATH = Path("tests/agent/review_queue_fake_repository_boundary_348n.py")
 
@@ -42,6 +45,12 @@ MODULE_PATH = Path("tests/agent/review_queue_fake_repository_boundary_348n.py")
 def _fixture() -> dict:
     payload = json.loads(R7BQ_FIXTURE_PATH.read_text(encoding="utf-8"))
     assert payload["fixture_scope"] == "test_only_r7bq"
+    return payload
+
+
+def _r7br_fixture() -> dict:
+    payload = json.loads(R7BR_FIXTURE_PATH.read_text(encoding="utf-8"))
+    assert payload["fixture_scope"] == "test_only_r7br"
     return payload
 
 
@@ -127,6 +136,30 @@ def _payload_for_negative_case(case_id: str) -> dict:
     return payload
 
 
+def _r7br_negative_case(case_id: str) -> dict:
+    cases = {case["case_id"]: case for case in _r7br_fixture()["negative_path_cases"]}
+    return deepcopy(cases[case_id])
+
+
+def _payload_for_r7br_negative_case(case_id: str) -> dict:
+    case = _r7br_negative_case(case_id)
+    if case.get("payload_kind") == "raw_candidate_rows":
+        return {
+            "persistence_candidate_rows": [
+                {
+                    "review_item_id": "raw-direct-row",
+                    "idempotency_key": "0" * 64,
+                    "record_payload_hash": "1" * 64,
+                }
+            ]
+        }
+    payload = _candidate_batch()
+    mutation = case.get("mutation")
+    if mutation:
+        _apply_mutation(payload, mutation)
+    return payload
+
+
 def _apply_mutation(payload: dict, mutation: dict) -> None:
     action = mutation["action"]
     if action == "set":
@@ -134,6 +167,16 @@ def _apply_mutation(payload: dict, mutation: dict) -> None:
         return
     if action == "delete":
         _delete_path(payload, mutation["path"])
+        return
+    if action == "single_row_delete":
+        _keep_only_first_candidate(payload)
+        _delete_path(payload, mutation["path"])
+        _refresh_batch_summary(payload)
+        return
+    if action == "single_row_set":
+        _keep_only_first_candidate(payload)
+        _set_path(payload, mutation["path"], deepcopy(mutation["value"]))
+        _refresh_batch_summary(payload)
         return
     if action == "duplicate_key_different_hash":
         records = payload["review_queue_persistence_candidate_batch"]
@@ -156,6 +199,17 @@ def _apply_mutation(payload: dict, mutation: dict) -> None:
             }
         )
         _refresh_candidate_hash(records[1])
+        _refresh_batch_summary(payload)
+        return
+    if action == "same_record_hash_different_idempotency":
+        records = payload["review_queue_persistence_candidate_batch"]
+        records[1]["idempotency_key"] = _hash_json(
+            {
+                "r7br": "same-record-hash-different-idempotency",
+                "review_item_id": records[1]["review_item_id"],
+            }
+        )
+        records[1]["record_payload_hash"] = records[0]["record_payload_hash"]
         _refresh_batch_summary(payload)
         return
     raise AssertionError(f"unsupported mutation action: {action}")
@@ -195,6 +249,12 @@ def _refresh_candidate_hash(candidate: dict) -> None:
     candidate["record_payload_hash"] = _hash_json(
         {key: value for key, value in candidate.items() if key != "record_payload_hash"}
     )
+
+
+def _keep_only_first_candidate(payload: dict) -> None:
+    payload["review_queue_persistence_candidate_batch"] = [
+        deepcopy(payload["review_queue_persistence_candidate_batch"][0])
+    ]
 
 
 def _refresh_batch_summary(payload: dict) -> None:
@@ -594,3 +654,247 @@ def test_r7bq_module_has_no_io_db_export_or_production_hook() -> None:
                 assert func.id not in forbidden_calls
             if isinstance(func, ast.Attribute):
                 assert func.attr not in forbidden_calls
+
+
+def test_r7br_fixture_is_small_curated_and_complete() -> None:
+    fixture = _r7br_fixture()
+
+    assert set(fixture) == {
+        "schema_version",
+        "fixture_scope",
+        "base_case",
+        "negative_path_cases",
+        "idempotency_cases",
+    }
+    assert fixture["schema_version"] == "r7br_fake_repository_negative_path_idempotency_fixture_v1"
+    assert fixture["base_case"] == "valid_schema_alignment_preview_mixed_records"
+    assert {case["case_id"] for case in fixture["negative_path_cases"]} == {
+        "attempted_production_mode",
+        "attempted_production_writer_config",
+        "attempted_connection_string",
+        "attempted_table_name",
+        "attempted_file_path",
+        "attempted_network_dependency_marker",
+        "attempted_storage_dependency_marker",
+        "attempted_caller_supplied_receipt",
+        "attempted_caller_supplied_internal_state",
+        "raw_persistence_candidate_rows_direct",
+        "single_row_missing_review_item_id",
+        "single_row_missing_run_id",
+        "single_row_missing_idempotency_key",
+        "single_row_missing_record_payload_hash",
+        "single_row_malformed_idempotency_key",
+        "single_row_malformed_record_payload_hash",
+        "nested_raw_vlm_payload",
+        "nested_raw_ocr_payload",
+        "production_timestamp_policy",
+        "same_record_payload_hash_different_idempotency",
+    }
+    assert set(fixture["idempotency_cases"]) == {
+        "same_batch_retry_noop",
+        "same_key_same_hash_receipt_stable",
+        "same_key_different_payload_hash_fail_closed",
+        "same_review_item_different_key_fail_closed",
+        "same_review_item_same_key_changed_payload_fail_closed",
+        "same_batch_duplicate_idempotency_fail_closed",
+        "same_batch_duplicate_review_item_fail_closed",
+        "invalid_second_row_atomic_rollback",
+        "repository_instances_are_isolated",
+        "receipt_and_snapshot_mutation_isolated",
+    }
+    assert R7BR_FIXTURE_PATH.stat().st_size < 16000
+
+
+@pytest.mark.parametrize(
+    "case_id",
+    [
+        "attempted_production_mode",
+        "attempted_production_writer_config",
+        "attempted_connection_string",
+        "attempted_table_name",
+        "attempted_file_path",
+        "attempted_network_dependency_marker",
+        "attempted_storage_dependency_marker",
+        "attempted_caller_supplied_receipt",
+        "attempted_caller_supplied_internal_state",
+        "raw_persistence_candidate_rows_direct",
+        "single_row_missing_review_item_id",
+        "single_row_missing_run_id",
+        "single_row_missing_idempotency_key",
+        "single_row_missing_record_payload_hash",
+        "single_row_malformed_idempotency_key",
+        "single_row_malformed_record_payload_hash",
+        "nested_raw_vlm_payload",
+        "nested_raw_ocr_payload",
+        "production_timestamp_policy",
+        "same_record_payload_hash_different_idempotency",
+    ],
+)
+def test_r7br_expanded_negative_path_cases_fail_closed(case_id: str) -> None:
+    case = _r7br_negative_case(case_id)
+    repository = FakeReviewQueueRepository348N()
+    _persist(_candidate_batch(), repository=repository)
+    before = repository.state_snapshot()
+
+    with pytest.raises(FakeReviewQueueRepositoryBoundaryError, match=case["expected_error"]):
+        _persist(_payload_for_r7br_negative_case(case_id), repository=repository)
+
+    assert repository.state_snapshot() == before
+
+
+def test_r7br_missing_explicit_flag_and_repository_default_remain_disabled() -> None:
+    repository = FakeReviewQueueRepository348N()
+
+    missing_flag = persist_candidate_batch_to_fake_repository_348n(
+        _candidate_batch(),
+        test_only_enable_token=TEST_ONLY_FAKE_REPOSITORY_ENABLE_TOKEN,
+        repository=repository,
+    )
+    false_flag = persist_candidate_batch_to_fake_repository_348n(
+        _candidate_batch(),
+        allow_test_only_fake_repository=False,
+        test_only_enable_token=TEST_ONLY_FAKE_REPOSITORY_ENABLE_TOKEN,
+        repository=repository,
+    )
+
+    assert missing_flag["fake_repository_status"] == "DISABLED"
+    assert false_flag["fake_repository_status"] == "DISABLED"
+    assert repository.state_snapshot()["record_count"] == 0
+
+
+def test_r7br_write_receipt_is_stable_across_independent_first_writes() -> None:
+    first = _persist(_candidate_batch(), repository=FakeReviewQueueRepository348N())["fake_repository_write_receipt"]
+    second = _persist(_candidate_batch(), repository=FakeReviewQueueRepository348N())["fake_repository_write_receipt"]
+
+    assert first == second
+    assert first["written_count"] == 2
+    assert first["idempotent_noop_count"] == 0
+    assert first["boundary_flags"]["writes_database"] is False
+    assert first["boundary_flags"]["writes_export"] is False
+    assert not (_walk_keys(first) & {"source_text", "full_source_text", "raw_mineru", "raw_excel", "dsn"})
+
+
+def test_r7br_retry_receipt_is_deterministic_noop_and_state_hash_stable() -> None:
+    repository = FakeReviewQueueRepository348N()
+    first = _persist(_candidate_batch(), repository=repository)
+    second = _persist(_candidate_batch(), repository=repository)
+    third = _persist(_candidate_batch(), repository=repository)
+
+    assert second == third
+    assert second["fake_repository_write_receipt"]["written_count"] == 0
+    assert second["fake_repository_write_receipt"]["idempotent_noop_count"] == 2
+    assert second["fake_repository_state_snapshot"] == first["fake_repository_state_snapshot"]
+    assert third["fake_repository_state_snapshot"] == first["fake_repository_state_snapshot"]
+
+
+def test_r7br_same_review_item_same_key_changed_payload_fails_closed() -> None:
+    repository = FakeReviewQueueRepository348N()
+    _persist(_candidate_batch(), repository=repository)
+    before = repository.state_snapshot()
+    payload = _candidate_batch()
+    payload["review_queue_persistence_candidate_batch"][0]["evidence_preview"] = (
+        "Changed bounded preview keeps same review item and same idempotency key."
+    )
+    _refresh_candidate_hash(payload["review_queue_persistence_candidate_batch"][0])
+    _refresh_batch_summary(payload)
+
+    with pytest.raises(FakeReviewQueueRepositoryBoundaryError, match="idempotency_key conflict"):
+        _persist(payload, repository=repository)
+
+    assert repository.state_snapshot() == before
+
+
+def test_r7br_duplicate_idempotency_within_same_batch_fails_closed_without_state_change() -> None:
+    repository = FakeReviewQueueRepository348N()
+    payload = _candidate_batch()
+    records = payload["review_queue_persistence_candidate_batch"]
+    records[1]["idempotency_key"] = records[0]["idempotency_key"]
+    _refresh_candidate_hash(records[1])
+    _refresh_batch_summary(payload)
+
+    with pytest.raises(FakeReviewQueueRepositoryBoundaryError, match="duplicate idempotency_key"):
+        _persist(payload, repository=repository)
+
+    assert repository.state_snapshot()["record_count"] == 0
+
+
+def test_r7br_duplicate_review_item_within_same_batch_fails_closed_without_state_change() -> None:
+    repository = FakeReviewQueueRepository348N()
+    payload = _candidate_batch()
+    records = payload["review_queue_persistence_candidate_batch"]
+    records[1]["review_item_id"] = records[0]["review_item_id"]
+    records[1]["idempotency_key"] = _hash_json({"r7br": "duplicate-review-item-within-batch"})
+    _refresh_candidate_hash(records[1])
+    _refresh_batch_summary(payload)
+
+    with pytest.raises(FakeReviewQueueRepositoryBoundaryError, match="duplicate review_item_id"):
+        _persist(payload, repository=repository)
+
+    assert repository.state_snapshot()["record_count"] == 0
+
+
+def test_r7br_second_row_invalid_batch_does_not_partially_write_first_row() -> None:
+    repository = FakeReviewQueueRepository348N()
+    payload = _candidate_batch()
+    _set_path(payload, "review_queue_persistence_candidate_batch.1.source_trace.raw_parser_payload", {"pages": []})
+
+    with pytest.raises(FakeReviewQueueRepositoryBoundaryError, match="forbidden field"):
+        _persist(payload, repository=repository)
+
+    assert repository.state_snapshot()["record_count"] == 0
+
+
+def test_r7br_existing_state_survives_invalid_second_batch_without_partial_success() -> None:
+    repository = FakeReviewQueueRepository348N()
+    _persist(_candidate_batch(), repository=repository)
+    before = repository.state_snapshot()
+    payload = _candidate_batch()
+    _set_path(payload, "review_queue_persistence_candidate_batch.0.source_trace.raw_excel", {"sheet": "raw"})
+
+    with pytest.raises(FakeReviewQueueRepositoryBoundaryError, match="forbidden field"):
+        _persist(payload, repository=repository)
+
+    assert repository.state_snapshot() == before
+
+
+def test_r7br_repository_instances_do_not_share_mutable_state() -> None:
+    first_repository = FakeReviewQueueRepository348N()
+    second_repository = FakeReviewQueueRepository348N()
+
+    first_result = _persist(_candidate_batch(), repository=first_repository)
+
+    assert first_repository.state_snapshot()["record_count"] == 2
+    assert second_repository.state_snapshot()["record_count"] == 0
+    second_snapshot = second_repository.state_snapshot()
+    second_snapshot["records"].append({"forged": True})
+    assert second_repository.state_snapshot()["record_count"] == 0
+    assert first_repository.state_snapshot() == first_result["fake_repository_state_snapshot"]
+
+
+def test_r7br_read_snapshot_and_validated_candidates_are_copy_isolated() -> None:
+    repository = FakeReviewQueueRepository348N()
+    result = _persist(_candidate_batch(), repository=repository)
+    snapshot = repository.state_snapshot()
+    candidates = validate_persistence_candidate_batch_for_fake_repository_348n(_candidate_batch())
+
+    snapshot["records"][0]["source_trace"]["matched_locator"] = "mutated-snapshot"
+    result["fake_repository_state_snapshot"]["records"][0]["source_trace"]["matched_locator"] = "mutated-result"
+    result["fake_repository_write_receipt"]["record_payload_hashes"][0] = "mutated-receipt"
+    candidates[0]["source_trace"]["matched_locator"] = "mutated-candidate"
+
+    fresh = repository.state_snapshot()
+    assert fresh["records"][0]["source_trace"]["matched_locator"] != "mutated-snapshot"
+    assert fresh["records"][0]["source_trace"]["matched_locator"] != "mutated-result"
+    assert fresh["records"][0]["record_payload_hash"] != "mutated-receipt"
+    assert fresh["records"][0]["source_trace"]["matched_locator"] != "mutated-candidate"
+
+
+def test_r7br_no_reset_clear_retraction_or_destructive_delete_api_exists() -> None:
+    public_methods = {
+        name
+        for name in dir(FakeReviewQueueRepository348N)
+        if not name.startswith("_") and callable(getattr(FakeReviewQueueRepository348N, name))
+    }
+
+    assert public_methods == {"state_snapshot"}
+    assert not (public_methods & {"reset", "clear", "delete", "retract", "rollback"})
