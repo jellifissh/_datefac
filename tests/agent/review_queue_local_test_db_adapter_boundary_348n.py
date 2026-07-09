@@ -41,29 +41,38 @@ AUTO_ACTIVATION_SOURCES: frozenset[str] = frozenset(
 
 FORBIDDEN_CONFIG_KEYS: frozenset[str] = frozenset(
     {
+        "api_key",
         "connection_string",
         "database_url",
+        "db_api_key",
         "db_password",
         "db_secret",
+        "db_token",
         "delivery_export_intent",
         "delivery_payload",
         "endpoint",
         "export_intent",
         "file_path",
         "host",
+        "migration",
+        "migration_name",
         "network_endpoint",
         "output_path",
         "password",
+        "port",
         "production_writer_config",
         "readiness_gates",
         "readiness_override",
         "repository_skeleton_factory_output",
+        "schema",
         "schema_alignment_preview",
+        "schema_name",
         "secret",
         "server",
         "table_name",
         "clean_data_intent",
         "clean_data_payload",
+        "token",
     }
 )
 
@@ -92,12 +101,18 @@ FORBIDDEN_CONFIG_VALUE_MARKERS: tuple[str, ...] = (
 FORBIDDEN_CANDIDATE_KEYS: frozenset[str] = frozenset(
     {
         "adapter_internal_state",
+        "adapter_state",
+        "approved_export_payload",
         "caller_supplied_db_row",
+        "caller_supplied_db_primary_key",
         "clean_data_intent",
         "clean_data_payload",
+        "committed_receipt",
         "committed_db_receipt",
         "database_row",
+        "db_primary_key",
         "db_row",
+        "db_receipt",
         "delivery_export_intent",
         "delivery_payload",
         "export_payload",
@@ -105,6 +120,8 @@ FORBIDDEN_CANDIDATE_KEYS: frozenset[str] = frozenset(
         "full_source_text",
         "internal_adapter_state",
         "local_test_db_adapter_state",
+        "normalized_clean_data",
+        "primary_key",
         "production_timestamp_override",
         "raw_excel_payload",
         "raw_llm_payload",
@@ -265,6 +282,7 @@ def validate_local_test_db_candidate_batch(
         review_item_id = str(candidate["review_item_id"])
         idempotency_key = str(candidate["idempotency_key"])
         record_payload_hash = str(candidate["record_payload_hash"])
+        _validate_hash_like(idempotency_key)
         _validate_hash_like(record_payload_hash)
 
         if idempotency_key in idempotency_to_hash:
