@@ -1,0 +1,32 @@
+{
+  "artifact_type": "existing_extraction_sample",
+  "rows": [
+    {
+      "row_id": "original:revenue:2023",
+      "metric_name": "营业收入",
+      "period": "2023年度",
+      "value": "1000",
+      "unit": "CNYm",
+      "sheet": "extracted",
+      "raw_text": "营业收入 2023年度 1000 CNYm"
+    },
+    {
+      "row_id": "original:net_profit:2023",
+      "metric_name": "归母净利润",
+      "period": "2023",
+      "value": "210.00",
+      "unit": "CNYm",
+      "sheet": "extracted",
+      "raw_text": "归母净利润 2023 210.00 CNYm"
+    },
+    {
+      "row_id": "original:roe:2023",
+      "metric_name": "ROE",
+      "period": "2023",
+      "value": "12.5%",
+      "unit": "%",
+      "sheet": "extracted",
+      "raw_text": "ROE 2023 12.5%"
+    }
+  ]
+}

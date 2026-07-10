@@ -1,0 +1,33 @@
+[
+  [
+    {
+      "type": "table",
+      "bbox": [10, 20, 300, 180],
+      "content": {
+        "rows": [
+          {
+            "metric": "Revenue",
+            "period": "FY2023",
+            "value": "1,000.00",
+            "unit": "CNYm",
+            "evidence_preview": "Revenue FY2023 1,000.00 CNYm"
+          },
+          {
+            "metric": "Net Profit",
+            "period": "2023",
+            "value": "200.00",
+            "unit": "CNYm",
+            "evidence_preview": "Net Profit 2023 200.00 CNYm"
+          },
+          {
+            "metric": "EPS",
+            "period": "2023",
+            "value": "2.50",
+            "unit": "CNY/share",
+            "evidence_preview": "EPS 2023 2.50 CNY/share"
+          }
+        ]
+      }
+    }
+  ]
+]
