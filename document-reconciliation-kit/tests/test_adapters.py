@@ -78,7 +78,7 @@ def test_matrix_to_records_marks_invalid_numbers_unparseable() -> None:
     assert records[0].parse_status == UNPARSEABLE
 
 
-def test_excel_adapter_reads_selected_sheet_and_source_trace(tmp_path: Path) -> None:
+def test_excel_adapter_reads_all_sheets_by_default_and_selected_sheet_only(tmp_path: Path) -> None:
     path = tmp_path / "anonymous.xlsx"
     workbook = Workbook()
     sheet = workbook.active
@@ -90,10 +90,13 @@ def test_excel_adapter_reads_selected_sheet_and_source_trace(tmp_path: Path) -> 
     other.append(["Ignore", 1])
     workbook.save(path)
     workbook.close()
-    records = load_excel_records(path, sheets=["Income"])
-    assert len(records) == 2
-    assert records[0].source_trace["sheet"] == "Income"
-    assert records[0].normalized_unit == "million"
+    all_records = load_excel_records(path)
+    selected_records = load_excel_records(path, sheets=["Income"])
+    assert len(all_records) == 3
+    assert {record.source_trace["sheet"] for record in all_records} == {"Income", "Other"}
+    assert len(selected_records) == 2
+    assert {record.source_trace["sheet"] for record in selected_records} == {"Income"}
+    assert selected_records[0].normalized_unit == "million"
 
 
 def test_excel_adapter_rejects_missing_selected_sheet(tmp_path: Path) -> None:

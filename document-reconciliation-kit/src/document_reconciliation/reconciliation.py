@@ -155,10 +155,31 @@ def _index_records(
 ) -> dict[tuple[str, ...], list[NormalizedRecord]]:
     index: dict[tuple[str, ...], list[NormalizedRecord]] = defaultdict(list)
     for position, raw_record in enumerate(records):
-        record = raw_record if isinstance(raw_record, NormalizedRecord) else NormalizedRecord.from_mapping(raw_record)
+        if isinstance(raw_record, NormalizedRecord):
+            record = raw_record
+        else:
+            _validate_mapping_identity_values(raw_record, identity_fields, side=side, position=position)
+            record = NormalizedRecord.from_mapping(raw_record)
         key = _identity_key(record, identity_fields, side=side, position=position)
         index[key].append(record)
     return index
+
+
+def _validate_mapping_identity_values(
+    record: Mapping[str, Any],
+    identity_fields: Sequence[str],
+    *,
+    side: str,
+    position: int,
+) -> None:
+    for field in identity_fields:
+        if field not in record:
+            raise ValueError(f"{side} record {position} has missing identity field: {field}")
+        value = record[field]
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise ValueError(f"{side} record {position} has blank identity field: {field}")
+        if not isinstance(value, str):
+            raise ValueError(f"{side} record {position} has non-string identity field: {field}")
 
 
 def _identity_key(
