@@ -16,6 +16,10 @@ def _compact_mapping(value: Mapping[str, Any] | None) -> dict[str, Any]:
     return {str(key): value[key] for key in sorted(value)}
 
 
+def _mapping_text(value: Any) -> str:
+    return "" if value is None else str(value)
+
+
 @dataclass(frozen=True)
 class NormalizedRecord:
     source: str
@@ -32,11 +36,11 @@ class NormalizedRecord:
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "NormalizedRecord":
         return cls(
-            source=str(value.get("source", "")),
-            context=str(value.get("context", "")),
-            metric_key=str(value.get("metric_key", "")),
-            metric_display_name=str(value.get("metric_display_name", value.get("metric_key", ""))),
-            period=str(value.get("period", "")),
+            source=_mapping_text(value.get("source", "")),
+            context=_mapping_text(value.get("context", "")),
+            metric_key=_mapping_text(value.get("metric_key", "")),
+            metric_display_name=_mapping_text(value.get("metric_display_name", value.get("metric_key", ""))),
+            period=_mapping_text(value.get("period", "")),
             normalized_value=None if value.get("normalized_value") is None else str(value.get("normalized_value")),
             normalized_unit=None if value.get("normalized_unit") is None else str(value.get("normalized_unit")),
             evidence_preview=str(value.get("evidence_preview", "")),

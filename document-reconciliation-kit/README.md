@@ -32,6 +32,10 @@ result = reconcile_records(left_records, right_records)
 
 The default comparison identity is `context + metric_key + period`. Financial aliases are optional and live in `document_reconciliation.profiles.financial`; the core package uses generic text normalization by default.
 
+## Excel sheet selection
+
+`load_excel_records(..., sheets=None)` reads every worksheet. Callers handling mixed workbooks should pass an explicit sheet list. A future release may require explicit selection.
+
 ## Boundaries
 
 - Inputs are read only from caller-supplied paths.

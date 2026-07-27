@@ -4,8 +4,9 @@ from copy import deepcopy
 
 import pytest
 
+from document_reconciliation import __version__
 from document_reconciliation.models import NormalizedRecord, UNPARSEABLE as PARSE_STATUS_UNPARSEABLE
-from document_reconciliation.reconciliation import CONFLICT, LEFT_ONLY, MATCH, RIGHT_ONLY, UNIT_REVIEW, UNPARSEABLE, compare_records, comparison_summary, reconcile_records
+from document_reconciliation.reconciliation import CONFLICT, LEFT_ONLY, MATCH, PUBLIC_IDENTITY_FIELDS, RIGHT_ONLY, UNIT_REVIEW, UNPARSEABLE, compare_records, comparison_summary, reconcile_records
 
 
 def _record(**overrides: object) -> NormalizedRecord:
@@ -84,3 +85,55 @@ def test_reconcile_records_is_json_boundary() -> None:
     result = reconcile_records([_record()], [_record(source="right")])
     assert result["comparison_rows"][0]["status"] == MATCH
     assert result["identity_fields"] == ["context", "metric_key", "period"]
+
+
+@pytest.mark.parametrize(
+    "identity_fields",
+    [
+        ("unknown_identity_field",),
+        "context",
+        b"context",
+        (),
+        ("",),
+        ("context", "context"),
+        (1,),
+        ("normalized_value",),
+    ],
+)
+def test_invalid_identity_configuration_raises_before_consuming_records(identity_fields: object) -> None:
+    def records() -> object:
+        raise AssertionError("records must not be consumed for invalid identity configuration")
+        yield None
+
+    with pytest.raises(ValueError):
+        compare_records(records(), records(), identity_fields=identity_fields)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("field", ["context", "metric_key", "period"])
+def test_blank_default_identity_value_is_rejected_before_pairing(field: str) -> None:
+    left = _record(**{field: " "})
+    with pytest.raises(ValueError, match=rf"left record 0 has blank identity field: {field}"):
+        compare_records([left], [_record(source="right")])
+
+
+def test_explicit_null_mapping_identity_stays_blank_and_is_rejected() -> None:
+    left = _record().to_dict()
+    left["context"] = None
+    normalized = NormalizedRecord.from_mapping(left)
+    assert normalized.context == ""
+    with pytest.raises(ValueError, match="left record 0 has blank identity field: context"):
+        compare_records([left], [_record(source="right").to_dict()])
+
+
+def test_blank_custom_metric_display_name_is_rejected_when_selected() -> None:
+    left = _record(metric_display_name=" ")
+    with pytest.raises(ValueError, match="left record 0 has blank identity field: metric_display_name"):
+        compare_records([left], [_record(source="right")], identity_fields=("context", "metric_display_name"))
+
+
+def test_public_identity_allowlist_excludes_comparison_payload_fields() -> None:
+    assert PUBLIC_IDENTITY_FIELDS == frozenset({"context", "metric_key", "metric_display_name", "period"})
+
+
+def test_version_is_exported_from_package() -> None:
+    assert __version__ == "0.1.1"

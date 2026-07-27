@@ -18,6 +18,7 @@ UNPARSEABLE = "UNPARSEABLE"
 UNIT_REVIEW = "UNIT_REVIEW"
 REVIEW_REQUIRED_STATUSES = frozenset({CONFLICT, LEFT_ONLY, RIGHT_ONLY, UNPARSEABLE, UNIT_REVIEW})
 DEFAULT_IDENTITY_FIELDS = ("context", "metric_key", "period")
+PUBLIC_IDENTITY_FIELDS = frozenset({"context", "metric_key", "metric_display_name", "period"})
 
 
 def reconcile_records(
@@ -28,17 +29,18 @@ def reconcile_records(
     left_label: str = "left",
     right_label: str = "right",
 ) -> dict[str, Any]:
+    validated_identity_fields = validate_identity_fields(identity_fields)
     rows = compare_records(
         left_records,
         right_records,
-        identity_fields=identity_fields,
+        identity_fields=validated_identity_fields,
         left_label=left_label,
         right_label=right_label,
     )
     return {
         "comparison_rows": [row.to_dict() for row in rows],
         "summary": comparison_summary(rows),
-        "identity_fields": list(identity_fields),
+        "identity_fields": list(validated_identity_fields),
         "left_label": left_label,
         "right_label": right_label,
     }
@@ -52,10 +54,9 @@ def compare_records(
     left_label: str = "left",
     right_label: str = "right",
 ) -> list[ComparisonRecord]:
-    if not identity_fields:
-        raise ValueError("at least one identity field is required")
-    left_index = _index_records(left_records, identity_fields)
-    right_index = _index_records(right_records, identity_fields)
+    validated_identity_fields = validate_identity_fields(identity_fields)
+    left_index = _index_records(left_records, validated_identity_fields, side="left")
+    right_index = _index_records(right_records, validated_identity_fields, side="right")
     comparisons: list[ComparisonRecord] = []
     for key in sorted(set(left_index) | set(right_index)):
         left_group = left_index.get(key, [])
@@ -129,15 +130,51 @@ def comparison_summary(rows: Iterable[ComparisonRecord | Mapping[str, Any]]) -> 
     return summary
 
 
+def validate_identity_fields(identity_fields: Sequence[str]) -> tuple[str, ...]:
+    if isinstance(identity_fields, (str, bytes)) or not isinstance(identity_fields, Sequence):
+        raise ValueError("identity_fields must be a sequence of allowed field names")
+    fields = tuple(identity_fields)
+    if not fields:
+        raise ValueError("identity_fields must contain at least one field")
+    seen_fields: set[str] = set()
+    for field in fields:
+        if not isinstance(field, str):
+            raise ValueError("identity_fields must contain only string field names")
+        if not field.strip():
+            raise ValueError("identity_fields must not contain blank field names")
+        if field in seen_fields:
+            raise ValueError(f"identity_fields contains duplicate field: {field}")
+        if field not in PUBLIC_IDENTITY_FIELDS:
+            raise ValueError(f"identity_fields contains unsupported field: {field}")
+        seen_fields.add(field)
+    return fields
+
+
 def _index_records(
-    records: Iterable[NormalizedRecord | Mapping[str, Any]], identity_fields: Sequence[str]
+    records: Iterable[NormalizedRecord | Mapping[str, Any]], identity_fields: Sequence[str], *, side: str
 ) -> dict[tuple[str, ...], list[NormalizedRecord]]:
     index: dict[tuple[str, ...], list[NormalizedRecord]] = defaultdict(list)
-    for raw_record in records:
+    for position, raw_record in enumerate(records):
         record = raw_record if isinstance(raw_record, NormalizedRecord) else NormalizedRecord.from_mapping(raw_record)
-        key = tuple(str(getattr(record, field, "")) for field in identity_fields)
+        key = _identity_key(record, identity_fields, side=side, position=position)
         index[key].append(record)
     return index
+
+
+def _identity_key(
+    record: NormalizedRecord,
+    identity_fields: Sequence[str],
+    *,
+    side: str,
+    position: int,
+) -> tuple[str, ...]:
+    values: list[str] = []
+    for field in identity_fields:
+        value = getattr(record, field)
+        if value is None or not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{side} record {position} has blank identity field: {field}")
+        values.append(value)
+    return tuple(values)
 
 
 def _compare_pair(
