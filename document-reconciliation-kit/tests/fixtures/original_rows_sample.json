@@ -1,0 +1,40 @@
+{
+  "records": [
+    {
+      "source": "right",
+      "context": "Income statement (millions)",
+      "metric_key": "revenue",
+      "metric_display_name": "Revenue",
+      "period": "2025A",
+      "normalized_value": "100",
+      "normalized_unit": null,
+      "evidence_preview": "anonymous workbook row",
+      "source_trace": {"sheet": "Income", "row": 2, "column": 4},
+      "parse_status": "PARSED"
+    },
+    {
+      "source": "right",
+      "context": "Income statement (millions)",
+      "metric_key": "revenue",
+      "metric_display_name": "Revenue",
+      "period": "2026E",
+      "normalized_value": "120",
+      "normalized_unit": null,
+      "evidence_preview": "anonymous workbook row",
+      "source_trace": {"sheet": "Income", "row": 2, "column": 5},
+      "parse_status": "PARSED"
+    },
+    {
+      "source": "right",
+      "context": "Income statement (millions)",
+      "metric_key": "cost",
+      "metric_display_name": "Cost",
+      "period": "2025A",
+      "normalized_value": "-40",
+      "normalized_unit": null,
+      "evidence_preview": "anonymous workbook row",
+      "source_trace": {"sheet": "Income", "row": 3, "column": 4},
+      "parse_status": "PARSED"
+    }
+  ]
+}

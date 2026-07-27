@@ -1,0 +1,27 @@
+[
+  [
+    {
+      "type": "table",
+      "bbox": [10, 20, 300, 180],
+      "content": {
+        "table_caption": "Income statement (millions)",
+        "table_footnote": "Illustrative values only",
+        "html": "<table><tr><th rowspan=\"2\">Metric</th><th colspan=\"2\">Forecast</th></tr><tr><th>2025A</th><th>2026E</th></tr><tr><td>Revenue</td><td>100</td><td>120</td></tr><tr><td>Cost</td><td>(40)</td><td>(50)</td></tr></table>"
+      }
+    },
+    {
+      "type": "paragraph",
+      "text": "An illustrative paragraph that is not a source of unbounded output."
+    }
+  ],
+  [
+    {
+      "type": "table",
+      "bbox": [15, 30, 310, 160],
+      "content": {
+        "table_caption": "Balance sheet (millions)",
+        "html": "<table><tr><th>Metric</th><th>2025A</th><th>2026E</th></tr><tr><td>Assets</td><td>300</td><td>330</td></tr></table>"
+      }
+    }
+  ]
+]
